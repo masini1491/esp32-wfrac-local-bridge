@@ -25,4 +25,6 @@ YDM/Yale 與 Door Access 不屬於本 repository。未來將成熟 WF-RAC backen
 
 TBD。正式公開前再決定 project license；本 baseline 不新增 LICENSE。
 
+Reference research baseline established；firmware and hardware validation intentionally deferred。
+
 詳見 [docs/roadmap.md](docs/roadmap.md)。
