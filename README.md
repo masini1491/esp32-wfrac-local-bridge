@@ -2,6 +2,8 @@
 
 這是將 Mitsubishi Heavy Industries WF-RAC 空調銜接至 Matter 的本地研究與架構基準。
 
+研究 reference set 已補強，並記錄 AirconStat 與 MHI CNS/SPI-derived semantics 的高階關係；本專案仍處於 Phase 0，韌體與實機驗證目前暫緩。
+
 ## 專案狀態
 
 目前是 **Phase 0 — Research / Architecture / Project Setup**。參考資料研究基準已建立；本 repository 尚未包含 firmware，韌體開發與實機驗證目前暫緩。

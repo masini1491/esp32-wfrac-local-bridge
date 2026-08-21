@@ -14,6 +14,22 @@ Transport 不預設為 plain HTTP；legacy firmware 可能使用 HTTP，newer WF
 
 Matter Adapter 只對 Device Model 發出高階 request，如 `setPower()`、`setMode()`、`setTargetTemperature()`、`setFanMode()`、`requestStatus()`；不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。Device Model 應與傳輸層及上層整合介面解耦，保持清楚的模組邊界與可測試性。
 
+## WF-RAC module 與 AirconStat 的來源關係
+
+新增 pinned reference 的 firmware analysis 將 WF-RAC module 描述為雙處理器架構：
+
+```text
+Realtek RTL8710C
+        ↓ UART
+Renesas RL78
+        ↓ CNS / SPI
+MHI AC main board
+```
+
+Realtek side 負責 Wi-Fi、HTTP／HTTPS、MQTT、TLS、Base64、OTA 與 network plumbing；RL78 side 負責 CNS／SPI protocol bridge、AirconStat 與 MHI CNS/SPI frame 的轉換，以及 remote-control role。這表示 WF-RAC network API 的 AirconStat 並非與 MHI CNS/SPI 完全無關的獨立格式，而是 JSON／Base64 transport representation → AirconStat → CNS/SPI-derived state／control representation。
+
+這是 protocol semantics 的 provenance view，不是本 project 新增 CNS／SPI runtime layer。ESP32 仍透過 Local IP 與 WF-RAC module 通訊，再由 module 連接 MHI air conditioner。
+
 WF-RAC 的本地控制需要 Wi-Fi/IP network，因此 Matter over Wi-Fi 是 primary Matter transport；Matter over Thread 不是本 project primary target。未來 runtime 必須採 non-blocking 架構、bounded timeout/retry、command serialization、polling/command coordination、no infinite retry、no unbounded queue 與 explicit availability。
 
 ## Matter 參考與 mapping 邊界
