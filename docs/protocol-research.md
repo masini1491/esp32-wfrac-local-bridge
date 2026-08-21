@@ -161,6 +161,81 @@ Multi-split 中 `state[9]` bit `0x02` 是 per-indoor-unit compressor demand，�
 
 官方 app 使用 variable operation-data code `248` 處理 Home Leave／auto-heating related settings，sub-code family 與 read/write mechanism 已有 upstream round-trip；本 project 不把 Home Leave 列為 Matter core requirement，mapping 為 `UNKNOWN / Phase 0.3 pending`。
 
+## MHI CNS/SPI cross-reference — CONFIRMED_UPSTREAM
+
+本節記錄 pinned `hberntsen/mhi-ac-ctrl-esp32`（commit `cb00cd54525acea9fbafdfee178a657eb6667faa`、MIT）的 targeted cross-reference。其 source facts 只能作 `CONFIRMED_UPSTREAM`；作者標示為 rough approximation、needs confirmation 或 community assumption 的內容，維持 `INFERRED` 或 `UNKNOWN`。本 project `CONFIRMED_LOCAL` 仍為 none。
+
+### Frame 基礎與 AirconStat 對照
+
+該 reference 定義 `MHI_FRAME_LEN_SHORT = 20`、`MHI_FRAME_LEN_LONG = 33`，並使用 SB0、SB1、SB2 與 DB0、DB1、DB2、DB3、DB4、DB6、DB9–DB15...DB26。高價值 semantic mapping 如下：
+
+| CNS/SPI field | 主要語意 |
+|---|---|
+| DB0 | power、mode、vertical swing |
+| DB1 | fan、vertical vane |
+| DB2 | target temperature |
+| DB3 | room／external temperature |
+| DB4 | error |
+| DB6 | operation-data selector／extended fan state |
+| DB9–DB12 | operation-data channel |
+| DB13 | direct CNS/SPI compressor state／heat-cool state |
+| DB16 | horizontal vane |
+| DB17 | horizontal swing／3D Auto |
+
+與 `Mitsubishi-WF-RAC-Integration` 交叉比對後，高信心對照為：AirconStat `state[2] ↔ DB0`、`state[3] ↔ DB1`、`state[4] ↔ DB2`、`state[5] ↔ DB3`、`state[6] ↔ DB4`、`state[11] ↔ DB16`、`state[12] ↔ DB17`。這是 cross-reference，不表示 AirconStat 是完整 CNS frame 的 raw copy。
+
+### Set-bit 與基本編碼
+
+兩個 independent upstream paths 對 set-bit architecture 形成 `STRONG_CORROBORATION`：Power value 為 DB0 bit 0、set-bit 為 DB0 bit 1；Mode value 為 DB0 mode bits、set-bit 為 DB0 bit 5；Fan value 為 DB1 fan bits、set-bit 為 DB1 bit 3；target temperature value 為 DB2 bits 6:0、set-bit 為 DB2 bit 7；vertical swing value 為 DB0 bit 6、set-bit 為 DB0 bit 7；vertical vane position value 為 DB1 position bits、set-bit 為 DB1 bit 7。DB16／DB17 的 horizontal vane／swing 亦有 explicit set semantics。
+
+AirconStat Codec 未來必須分開 decode RECEIVE state 與 encode COMMAND delta，不可只讀取 state、修改 value bits 後原封不動送回。CNS/SPI-side raw mode values 為 `auto=0x00`、`dry=0x04`、`cool=0x08`、`fan=0x0C`、`heat=0x10`；fan values 為 speed 1=`0`、speed 2=`1`、speed 3=`2`、speed 4=`6`、auto=`7`，並須注意 DB6 extended fan bit。這些是 CNS/SPI layer encoding，不可與 WF-RAC AirconStat layer 的數值無條件混成單一表格。
+
+基本溫度 cross-reference：target temperature 為 `DB2 raw / 2`、resolution `0.5 °C`；room temperature 為 `(DB3 - 61) / 4`、resolution `0.25 °C`。這條 CNS/SPI basic path 與 operation-data 的高解析 indoor/outdoor temperature path 不可混為一談。
+
+### Operation-data address space
+
+`DB9`–`DB12` 明確作 operation-data request/response。交叉比對的 code 包含：`0x05` Set Temperature、`0x80` Air Temperature、`0x81` Indoor coil family、`0x87` Indoor suction/header temperature、`0x1F` Fan Speed、`0x1E` Run Hours、`0x82` Outdoor Heat Exchanger、`0x11` Compressor Frequency、`0x85` Discharge Pipe Temperature、`0x90` Current、`0xB1` Compressor Discharge Superheat、`0x7C` Compressor Protection State、`0x0C` Defrosting、`0x13` Outdoor Expansion Valve、`0x94` Energy。
+
+這與 WF-RAC HTTP → AirconStat variable segments 觀察到的 address space 高度重疊，但 direct CNS/SPI capability 不等於 WF-RAC network-visible capability；不得因 direct CNS project 能讀某 code，就宣稱 WF-RAC HTTP 一定能讀。
+
+`0x11` Compressor Frequency、`0x90` Current、`0x85` Discharge Pipe Temperature、`0x94` Energy 是 `STRONG_CORROBORATION`。`0x90` 的 upstream observed conversion 為 `raw × 14 / 51`；`0x94` 為 `raw = DB12 << 8 | DB11`、conversion `raw / 4`，即 0.25 kWh/count。後者與 WF-RAC Integration 的 0.25 kWh resolution 一致，但 current-run、power-on reset、off 保留與 multi-split per-indoor lifecycle semantics 主要仍來自 WF-RAC Integration evidence，不宣稱由 direct CNS reference 獨立驗證。
+
+`0x13` 兩份 reference 都指向 EEV／expansion-valve data，code semantics 為 `CONFIRMED_UPSTREAM`，但屬 `PARTIAL_CORROBORATION`：direct CNS 使用 `DB12 << 8 | DB11` 的 16-bit pulse-related value，WF-RAC network representation 可能較窄，不得宣稱 HTTP `0x13` 等於 raw 16-bit CNS pulse count。
+
+`0x80` outdoor temperature code semantics 為 `CONFIRMED_UPSTREAM`，但 exact conversion 是 `EVIDENCE_CONFLICT`：direct CNS reference 使用 `(raw - 94) × 0.25 °C`，WF-RAC Integration 依 Smart M-Air app／WF-RAC hardware evidence 使用非線性 lookup mapping。兩者均保留；WF-RAC network applicability 優先研究 app-derived mapping，最終仍為 `HARDWARE_TEST_PENDING`。部分 coil conversion（例如 `raw × 0.327 - 11.4`）由 source 自己標為 rough approximation 或 needs confirmation，故保持 `INFERRED / APPROXIMATE`，不複製公式。
+
+### Compressor state boundary
+
+必須分離三個概念：A. direct CNS/SPI `DB13` compressor running/idle 或 heat-cool state；B. WF-RAC AirconStat `state[9] bit 0x02` 的 per-indoor compressor demand；C. operation-data `0x11` 的 outdoor-unit-level compressor frequency。Future Device Model 不得把三者合併成 `compressorOn`；multi-split 中 indoor demand 可為 false、sibling demand 為 true，而 outdoor frequency 仍大於 0。Direct CNS `DB13` 只作 semantics cross-reference，不假設 WF-RAC AirconStat 一定暴露。
+
+`0x7C` Compressor Protection State Number 為 `PARTIAL / UNRESOLVED`：address semantics 為 `CONFIRMED_UPSTREAM`，但 WF-RAC-visible operational meaning 為 `UNKNOWN / HARDWARE_TEST_PENDING`，不得直接暴露成 Compressor Protection Active。`0x0C` Defrosting 同樣是 direct CNS semantic `CONFIRMED_UPSTREAM`，但 WF-RAC HTTP availability 為 `UNKNOWN / HARDWARE_TEST_PENDING`。
+
+DB3 external room temperature cross-reference：`DB3 = 0xFF` 表示 disable external input；有值時為 `round(T × 4 + 61)`。這與 WF-RAC `command[5] / DB3` 可能注入 external temperature 的研究吻合，但 WF-RAC HTTP write safety/effect 為 `INFERRED / HARDWARE_TEST_PENDING`，維持 research-only，不實作。
+
+### Cross-reference matrix
+
+| Topic | Mitsubishi-WF-RAC-Integration | mhi-ac-ctrl-esp32 | Assessment |
+|---|---|---|---|
+| Power／mode DB0 | AirconStat `state[2]` | DB0 value／set-bit | STRONG_CORROBORATION |
+| Fan／vane DB1 | AirconStat `state[3]` | DB1 value／set-bit | STRONG_CORROBORATION |
+| Setpoint DB2 | AirconStat `state[4]` | DB2 value／set-bit | STRONG_CORROBORATION |
+| External room temp DB3 | `command[5]`／DB3 path | DB3 disable／encoding | STRONG_CORROBORATION；write safety仍待驗證 |
+| Horizontal vane DB16 | AirconStat `state[11]` | DB16 | STRONG_CORROBORATION |
+| 3D Auto DB17 | AirconStat `state[12]` | DB17 | STRONG_CORROBORATION |
+| Set-bit semantics | COMMAND block | CNS/SPI value＋set-bit | STRONG_CORROBORATION |
+| `0x11` compressor frequency | operation-data | operation-data | STRONG_CORROBORATION |
+| `0x90` current | operation-data | operation-data | STRONG_CORROBORATION |
+| `0x85` discharge temperature | operation-data | operation-data | STRONG_CORROBORATION |
+| `0x94` energy | 0.25 kWh resolution | DB12/DB11、0.25 kWh/count | STRONG_CORROBORATION |
+| `0x13` EEV | narrower WF-RAC representation 可能存在 | 16-bit CNS value | PARTIAL_CORROBORATION |
+| `0x80` outdoor temperature conversion | nonlinear lookup | `(raw - 94) × 0.25` | EVIDENCE_CONFLICT |
+| `0x81`／`0x87` coil conversion | operation-data presence | sensor family／rough formula | PARTIAL_CORROBORATION |
+| `0x7C` protection | response/value常為0 | protection state number | PARTIAL / UNRESOLVED |
+| `0x0C` defrost | 尚無充分 WF-RAC path evidence | Defrosting | DIRECT_CNS_ONLY |
+| compressor state concepts | demand／frequency | DB13 direct state | STRONG_CORROBORATION；概念不可合併 |
+
+此 matrix 是 semantics cross-reference，不是把 direct CNS/SPI capability 提升為 WF-RAC HTTP capability，也不是 implementation specification。
+
 ## Evidence matrix
 
 ### CONFIRMED_UPSTREAM

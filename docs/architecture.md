@@ -30,6 +30,8 @@ Realtek side 負責 Wi-Fi、HTTP／HTTPS、MQTT、TLS、Base64、OTA 與 network
 
 這是 protocol semantics 的 provenance view，不是本 project 新增 CNS／SPI runtime layer。ESP32 仍透過 Local IP 與 WF-RAC module 通訊，再由 module 連接 MHI air conditioner。
 
+Direct CNS/SPI capability 不等於 WF-RAC network-visible capability。CNS/SPI cross-reference 只用於 field identification、operation-data address identification 與 set-bit understanding；runtime 仍只與 WF-RAC local network API 通訊。
+
 WF-RAC 的本地控制需要 Wi-Fi/IP network，因此 Matter over Wi-Fi 是 primary Matter transport；Matter over Thread 不是本 project primary target。未來 runtime 必須採 non-blocking 架構、bounded timeout/retry、command serialization、polling/command coordination、no infinite retry、no unbounded queue 與 explicit availability。
 
 ## Matter 參考與 mapping 邊界
