@@ -1,0 +1,14 @@
+# Local/editor artifacts
+.vscode/
+.idea/
+*.log
+# ESP-IDF/build artifacts (future-proof)
+build/
+sdkconfig
+sdkconfig.*
+managed_components/
+# Secrets
+.env
+.env.*
+credentials.*
+secrets.*

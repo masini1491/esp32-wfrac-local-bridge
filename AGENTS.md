@@ -1,0 +1,13 @@
+# Development discipline
+
+本 repository 目前只做 Phase 0 — Research / Architecture / Project Setup。禁止 firmware、C/C++、ESP-IDF CMake project、實際 WF-RAC 呼叫、HTTP/HTTPS runtime、Matter/MQTT runtime、WebUI、hardware test，以及 Universal Bridge 或與 WF-RAC 無關的 scope expansion。不要自動開始 Phase 0.1。
+
+正式 framework 是 ESP-IDF；ESP32-C6 為 primary、ESP32-C3 為 compatibility target；Matter-over-Wi-Fi 是 primary transport。固定 layering：WF-RAC Transport → WF-RAC Protocol → WF-RAC Device Model → Matter Adapter → Matter over Wi-Fi。
+
+Matter Adapter 不得直接建 request、parse raw JSON、管理 Operator ID、retry、discovery 或 socket；Device Model 不依賴 Matter、MQTT、Home Assistant、Google Home 或 WebUI。未來 runtime 應採 non-blocking、bounded timeout/retry、bounded command queue、command serialization、polling/command coordination、state consistency 與 explicit availability。
+
+使用 `CONFIRMED_UPSTREAM`、`CONFIRMED_LOCAL`、`INFERRED`、`UNKNOWN`、`HARDWARE_TEST_PENDING`，並記 repository、revision、license 與研究用途。不可未審 license copy、line-by-line translation、mechanical port 或 rename-and-claim。`mhi-ac-ctrl-esp32` 不是 WF-RAC HTTP protocol authority。
+
+日常控制不得依賴雲端、MQTT、Internet、DNS 或 NTP。不得提交或輸出 Wi-Fi credentials、Operator ID、fabric/commissioning secrets、OTA signing key 或 WebUI secrets。加密 NVS、Secure Boot、Flash Encryption 目前只列 roadmap。
+
+失敗分類：`SOURCE`、`TOOLCHAIN`、`ENVIRONMENT`、`INFRASTRUCTURE`、`SERVICE`、`HARDWARE_REQUIRED`。同一 infrastructure/auth/toolchain/service root cause 最多自動 retry 1 次；第二次停止，不重掃、不重複 download、不因 toolchain 問題修改 production source。沒有明確要求不得自動實作；保留 hardware truth，避免宣稱未驗證能力。
