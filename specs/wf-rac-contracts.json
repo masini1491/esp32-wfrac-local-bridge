@@ -178,6 +178,51 @@
     "does_not_call_http": true,
     "does_not_manage_retry_discovery_socket_or_matter_callbacks": true
   },
+  "aircon_stat_r2": {
+    "evidence_level": "CONFIRMED_UPSTREAM",
+    "runtime_implemented": false,
+    "block_structure": {
+      "blocks": ["COMMAND", "RECEIVE"],
+      "state_bytes": 18,
+      "segment_count_bytes": 1,
+      "variable_segment_bytes": 4,
+      "crc_bytes": 2,
+      "receive_offset": "command_segment_count_derived",
+      "receive_raw_state_is_not_command_raw_state": true,
+      "set_bits_reconstructable_from_receive": false
+    },
+    "codec_boundary": { "decode_receive": "decode_receive_state", "encode_command": "encode_command" },
+    "fixed_state_map": [
+      {"index": 0, "receive": "model number low 7 bits", "command": "not ordinary writable; safe default 0", "safe_command_default": 0, "copy_receive": false},
+      {"index": 1, "receive": "observed 0x04 constant; function UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
+      {"index": 2, "receive": "power/mode/vertical swing values", "command": "power/mode/vertical swing values plus set bits", "safe_command_default": 0, "copy_receive": false},
+      {"index": 3, "receive": "fan/vertical vane values", "command": "fan/vertical vane values plus set bits", "safe_command_default": 0, "copy_receive": false},
+      {"index": 4, "receive": "target temperature raw/2 C", "command": "target temperature times 2 plus set bit 0x80", "safe_command_default": 0, "copy_receive": false},
+      {"index": 5, "receive": "controller room temperature", "command": "external room temperature injection; 0xFF means no injection", "safe_command_default": 255, "copy_receive": false},
+      {"index": 6, "receive": "error; read-only", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
+      {"index": 7, "receive": "0x10 echoes command byte 8; not independent compressor state", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
+      {"index": 8, "receive": "operation-data/CoolHotJudge; bit 0x08 observed", "command": "preserve/carry known value where required; full semantics UNKNOWN", "safe_command_default": 0, "copy_receive": false},
+      {"index": 9, "receive": "bit 0x02 per-indoor compressor demand; read-only", "command": "not universal outdoor compressor-running", "safe_command_default": 0, "copy_receive": false},
+      {"index": 10, "receive": "vacant/occupancy-related", "command": "model-dependent vacant/self-clean-reset semantics", "safe_command_default": 0, "copy_receive": false},
+      {"index": 11, "receive": "horizontal vane with receive set-bit filtering", "command": "explicit horizontal vane set semantics", "safe_command_default": 0, "copy_receive": false},
+      {"index": 12, "receive": "horizontal auto/swing and Entrust/3D Auto flags", "command": "explicit command set semantics", "safe_command_default": 0, "copy_receive": false},
+      {"index": 13, "receive": "UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
+      {"index": 14, "receive": "UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
+      {"index": 15, "receive": "self-clean-related bit 0; unreliable status", "command": "not reliable normal self-clean command", "safe_command_default": 0, "copy_receive": false},
+      {"index": 16, "receive": "UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
+      {"index": 17, "receive": "UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false}
+    ],
+    "network_set_bit_mask_hex": "00 00 A2 88 80 00 00 00 00 00 00 10 0A 00 00 00 00 00",
+    "command_set_bits_reconstructable_from_receive": false,
+    "mode_encoding": {"receive": {"auto": "0x00", "cool": "0x08", "heat": "0x10", "fan": "0x0C", "dry": "0x04"}, "command": {"auto": "0x20", "cool": "0x28", "heat": "0x30", "fan": "0x2C", "dry": "0x24"}},
+    "fan_encoding": {"receive": {"auto": "0x07", "speed1": "0x00", "speed2": "0x01", "speed3": "0x02", "speed4": "0x06"}, "command": {"auto": "0x0F", "speed1": "0x08", "speed2": "0x09", "speed3": "0x0A", "speed4": "0x0E"}},
+    "documentation_conflict_annotations": ["INTERNAL_REFERENCE_CONFLICT"],
+    "safe_noop_query": {"writable_set_bits_clear": true, "command_byte_5": 255, "command_byte_8": "carry_through_when_semantically_needed", "command_block_not_full_write": true},
+    "unknown_command_byte_policy": {"indexes": [13, 14, 16, 17], "safe_default": 0, "copy_receive": false},
+    "self_clean": {"supported_control_or_status_established": false, "status": "UNKNOWN", "validation": "HARDWARE_TEST_PENDING", "initial_device_model_control": false},
+    "write_strategy": {"selective_delta_or_full_reencode": "HARDWARE_TEST_PENDING", "full_write_is_universal_protocol_requirement": false, "current_state_reencode_is_implementation_strategy": true},
+    "remaining_unknowns": ["bytes 1, 13, 14, 16, 17", "CoolHotJudge and command byte 8 full semantics", "self-clean command/state differences", "external temperature write safety", "selective delta versus full re-encode across firmware", "model-specific fields", "all local hardware behavior"]
+  },
   "result_and_error_taxonomy": {
     "categories": [
       "transport_failure",

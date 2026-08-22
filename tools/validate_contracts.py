@@ -107,6 +107,31 @@ def check_identity_and_registration(identity: dict[str, Any]) -> None:
     require(safety["table_full_requires_explicit_action"] is True, "identity.account ownership: table-full action must be explicit")
 
 
+def check_aircon_stat_r2(contract: dict[str, Any]) -> None:
+    r2 = contract["aircon_stat_r2"]
+    structure = r2["block_structure"]
+    require(structure["state_bytes"] == 18, "aircon_stat_r2: state must be 18 bytes")
+    require(structure["receive_offset"] == "command_segment_count_derived", "aircon_stat_r2: receive offset must be derived")
+    require(structure["receive_raw_state_is_not_command_raw_state"] is True, "aircon_stat_r2: COMMAND/RECEIVE must remain distinct")
+    require(structure["set_bits_reconstructable_from_receive"] is False, "aircon_stat_r2: set bits cannot be reconstructed")
+    require(r2["runtime_implemented"] is False, "aircon_stat_r2: runtime implementation is out of scope")
+    mapping = r2["fixed_state_map"]
+    require(len(mapping) == 18 and [item["index"] for item in mapping] == list(range(18)), "aircon_stat_r2: fixed map must cover bytes 0..17")
+    for item in mapping:
+        require(item["copy_receive"] is False, f"aircon_stat_r2.fixed_state_map[{item['index']}]: must not copy RECEIVE")
+    require(mapping[5]["safe_command_default"] == 255, "aircon_stat_r2.byte5: safe command default must be 0xFF")
+    require(mapping[9]["receive"].find("per-indoor compressor demand") >= 0, "aircon_stat_r2.byte9: compressor concept mismatch")
+    require(mapping[15]["receive"].find("unreliable") >= 0, "aircon_stat_r2.byte15: self-clean reliability boundary missing")
+    require(r2["network_set_bit_mask_hex"] == "00 00 A2 88 80 00 00 00 00 00 00 10 0A 00 00 00 00 00", "aircon_stat_r2: network mask mismatch")
+    require(r2["mode_encoding"]["receive"]["auto"] == "0x00" and r2["mode_encoding"]["command"]["auto"] == "0x20", "aircon_stat_r2: mode encoding mismatch")
+    require(r2["fan_encoding"]["receive"]["auto"] == "0x07" and r2["fan_encoding"]["command"]["auto"] == "0x0F", "aircon_stat_r2: fan encoding mismatch")
+    require("INTERNAL_REFERENCE_CONFLICT" in r2["documentation_conflict_annotations"], "aircon_stat_r2: conflict annotation missing")
+    require(r2["safe_noop_query"]["command_block_not_full_write"] is True and r2["safe_noop_query"]["command_byte_5"] == 255, "aircon_stat_r2: safe no-op boundary mismatch")
+    require(r2["unknown_command_byte_policy"]["copy_receive"] is False, "aircon_stat_r2: unknown bytes must not copy RECEIVE")
+    require(r2["self_clean"]["supported_control_or_status_established"] is False and r2["self_clean"]["initial_device_model_control"] is False, "aircon_stat_r2: self-clean must remain unresolved")
+    require(r2["write_strategy"]["full_write_is_universal_protocol_requirement"] is False and r2["write_strategy"]["selective_delta_or_full_reencode"] == "HARDWARE_TEST_PENDING", "aircon_stat_r2: write strategy boundary mismatch")
+
+
 def validate(contract: dict[str, Any]) -> None:
     required_sections = {
         "schema_version",
@@ -147,6 +172,7 @@ def validate(contract: dict[str, Any]) -> None:
     require(identity["operator_id_generation_or_persistence_implemented"] is False, "identity: runtime persistence is forbidden")
 
     check_fields(contract)
+    check_aircon_stat_r2(contract)
 
     boundaries = contract["command_intent_boundaries"]
     for key in ("intent_only", "does_not_encode_aircon_stat", "does_not_build_json", "does_not_call_http", "does_not_manage_retry_discovery_socket_or_matter_callbacks"):

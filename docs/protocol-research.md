@@ -252,6 +252,18 @@ DB3 external room temperature cross-reference：`DB3 = 0xFF` 表示 disable exte
 
 此 matrix 是 semantics cross-reference，不是把 direct CNS/SPI capability 提升為 WF-RAC HTTP capability，也不是 implementation specification。
 
+## R2：固定 18-byte AirconStat state／command semantics — CONFIRMED_UPSTREAM
+
+R2 將 AirconStat 明確記錄為兩個獨立區塊：`COMMAND` 與 `RECEIVE`。每個區塊包含 18-byte state、1-byte segment count、N 個 4-byte variable segments 與 2-byte CRC16；`RECEIVE` 起點必須由 `COMMAND` 的 segment count 推導。RECEIVE raw state 不等於 COMMAND raw state，network mask 亦會遮蔽 command set bits，因此不能由 RECEIVE 重建 COMMAND。未實作 codec；未來邊界為 `decode_receive_state()` 與 `encode_command()`。
+
+固定 state map：byte 0 是 model number 低 7 bits；byte 1 的 RECEIVE `0x04` 功能 UNKNOWN，COMMAND 安全預設 0；byte 2 是 power／mode／vertical swing，byte 3 是 fan／vertical vane，byte 4 是 target temperature（RECEIVE raw／2 °C、COMMAND temperature×2 並含 set bit `0x80`），byte 5 是 controller room temperature／external injection，COMMAND 安全預設 `0xFF`（no injection），且不得複製 RECEIVE；byte 6 是 read-only error；byte 7 的 `0x10` 會 echo command byte 8，不是獨立 compressor state；byte 8 是 operation-data／CoolHotJudge；byte 9 的 `0x02` 是 per-indoor compressor demand；byte 10 是 vacant／occupancy-related；byte 11、12 是 horizontal vane／swing／Entrust／3D Auto；byte 13、14、16、17 UNKNOWN，COMMAND 一律安全預設 0 且不得複製 RECEIVE；byte 15 的 self-clean bit 不可靠，不能當正常 status 或 command。所有 local support 仍為 `HARDWARE_TEST_PENDING`。
+
+Network set-bit mask（18 bytes）為 `00 00 A2 88 80 00 00 00 00 00 00 10 0A 00 00 00 00 00`。COMMAND 的 value bits 與 set bits 必須依 intended semantics 產生。RECEIVE mode：auto `0x00`、cool `0x08`、heat `0x10`、fan `0x0C`、dry `0x04`；COMMAND mode 分別為 `0x20`、`0x28`、`0x30`、`0x2C`、`0x24`。RECEIVE fan 為 auto `0x07`、speed1–4 `0x00/0x01/0x02/0x06`；COMMAND 為 auto `0x0F`、speed1–4 `0x08/0x09/0x0A/0x0E`。reference prose 的 mode table 與實作對照不一致，保留為 `INTERNAL_REFERENCE_CONFLICT` 文件註記，不混入 evidence vocabulary。
+
+Safe no-op/query 可清除 writable set bits、令 command byte 5 為 `0xFF`，必要時 carry-through byte 8；command block 不必是 full write。`setAirconStat` 的 selective delta 或 full re-encode 仍待 firmware validation，current-state re-encode 只是未來 implementation strategy，不是 universal protocol requirement。Self-clean 尚未建立可靠的 remote start、status 或 initial Device Model control。Direct CNS/SPI DB13、AirconStat byte 9、以及 operation-data `0x11` outdoor compressor frequency 必須保持分離，不得合併為 `compressorOn`。
+
+R2 尚未確認：byte 1、13、14、16、17 的完整意義、CoolHotJudge／byte 8 完整 semantics、self-clean 差異、external temperature write safety、不同 firmware 的 selective/full write 策略、model-specific fields，以及所有 local hardware behavior。
+
 ## Evidence matrix
 
 ### CONFIRMED_UPSTREAM

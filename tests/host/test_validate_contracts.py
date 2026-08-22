@@ -135,7 +135,28 @@ class ContractValidatorTests(unittest.TestCase):
     def test_hardware_validation_must_remain_pending(self) -> None:
         self.assert_rejected(
             lambda c: c["device_model_fields"][0].update(validation_status="PASS")
-        )
+            )
+
+    def test_aircon_stat_receive_command_boundary_is_preserved(self) -> None:
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["block_structure"].update(receive_raw_state_is_not_command_raw_state=False))
+
+    def test_aircon_stat_byte5_no_injection_default_is_preserved(self) -> None:
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["fixed_state_map"][5].update(safe_command_default=0))
+
+    def test_aircon_stat_unknown_command_bytes_cannot_copy_receive(self) -> None:
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["fixed_state_map"][13].update(copy_receive=True))
+
+    def test_aircon_stat_mode_layers_remain_distinct(self) -> None:
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["mode_encoding"]["receive"].update(auto="0x20"))
+
+    def test_aircon_stat_compressor_demand_is_not_universal_running_state(self) -> None:
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["fixed_state_map"][9].update(receive="outdoor compressor running"))
+
+    def test_aircon_stat_full_write_is_not_universal(self) -> None:
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["write_strategy"].update(full_write_is_universal_protocol_requirement=True))
+
+    def test_aircon_stat_self_clean_remains_unresolved(self) -> None:
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["self_clean"].update(supported_control_or_status_established=True))
 
 
 if __name__ == "__main__":
