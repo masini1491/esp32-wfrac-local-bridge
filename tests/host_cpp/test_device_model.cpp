@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "device_command_mapping_test_cases.hpp"
+#include "device_request_mapping_test_cases.hpp"
 #include "device_reconciliation_test_cases.hpp"
 #include "device_state_test_cases.hpp"
 #include "wfrac_device_model/protocol_mapping.hpp"
@@ -101,5 +102,6 @@ int main() {
   run_device_state_ownership_tests();
   device_reconciliation_tests::run_device_reconciliation_tests();
   device_command_mapping_tests::run_device_command_mapping_tests();
+  device_request_mapping_tests::run_device_request_mapping_tests();
   return 0;
 }

@@ -16,6 +16,7 @@
 | API envelope / handlers / discovery | [topics/api-envelope-discovery.md](topics/api-envelope-discovery.md) |
 | HTTP / HTTPS / TLS | [topics/tls-transport.md](topics/tls-transport.md) |
 | AirconStat fixed bytes / set-bits | [topics/airconstat-fixed-state.md](topics/airconstat-fixed-state.md) |
+| Control request composition | [topics/request-composition.md](topics/request-composition.md) |
 | Operation-data | [topics/operation-data.md](topics/operation-data.md) |
 | ModelNrRaw / optional capabilities | [topics/capability-model.md](topics/capability-model.md) |
 | timestamp / expires / timezone | [topics/timestamp-time.md](topics/timestamp-time.md) |

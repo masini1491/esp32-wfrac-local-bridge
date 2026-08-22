@@ -33,4 +33,5 @@
 - Explicit observed state ownership、desired writable-state projection、single pending command skeleton 與 explicit availability state：**完成**
 - Explicit observation reconciliation、pending target convergence、field-level desired convergence 與 superseding desired race protection：**完成**
 - Device Model command intent → Protocol safe command mapping，含 lossless 0.5°C target-temperature boundary：**完成**
-- Advanced protocol fields、diagnostics projection、AirconStat request policy、full API envelope、automatic command dispatch、queue、transport ACK semantics、retry、timeout clock、polling、availability policy、transport/runtime、Matter mapping 與 hardware validation：尚未實作
+- Observed-baseline control request composition、official no-request sentinel、RECEIVE compatibility projection 與 command byte8 carry：**完成**
+- Advanced protocol fields、diagnostics projection、operation-data full request composition、Base64/API envelope、TimeProvider/timestamp、Operator ID、automatic command dispatch、queue、transport ACK semantics、retry、timeout clock、polling、availability policy、transport/runtime、Matter mapping 與 hardware validation：尚未實作
