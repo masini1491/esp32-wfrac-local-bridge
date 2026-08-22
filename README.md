@@ -18,7 +18,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1B — WF-RAC Device Model**。Phase 1A Protocol Core #1–#6 已完成；目前另有 basic HVAC state projection、tri-state app capability hints、明確 observed state ownership、desired writable-state projection、single pending command skeleton 與 explicit availability state。advanced protocol fields、diagnostics projection、observed/desired automatic reconciliation、command → protocol encoding bridge、request RECEIVE policy、JSON envelope、transport/runtime、Matter mapping 與實機驗證仍暫緩。
+目前是 **Phase 1B — WF-RAC Device Model**。Phase 1A Protocol Core #1–#6 已完成；目前另有 basic HVAC state projection、tri-state app capability hints、明確 observed state ownership、desired writable-state projection、single pending command skeleton、explicit availability state，以及 observation reconciliation（pending target convergence、field-level desired convergence 與 superseding desired race protection）。advanced protocol fields、diagnostics projection、command → protocol encoding bridge、request RECEIVE policy、JSON envelope、transport/runtime、Matter mapping 與實機驗證仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -49,12 +49,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core／Phase 1B device model） | 999 |
-| 開發／驗證工具（tools、tests、GitHub Actions） | 1267 |
+| Firmware（Phase 1A protocol core／Phase 1B device model） | 1100 |
+| 開發／驗證工具（tools、tests、GitHub Actions） | 1544 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 372 |
+| 技術文件（README、AGENTS、docs） | 373 |
 | 其他必要 tracked project files（.gitignore） | 14 |
-| **合計** | **3056** |
+| **合計** | **3435** |
 
 以上為 Git tracked files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 

@@ -31,4 +31,5 @@
 
 - Basic HVAC state projection 與 tri-state app capability hints：**完成**
 - Explicit observed state ownership、desired writable-state projection、single pending command skeleton 與 explicit availability state：**完成**
-- Advanced protocol fields、diagnostics projection、observed/desired automatic reconciliation、command → protocol encoding bridge、queue、polling、timeout source、transport/runtime、Matter mapping 與 hardware validation：尚未實作
+- Explicit observation reconciliation、pending target convergence、field-level desired convergence 與 superseding desired race protection：**完成**
+- Advanced protocol fields、diagnostics projection、command → protocol encoding bridge、automatic command dispatch、queue、transport ACK semantics、retry、timeout clock、polling、availability policy、transport/runtime、Matter mapping 與 hardware validation：尚未實作

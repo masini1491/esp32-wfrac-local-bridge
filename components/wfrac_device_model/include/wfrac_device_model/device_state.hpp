@@ -44,8 +44,17 @@ struct PendingCommand {
 
 enum class PendingCommandOutcome { confirmed, rejected, failed, timed_out };
 enum class AvailabilityState { unknown, available, unavailable };
+enum class PendingReconciliation { none, not_converged, observed_converged };
 
 enum class DeviceStateError { none, invalid_argument, invalid_control_target, already_pending, no_pending_command };
+
+struct ReconciliationResult {
+  PendingReconciliation pending = PendingReconciliation::none;
+  bool cleared_desired_power = false;
+  bool cleared_desired_mode = false;
+  bool cleared_desired_target_temperature = false;
+  bool cleared_desired_fan = false;
+};
 
 struct DeviceState {
   ObservedHvacState observed{};
@@ -60,6 +69,7 @@ DeviceStateError begin_pending_command(const CommandIntent& intent, DeviceState*
 DeviceStateError finish_pending_command(PendingCommandOutcome outcome, DeviceState* state);
 
 void apply_observation(const BasicHvacState& observation, DeviceState* state);
+ReconciliationResult reconcile_observation(const BasicHvacState& observation, DeviceState* state);
 void clear_all_desired(DeviceState* state);
 void set_availability(AvailabilityState availability, DeviceState* state);
 

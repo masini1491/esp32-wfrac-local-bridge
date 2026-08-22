@@ -14,7 +14,7 @@ Transport 不預設為 plain HTTP；legacy firmware 可能使用 HTTP，newer WF
 
 Matter Adapter 只對 Device Model 發出高階 request，如 `setPower()`、`setMode()`、`setTargetTemperature()`、`setFanMode()`、`requestStatus()`；不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。Device Model 應與傳輸層及上層整合介面解耦，保持清楚的模組邊界與可測試性。
 
-Device Model 目前明確區分最近設備 observation、上層 desired writable state、尚未由外層 resolve 的單一 pending command，以及外層設定的 availability。設定 desired 或 pending 不會 optimistic 更新 observed；pending completion 也不會自行改寫 observed 或 desired。observed／desired automatic reconciliation、command → protocol encoding、queue、polling、timeout source 與 runtime 仍未建立。
+Device Model 目前明確區分最近設備 observation、上層 desired writable state、尚未由外層 resolve 的單一 pending command，以及外層設定的 availability。設定 desired 或 pending 不會 optimistic 更新 observed；pending completion 也不會自行改寫 observed 或 desired。`reconcile_observation()` 可明確以新 observation 判定 pending target 是否 observed-converged，並逐欄清除已收斂的 desired；若 active pending 與同欄位較新的 desired 不同，該 desired 會保留以避免 race。這只代表 observation 與 target 一致，不代表 transport confirmation 或 command causality。command → protocol encoding、automatic command dispatch、queue、polling、timeout source 與 runtime 仍未建立。
 
 ## WF-RAC module 與 AirconStat 的來源關係
 
