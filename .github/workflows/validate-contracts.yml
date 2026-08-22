@@ -18,3 +18,6 @@ jobs:
 
       - name: Validate contract
         run: python tools/validate_contracts.py
+
+      - name: Run host tests
+        run: python -m unittest tests.host.test_validate_contracts
