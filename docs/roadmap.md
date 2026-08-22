@@ -40,4 +40,5 @@
 ## Phase 1C — WF-RAC Transport Abstraction
 
 - Portable transport contract、endpoint/request/response DTO、transport error 與 HTTP status 分離、FakeTransport 與獨立 local host test gate：**完成**
-- API envelope builder、TimeProvider integration、HTTPS-first scheme state machine、sticky per-device scheme cache、ESP-IDF HTTP/TLS transport、mDNS、retry/rate limiting、NVS、hardware validation 與 Matter：尚未實作
+- Portable TimeProvider（trusted／estimated／unavailable）、64-bit Unix timestamp、typed `getDeviceInfo`／`getAirconStat`／`setAirconStat` API request builders、JSON escaping、AirconStat CRC validation 與 Base64 wrapping：**完成**
+- Platform clock source、registration builders、Operator ID persistence、HTTPS-first scheme state machine、sticky per-device scheme cache、ESP-IDF HTTP/TLS transport、mDNS、retry/rate limiting、NVS、hardware validation 與 Matter：尚未實作

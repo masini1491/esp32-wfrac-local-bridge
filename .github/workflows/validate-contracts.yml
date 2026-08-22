@@ -62,3 +62,15 @@ jobs:
           -Icomponents/wfrac_transport/include
           tests/host_cpp/test_transport.cpp
           -o transport-tests && ./transport-tests
+
+      - name: Run C++ API tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_protocol/include
+          -Icomponents/wfrac_api/include
+          components/wfrac_protocol/src/crc16.cpp
+          components/wfrac_protocol/src/aircon_frame.cpp
+          components/wfrac_protocol/src/base64.cpp
+          components/wfrac_api/src/api_request.cpp
+          tests/host_cpp/test_api.cpp
+          -o api-tests && ./api-tests

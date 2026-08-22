@@ -12,6 +12,7 @@ WF-RAC local API boundary、handlers、discovery、request serialization 與 com
 - `getDeviceInfo` 是 bootstrap；response body 即使 Content-Type 不理想仍可能包含 useful JSON。Transport status 與 protocol body 必須分開解析。
 - mDNS service 為 `_beaver._tcp`；advertised port 只作提示，expected API port 仍是 `51443`。
 - Request 必須 serialized、one-at-a-time，約 1 秒 pacing；timeout/retry 是 upstream behavior，不是 universal constants。Result semantics 必須 command-specific。
+- Portable typed builders 已實作 `getDeviceInfo`、`getAirconStat` 與 `setAirconStat` envelope；它們使用 caller-owned buffer、JSON escaping、64-bit Unix timestamp，並在 wrapping 前驗證 AirconStat CRC。actual HTTP request 仍 pending。
 
 ## High-risk invariants
 

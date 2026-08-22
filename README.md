@@ -18,7 +18,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable transport contract、endpoint/request/response DTO、TransportError 與 HTTP status 的明確分離、test-only FakeTransport，以及獨立 local host transport gate。API envelope builder、TimeProvider、HTTPS-first scheme state machine、per-device scheme cache、ESP-IDF HTTP/TLS transport、mDNS、retry/rate limiting、NVS、Matter mapping 與實機驗證仍暫緩。
+目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable transport contract、endpoint/request/response DTO、TransportError 與 HTTP status 的明確分離、test-only FakeTransport、portable TimeProvider，以及 typed WF-RAC API request builders（JSON escaping、64-bit timestamp、AirconStat CRC validation 與 Base64 wrapping）。platform clock source、registration builders、Operator ID persistence、HTTPS-first scheme state machine、per-device scheme cache、ESP-IDF HTTP/TLS transport、mDNS、retry/rate limiting、NVS、Matter mapping 與實機驗證仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -49,12 +49,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport abstraction） | 1607 |
-| 開發／驗證工具（tools、tests、GitHub Actions） | 2471 |
+| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 1930 |
+| 開發／驗證工具（tools、tests、GitHub Actions） | 2683 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 593 |
-| 其他必要 tracked project files（.gitignore） | 14 |
-| **合計** | **5089** |
+| 技術文件（README、AGENTS、docs） | 595 |
+| 其他必要 tracked project files（.gitignore、.gitattributes） | 32 |
+| **合計** | **5644** |
 
 以上為 Git tracked files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 
