@@ -148,14 +148,14 @@ OperationQueryError map_block_error(BlockEncodeError error) {
 
 }  // namespace
 
-OperationQueryError build_safe_operation_query(uint8_t code, ByteView output, std::size_t* encoded_size) {
+OperationQueryError build_safe_operation_query(uint8_t code, MutableByteView output, std::size_t* encoded_size) {
   if (!is_known_safe_operation_query_code(code)) return OperationQueryError::invalid_code;
   const OperationSegment segment = make_operation_query_segment(code);
   const CommandState command = make_safe_command_state();
   return map_block_error(serialize_aircon_block(command, &segment, 1U, output, encoded_size));
 }
 
-OperationQueryError build_safe_operation_query_batch(const uint8_t* codes, std::size_t count, ByteView output,
+OperationQueryError build_safe_operation_query_batch(const uint8_t* codes, std::size_t count, MutableByteView output,
                                                      std::size_t* encoded_size) {
   if (count == 0U || count > 3U) return OperationQueryError::batch_size_out_of_range;
   if (codes == nullptr) return OperationQueryError::invalid_argument;

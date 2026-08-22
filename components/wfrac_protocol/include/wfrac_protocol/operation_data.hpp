@@ -72,8 +72,8 @@ enum class OperationQueryError {
 
 OperationSegment make_operation_query_segment(uint8_t code);
 bool is_known_safe_operation_query_code(uint8_t code);
-OperationQueryError build_safe_operation_query(uint8_t code, ByteView output, std::size_t* encoded_size);
-OperationQueryError build_safe_operation_query_batch(const uint8_t* codes, std::size_t count, ByteView output,
+OperationQueryError build_safe_operation_query(uint8_t code, MutableByteView output, std::size_t* encoded_size);
+OperationQueryError build_safe_operation_query_batch(const uint8_t* codes, std::size_t count, MutableByteView output,
                                                      std::size_t* encoded_size);
 
 }  // namespace wfrac_protocol

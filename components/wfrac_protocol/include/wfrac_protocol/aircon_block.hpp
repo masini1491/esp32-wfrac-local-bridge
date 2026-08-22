@@ -19,6 +19,6 @@ enum class BlockEncodeError {
 
 std::size_t encoded_aircon_block_size(std::size_t segment_count);
 BlockEncodeError serialize_aircon_block(const CommandState& state, const OperationSegment* segments,
-                                        std::size_t segment_count, ByteView output, std::size_t* encoded_size);
+                                        std::size_t segment_count, MutableByteView output, std::size_t* encoded_size);
 
 }  // namespace wfrac_protocol

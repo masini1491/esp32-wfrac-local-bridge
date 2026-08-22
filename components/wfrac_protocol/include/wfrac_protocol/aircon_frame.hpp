@@ -23,6 +23,11 @@ struct ByteView {
   std::size_t size = 0;
 };
 
+struct MutableByteView {
+  uint8_t* data = nullptr;
+  std::size_t size = 0;
+};
+
 struct AirconBlockView {
   std::array<uint8_t, kAirconStateBytes> state{};
   uint8_t segment_count = 0;
