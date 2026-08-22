@@ -1,6 +1,6 @@
 # Architecture
 
-`Phase 1B — WF-RAC Device Model` 已開始；目前實作 portable WF-RAC Protocol Core #1–#6、基本 HVAC state projection、tri-state app capability hints，以及 observed／desired／single-pending command／availability 的 state ownership skeleton。Device Model state ownership 不依賴 protocol types，不處理 raw AirconStat、transport、runtime、hardware 或 Matter implementation；protocol semantic types 只在 protocol mapping 邊界使用。
+`Phase 1B — WF-RAC Device Model` 已開始；目前實作 portable WF-RAC Protocol Core #1–#6、基本 HVAC state projection、tri-state app capability hints，以及 observed／desired／single-pending command／availability 的 state ownership skeleton。Device Model canonical state 與 intents 不依賴 protocol types，也不持有 raw AirconStat bytes；protocol semantic types 只在明確的 protocol mapping boundary 使用。
 
 ```text
 WF-RAC Transport (HTTP :51443 / HTTPS :51443)
@@ -14,7 +14,7 @@ Transport 不預設為 plain HTTP；legacy firmware 可能使用 HTTP，newer WF
 
 Matter Adapter 只對 Device Model 發出高階 request，如 `setPower()`、`setMode()`、`setTargetTemperature()`、`setFanMode()`、`requestStatus()`；不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。Device Model 應與傳輸層及上層整合介面解耦，保持清楚的模組邊界與可測試性。
 
-Device Model 目前明確區分最近設備 observation、上層 desired writable state、尚未由外層 resolve 的單一 pending command，以及外層設定的 availability。設定 desired 或 pending 不會 optimistic 更新 observed；pending completion 也不會自行改寫 observed 或 desired。`reconcile_observation()` 可明確以新 observation 判定 pending target 是否 observed-converged，並逐欄清除已收斂的 desired；若 active pending 與同欄位較新的 desired 不同，該 desired 會保留以避免 race。這只代表 observation 與 target 一致，不代表 transport confirmation 或 command causality。command → protocol encoding、automatic command dispatch、queue、polling、timeout source 與 runtime 仍未建立。
+Device Model 目前明確區分最近設備 observation、上層 desired writable state、尚未由外層 resolve 的單一 pending command，以及外層設定的 availability。設定 desired 或 pending 不會 optimistic 更新 observed；pending completion 也不會自行改寫 observed 或 desired。`reconcile_observation()` 可明確以新 observation 判定 pending target 是否 observed-converged，並逐欄清除已收斂的 desired；若 active pending 與同欄位較新的 desired 不同，該 desired 會保留以避免 race。這只代表 observation 與 target 一致，不代表 transport confirmation 或 command causality。明確的 command mapping boundary 會將單一 Device Model intent 轉成 Protocol safe `CommandState`，並僅接受可 lossless 表示的 0.5°C target temperature；它不組合 AirconStat、Base64、JSON 或任何 request。AirconStat request policy、automatic command dispatch、queue、polling、timeout source 與 runtime 仍未建立。
 
 ## WF-RAC module 與 AirconStat 的來源關係
 

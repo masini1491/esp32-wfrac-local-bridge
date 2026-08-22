@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <utility>
 
+#include "device_command_mapping_test_cases.hpp"
 #include "device_reconciliation_test_cases.hpp"
 #include "device_state_test_cases.hpp"
 #include "wfrac_device_model/protocol_mapping.hpp"
@@ -99,5 +100,6 @@ int main() {
   assert_hints(wfrac_device_model::map_capability_hints(unknown_profile), {});
   run_device_state_ownership_tests();
   device_reconciliation_tests::run_device_reconciliation_tests();
+  device_command_mapping_tests::run_device_command_mapping_tests();
   return 0;
 }
