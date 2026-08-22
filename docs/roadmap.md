@@ -18,4 +18,10 @@
 5. Optional MQTT Adapter
 6. Hardening / OTA / Security
 
-目前狀態：**研究／架構基準；Reference Deep Review 已完成；韌體開發與實機驗證目前暫緩。**
+## Phase 1A — Pure Protocol Core
+
+- CRC16-CCITT core：**開始**
+- AirconStat structural framing：**開始**
+- HVAC semantic codec、transport/runtime 與 hardware validation：尚未實作
+
+目前狀態：**Phase 1A protocol core 已開始；Reference Deep Review 已完成；實機驗證仍暫緩。**

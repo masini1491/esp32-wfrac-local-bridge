@@ -21,3 +21,12 @@ jobs:
 
       - name: Run host tests
         run: python -m unittest tests.host.test_validate_contracts
+
+      - name: Run C++ protocol core tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_protocol/include
+          components/wfrac_protocol/src/crc16.cpp
+          components/wfrac_protocol/src/aircon_frame.cpp
+          tests/host_cpp/test_protocol_core.cpp
+          -o protocol-core-tests && ./protocol-core-tests
