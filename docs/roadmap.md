@@ -4,6 +4,7 @@
 
 - 0.0 — 專案初始化：**完成**
 - 0.1 Reference Deep Review — **Complete**
+- Software-only machine-readable foundation — **Complete**（contract、validator、12 個 targeted host tests 與 GitHub Actions software validation gate）
 - 0.2 — WF-RAC Protocol / State Map：研究基礎已建立；實機相關工作暫緩
 - 0.3 — Matter Room Air Conditioner Mapping：暫緩
 - 0.4 — Local API Hardware Validation Plan：待未來恢復實作時進行

@@ -6,6 +6,16 @@
 
 Phase 0 的 machine-readable software foundation 已建立於 [`specs/wf-rac-contracts.json`](specs/wf-rac-contracts.json)，僅整理研究 contract，不包含 runtime implementation。
 
+目前 software-only validation 流程為：`specs/wf-rac-contracts.json` → `tools/validate_contracts.py` → `tests/host/test_validate_contracts.py` → GitHub Actions。dependency-free host validator 與 12 個 targeted host tests 已通過，GitHub Actions software validation gate 亦已通過；`CONFIRMED_LOCAL = 0`，hardware/runtime validation 仍為 `HARDWARE_TEST_PENDING`。
+
+最小 host validation commands：
+
+```text
+python -m py_compile tools/validate_contracts.py tests/host/test_validate_contracts.py
+python tools/validate_contracts.py
+python -m unittest tests.host.test_validate_contracts
+```
+
 ## 專案狀態
 
 目前是 **Phase 0 — Research / Architecture / Project Setup**。參考資料研究基準已建立；本 repository 尚未包含 firmware，韌體開發與實機驗證目前暫緩。
