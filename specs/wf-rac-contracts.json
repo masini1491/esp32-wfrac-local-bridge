@@ -1,0 +1,169 @@
+{
+  "schema_version": "0.1",
+  "status": "phase_0_research_architecture",
+  "purpose": "Software-only machine-readable contracts for future validation, host tests, firmware, and Matter integration. These contracts do not implement runtime behavior.",
+  "project_license": "TBD",
+  "evidence_vocabulary": {
+    "levels": [
+      "CONFIRMED_UPSTREAM",
+      "CONFIRMED_LOCAL",
+      "INFERRED",
+      "UNKNOWN",
+      "HARDWARE_TEST_PENDING"
+    ],
+    "current_confirmed_local_count": 0,
+    "confidence_annotations": [
+      "STRONG_CORROBORATION",
+      "PARTIAL_CORROBORATION",
+      "EVIDENCE_CONFLICT"
+    ],
+    "confidence_annotations_are_not_evidence_levels": true
+  },
+  "references": [
+    {
+      "repository": "blues-sechseck/Mitsubishi-WF-RAC-Integration",
+      "revision": "928efd8637bcb346a4945c545ab76733eae6245c",
+      "license": "MIT",
+      "priority": "PRIMARY / HIGH",
+      "purpose": "WF-RAC network protocol, AirconStat, firmware/app/hardware evidence, CNS/SPI relationship, and operation-data reference.",
+      "authority_boundary": "Primary WF-RAC protocol reference; upstream evidence is not local hardware evidence.",
+      "evidence_role": "CONFIRMED_UPSTREAM"
+    },
+    {
+      "repository": "JobDoesburg/homebridge-mhi-wfrac",
+      "revision": "3d649dd6c6adbf50d405bb60961ffe820eb6241b",
+      "license": "Apache-2.0",
+      "priority": "PRIMARY",
+      "purpose": "Independent current WF-RAC local API, HTTP/HTTPS, registration, retry, and queue behavior reference.",
+      "authority_boundary": "Upstream integration behavior; not local hardware evidence.",
+      "evidence_role": "CONFIRMED_UPSTREAM"
+    },
+    {
+      "repository": "edwinvdpol/homey-wfrac",
+      "revision": "bddacfff797cd82a5cbffbd10c319ca22bb5daae",
+      "license": "MIT",
+      "priority": "PRIMARY",
+      "purpose": "Historical/current state codec, discovery, device model, and reliability reference.",
+      "authority_boundary": "Upstream integration behavior; not local hardware evidence.",
+      "evidence_role": "CONFIRMED_UPSTREAM"
+    },
+    {
+      "repository": "espressif/esp-matter",
+      "revision": "1e913f65d7f40eb8617be46b195dcacc9a80c165",
+      "license": "Apache-2.0",
+      "priority": "PRIMARY",
+      "purpose": "Official Matter and Room Air Conditioner reference.",
+      "authority_boundary": "Matter reference; complete WF-RAC mapping remains pending.",
+      "evidence_role": "CONFIRMED_UPSTREAM"
+    },
+    {
+      "repository": "hberntsen/mhi-ac-ctrl-esp32",
+      "revision": "cb00cd54525acea9fbafdfee178a657eb6667faa",
+      "license": "MIT",
+      "priority": "SECONDARY / MEDIUM-HIGH",
+      "purpose": "MHI CNS/SPI cross-reference for AirconStat state/frame semantics, set-bit semantics, operation-data address space, and MHI capability.",
+      "authority_boundary": "Not a WF-RAC HTTP/HTTPS API authority; direct CNS/SPI capability does not prove WF-RAC network-visible capability.",
+      "evidence_role": "CONFIRMED_UPSTREAM"
+    }
+  ],
+  "api_envelope": {
+    "port": 51443,
+    "path_pattern": "/beaver/command/<command>",
+    "method": "POST",
+    "request_fields": {
+      "command": { "required": true, "constraints": ["present", "non_empty"] },
+      "apiVer": { "required": true, "constraints": ["present", "non_empty"], "observed_value": "1.0", "value_is_not_a_universal_firmware_constant": true },
+      "deviceId": { "required": true, "constraints": ["present", "non_empty"] },
+      "operatorId": { "required": true, "constraints": ["present", "non_empty"] },
+      "timestamp": { "required": true, "constraints": ["present", "non_zero"], "unit": "unix_seconds" },
+      "contents": { "required": false, "validation": "handler_specific" }
+    },
+    "reviewed_local_commands": [
+      "getDeviceInfo",
+      "getAirconStat",
+      "setAirconStat",
+      "updateAccountInfo",
+      "deleteAccountInfo"
+    ],
+    "additional_observed_handlers": ["setNetworkInfo", "updateFirmware"],
+    "additional_non_local_module_commands": ["setTopicId", "putAirconStat", "reportAirconStat"],
+    "transport_variants": ["HTTP", "HTTPS"],
+    "content_type_cannot_be_used_as_the_only_json_parse_gate": true,
+    "http_error_body_may_contain_useful_json": true,
+    "result_semantics": "command_specific"
+  },
+  "identity_and_registration": {
+    "distinct_identities": ["MAC Address", "Device ID", "Aircon ID", "Operator ID"],
+    "bootstrap": {
+      "command": "getDeviceInfo",
+      "aircon_id_required_before_bootstrap": false,
+      "contents_optional": true,
+      "may_return": ["airconId", "macAddress", "apMode"]
+    },
+    "registration_modes": [
+      { "name": "self_managed", "registration_command": "updateAccountInfo", "deregistration_command": "deleteAccountInfo" },
+      { "name": "mirror_existing_operator", "registration_runtime_owned_by_project": false }
+    ],
+    "account_slots": { "observed_limit": 4, "evidence_level": "CONFIRMED_UPSTREAM" },
+    "read_before_registration": { "getAirconStat": true, "evidence_level": "CONFIRMED_UPSTREAM" },
+    "write_requires_operator_validation": { "setAirconStat": true, "evidence_level": "CONFIRMED_UPSTREAM" },
+    "operator_id_generation_or_persistence_implemented": false
+  },
+  "device_model_fields": [
+    { "canonical_name": "power", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Power value and command set-bit are distinct semantics." },
+    { "canonical_name": "operation_mode", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Mode family and layer-specific numeric encodings must remain distinct." },
+    { "canonical_name": "target_temperature", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "setAirconStat uses a full writable state representation." },
+    { "canonical_name": "fan_mode", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Extended fan semantics may involve operation-data and DB6." },
+    { "canonical_name": "vertical_direction", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Vertical swing and vane position have separate set-bit semantics." },
+    { "canonical_name": "horizontal_direction", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Cross-reference points to extended DB16/DB17 semantics." },
+    { "canonical_name": "three_d_auto_entrust", "category": "control", "access": "unresolved", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Matter mapping is UNKNOWN / Phase 0.3 pending." },
+    { "canonical_name": "indoor_temperature", "category": "measurement", "access": "read_only", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Basic state and operation-data paths must not be conflated." },
+    { "canonical_name": "outdoor_temperature", "category": "measurement", "access": "read_only", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Conversion has EVIDENCE_CONFLICT between direct CNS/SPI and WF-RAC paths." },
+    { "canonical_name": "error", "category": "diagnostic", "access": "read_only", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Exact code semantics vary by context/model." },
+    { "canonical_name": "energy_current_run", "category": "measurement", "access": "read_only", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "0.25 kWh resolution; not a precision lifetime meter." },
+    { "canonical_name": "vacant_property_mode", "category": "control", "access": "unresolved", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Optional support is model-dependent." },
+    { "canonical_name": "indoor_compressor_demand", "category": "diagnostic", "access": "read_only", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Per-indoor demand is not outdoor compressor running state." },
+    { "canonical_name": "outdoor_compressor_frequency", "category": "diagnostic", "access": "read_only", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Outdoor-unit-level operation-data value." },
+    { "canonical_name": "direct_cns_spi_compressor_state", "category": "cross_reference", "access": "unresolved", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Direct CNS/SPI capability is not proof of WF-RAC HTTP exposure." }
+  ],
+  "command_intents": [
+    { "name": "setPower", "input": "desired power state", "affected_state": ["power"] },
+    { "name": "setMode", "input": "desired operation mode", "affected_state": ["operation_mode"] },
+    { "name": "setTargetTemperature", "input": "desired target temperature", "affected_state": ["target_temperature"] },
+    { "name": "setFanMode", "input": "desired fan mode", "affected_state": ["fan_mode"] },
+    { "name": "requestStatus", "input": "none", "affected_state": ["power", "operation_mode", "target_temperature", "indoor_temperature", "outdoor_temperature", "error"] }
+  ],
+  "command_intent_boundaries": {
+    "intent_only": true,
+    "does_not_encode_aircon_stat": true,
+    "does_not_build_json": true,
+    "does_not_call_http": true,
+    "does_not_manage_retry_discovery_socket_or_matter_callbacks": true
+  },
+  "result_and_error_taxonomy": {
+    "categories": [
+      "transport_failure",
+      "http_status",
+      "wf_rac_protocol_result",
+      "registration_or_account_state",
+      "malformed_response",
+      "unsupported_or_unknown_field",
+      "hardware_validation_pending"
+    ],
+    "protocol_result_is_command_specific": true,
+    "global_result_2_meaning_forbidden": true,
+    "known_result_context_variation": ["account_table_full", "registration_expired", "unregistered_or_write_refusal"],
+    "timeout_is_protocol_constant": false,
+    "retry_count_is_protocol_constant": false,
+    "tls_verification_policy": "UNKNOWN",
+    "generic_operation_data_write": "OUT_OF_SCOPE"
+  },
+  "known_uncertainties": [
+    "0x80 outdoor temperature conversion conflict",
+    "direct CNS/SPI capability versus WF-RAC HTTP capability",
+    "exact timeout and retry tuning",
+    "TLS verification policy",
+    "Matter optional feature mapping",
+    "hardware-specific field support and reporting"
+  ]
+}
