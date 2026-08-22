@@ -36,3 +36,8 @@
 - Observed-baseline control request composition、official no-request sentinel、RECEIVE compatibility projection 與 command byte8 carry：**完成**
 - Full safe operation-data query request composition（1–3 bounded query、RECEIVE compatibility baseline 與 no-request sentinel）：**完成**
 - Advanced protocol fields、diagnostics projection、Base64/API envelope、TimeProvider/timestamp、Operator ID、automatic command dispatch、queue、transport ACK semantics、retry、timeout clock、polling、availability policy、transport/runtime、Matter mapping 與 hardware validation：尚未實作
+
+## Phase 1C — WF-RAC Transport Abstraction
+
+- Portable transport contract、endpoint/request/response DTO、transport error 與 HTTP status 分離、FakeTransport 與獨立 local host test gate：**完成**
+- API envelope builder、TimeProvider integration、HTTPS-first scheme state machine、sticky per-device scheme cache、ESP-IDF HTTP/TLS transport、mDNS、retry/rate limiting、NVS、hardware validation 與 Matter：尚未實作

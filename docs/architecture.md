@@ -1,6 +1,6 @@
 # Architecture
 
-`Phase 1B — WF-RAC Device Model` 已開始；目前實作 portable WF-RAC Protocol Core #1–#6、基本 HVAC state projection、tri-state app capability hints，以及 observed／desired／single-pending command／availability 的 state ownership skeleton。Device Model canonical state 與 intents 不依賴 protocol types，也不持有 raw AirconStat bytes；protocol semantic types 只在明確的 protocol mapping boundary 使用。
+`Phase 1C — WF-RAC Transport Abstraction` 已開始；目前實作 portable WF-RAC Protocol Core #1–#6、Device Model foundations，以及 portable transport contract。Transport 是最底層 opaque byte/text boundary，不依賴 Protocol、Device Model 或 Matter；其 request／response body 不知道 AirconStat、Base64、JSON schema 或 Device Model state。HTTP status 是上層 application data，不等同 transport error；目前只有 FakeTransport 與 host tests，沒有任何 network I/O。
 
 ```text
 WF-RAC Transport (HTTP :51443 / HTTPS :51443)
@@ -10,7 +10,7 @@ WF-RAC API Envelope → AirconStat Codec → WF-RAC Device Model
 Matter Adapter → Matter over Wi-Fi
 ```
 
-Transport 不預設為 plain HTTP；legacy firmware 可能使用 HTTP，newer WF-RAC-HTTPS firmware 可能使用 HTTPS。較新的上游行為包含 self-signed certificate、TLS 1.2、ALPN `http/1.1`、`Connection: close` 與一次只允許單一連線的限制；這些不是所有 firmware 的通用要求。本階段不建立 transport implementation。API envelope 的 `airconStat` 是 Base64 binary payload；portable Base64、CRC16、block serialization 與 generic full AirconStat composition 已在 Protocol Core 實作，但 request RECEIVE policy、JSON envelope 與 runtime 尚未建立。
+Transport attempt 必須明確指定 HTTP 或 HTTPS；legacy firmware 可能使用 HTTP，newer WF-RAC-HTTPS firmware 可能使用 HTTPS。較新的上游行為包含 self-signed certificate、TLS 1.2、ALPN `http/1.1`、`Connection: close` 與一次只允許單一連線的限制；這些不是所有 firmware 的通用要求。目前 contract 只表示 caller-supplied bounded timeout 與 single physical attempt，不含 HTTPS-first、fallback、cache、retry、rate limiting、TLS handshake 或 actual HTTP implementation。API envelope 的 `airconStat` 是 Base64 binary payload；portable Base64、CRC16、block serialization 與 generic full AirconStat composition 已在 Protocol Core 實作，但 API envelope 與 runtime 尚未建立。
 
 Matter Adapter 只對 Device Model 發出高階 request，如 `setPower()`、`setMode()`、`setTargetTemperature()`、`setFanMode()`、`requestStatus()`；不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。Device Model 應與傳輸層及上層整合介面解耦，保持清楚的模組邊界與可測試性。
 

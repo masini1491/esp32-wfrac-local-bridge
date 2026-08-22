@@ -2,7 +2,7 @@
 
 這是將 Mitsubishi Heavy Industries WF-RAC 空調銜接至 Matter 的本地研究與架構基準。
 
-研究 reference set 已補強，並記錄 AirconStat 與 MHI CNS/SPI-derived semantics 的高階關係；本專案已進入 Phase 1B WF-RAC Device Model，實機驗證目前暫緩。
+研究 reference set 已補強，並記錄 AirconStat 與 MHI CNS/SPI-derived semantics 的高階關係；本專案已進入 Phase 1C WF-RAC Transport Abstraction，實機驗證目前暫緩。
 
 Phase 0 的 machine-readable software foundation 已建立於 [`specs/wf-rac-contracts.json`](specs/wf-rac-contracts.json)，僅整理研究 contract，不包含 runtime implementation。
 
@@ -18,7 +18,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1B — WF-RAC Device Model**。Phase 1A Protocol Core #1–#6 已完成；目前另有 basic HVAC state projection、tri-state app capability hints、明確 observed state ownership、desired writable-state projection、single pending command skeleton、explicit availability state、observation reconciliation、Device Model command intent → Protocol safe command mapping、observed-baseline raw control request composition，以及 full safe operation-data query request composition（1–3 bounded query、RECEIVE compatibility projection 與 command byte8 carry）。advanced protocol fields、diagnostics projection、Base64/API envelope、command dispatch、transport/runtime、Matter mapping 與實機驗證仍暫緩。
+目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable transport contract、endpoint/request/response DTO、TransportError 與 HTTP status 的明確分離、test-only FakeTransport，以及獨立 local host transport gate。API envelope builder、TimeProvider、HTTPS-first scheme state machine、per-device scheme cache、ESP-IDF HTTP/TLS transport、mDNS、retry/rate limiting、NVS、Matter mapping 與實機驗證仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -49,12 +49,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core／Phase 1B device model） | 1546 |
-| 開發／驗證工具（tools、tests、GitHub Actions） | 2310 |
+| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport abstraction） | 1607 |
+| 開發／驗證工具（tools、tests、GitHub Actions） | 2471 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 588 |
+| 技術文件（README、AGENTS、docs） | 593 |
 | 其他必要 tracked project files（.gitignore） | 14 |
-| **合計** | **4862** |
+| **合計** | **5089** |
 
 以上為 Git tracked files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 

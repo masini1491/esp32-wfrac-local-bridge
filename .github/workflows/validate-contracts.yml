@@ -55,3 +55,10 @@ jobs:
           components/wfrac_device_model/src/protocol_request_mapping.cpp
           tests/host_cpp/test_device_model.cpp
           -o device-model-tests && ./device-model-tests
+
+      - name: Run C++ transport tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_transport/include
+          tests/host_cpp/test_transport.cpp
+          -o transport-tests && ./transport-tests
