@@ -132,6 +132,26 @@ def check_aircon_stat_r2(contract: dict[str, Any]) -> None:
     require(r2["write_strategy"]["full_write_is_universal_protocol_requirement"] is False and r2["write_strategy"]["selective_delta_or_full_reencode"] == "HARDWARE_TEST_PENDING", "aircon_stat_r2: write strategy boundary mismatch")
 
 
+def check_operation_data_r3(contract: dict[str, Any]) -> None:
+    r3 = contract["operation_data_r3"]
+    expected_visibility = {"CONFIRMED_UNSOLICITED_PUSH", "CONFIRMED_QUERY_VALUE", "CONFIRMED_QUERY_RESPONSE_NO_VALUE", "CONFIRMED_QUERY_RESPONSE_UNKNOWN_SEMANTIC", "SPECIAL_APP_EXTENSION", "NO_WF_RAC_HTTP_EVIDENCE"}
+    require(set(r3["visibility_values"]) == expected_visibility and r3["visibility_classification_is_separate_from_evidence"] is True, "operation_data_r3: visibility vocabulary mismatch")
+    require(r3["raw_segment_fields"] == ["code", "op1", "op2", "op3"], "operation_data_r3: raw OP3 preservation missing")
+    query = r3["generic_query"]
+    require(query["transport_command"] == "setAirconStat" and query["response_must_be_parsed_from_same_transaction"] is True, "operation_data_r3: query transaction boundary mismatch")
+    require(query["response_op1_universal_0x10"] is False and query["op1"] == "0xFF", "operation_data_r3: universal OP1 rule forbidden")
+    require(r3["generic_operation_data_write"] == "OUT_OF_SCOPE", "operation_data_r3: generic write must remain out of scope")
+    entries = {entry["code"] + entry.get("selector", ""): entry for entry in r3["entries"]}
+    require(entries["0x80" + "0x10"]["visibility"] == "CONFIRMED_UNSOLICITED_PUSH", "operation_data_r3.0x80/0x10: visibility mismatch")
+    require(entries["0x0C"]["visibility"] == "NO_WF_RAC_HTTP_EVIDENCE" and entries["0x05"]["visibility"] == "NO_WF_RAC_HTTP_EVIDENCE", "operation_data_r3: direct CNS visibility boundary missing")
+    require(entries["0x13"]["value_quality"].find("calibrated_open_percentage=false") >= 0, "operation_data_r3.0x13: calibrated percentage boundary missing")
+    require("UNKNOWN" in entries["0x7C"]["semantic"] and "compressorProtectionActive" in entries["0x7C"]["semantic"], "operation_data_r3.0x7C: unresolved meaning boundary missing")
+    require(entries["0x34"]["semantic"].find("OP3") >= 0, "operation_data_r3.0x34: OP3 preservation missing")
+    for entry in r3["entries"]:
+        check_evidence(entry["evidence_level"], f"operation_data_r3.entries[{entry['code']}].evidence_level")
+        require(entry["local_validation"] == "HARDWARE_TEST_PENDING", f"operation_data_r3.entries[{entry['code']}]: local validation must remain pending")
+
+
 def validate(contract: dict[str, Any]) -> None:
     required_sections = {
         "schema_version",
@@ -173,6 +193,7 @@ def validate(contract: dict[str, Any]) -> None:
 
     check_fields(contract)
     check_aircon_stat_r2(contract)
+    check_operation_data_r3(contract)
 
     boundaries = contract["command_intent_boundaries"]
     for key in ("intent_only", "does_not_encode_aircon_stat", "does_not_build_json", "does_not_call_http", "does_not_manage_retry_discovery_socket_or_matter_callbacks"):

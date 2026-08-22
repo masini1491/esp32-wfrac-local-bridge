@@ -158,6 +158,24 @@ class ContractValidatorTests(unittest.TestCase):
     def test_aircon_stat_self_clean_remains_unresolved(self) -> None:
         self.assert_rejected(lambda c: c["aircon_stat_r2"]["self_clean"].update(supported_control_or_status_established=True))
 
+    def test_operation_data_direct_cns_visibility_is_not_wf_rac_confirmed(self) -> None:
+        self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x0C").update(visibility="CONFIRMED_QUERY_VALUE"))
+
+    def test_operation_data_query_uses_same_set_transaction(self) -> None:
+        self.assert_rejected(lambda c: c["operation_data_r3"]["generic_query"].update(transport_command="getAirconStat"))
+
+    def test_operation_data_response_must_preserve_op3(self) -> None:
+        self.assert_rejected(lambda c: c["operation_data_r3"].update(raw_segment_fields=["code", "op1", "op2"]))
+
+    def test_operation_data_7c_remains_unresolved(self) -> None:
+        self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x7C").update(semantic="compressorProtectionActive"))
+
+    def test_operation_data_13_is_not_calibrated_percentage(self) -> None:
+        self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13").update(value_quality="calibrated_open_percentage=true"))
+
+    def test_operation_data_generic_write_remains_out_of_scope(self) -> None:
+        self.assert_rejected(lambda c: c["operation_data_r3"].update(generic_operation_data_write="SUPPORTED"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -264,6 +264,20 @@ Safe no-op/query 可清除 writable set bits、令 command byte 5 為 `0xFF`，�
 
 R2 尚未確認：byte 1、13、14、16、17 的完整意義、CoolHotJudge／byte 8 完整 semantics、self-clean 差異、external temperature write safety、不同 firmware 的 selective/full write 策略、model-specific fields，以及所有 local hardware behavior。
 
+## R3：Operation-data WF-RAC-visible matrix — CONFIRMED_UPSTREAM
+
+R3 將 variable segment 固定記錄為完整 `[Code, OP1, OP2, OP3]` raw bytes；generic parser 必須先保存四者，再交由 code-specific decoder 解釋。`OP1=0xFF` 通常是 query/request、`OP1=0x00` 通常是 command path，但 response-side 不得建立 universal `OP1=0x10` 規則。
+
+Visibility classification 與 evidence level 分離。`operation_data_r3` matrix 記錄 unsolicited push、query value、query response without value、unknown semantic、special app extension 與 no WF-RAC HTTP evidence；所有 upstream entry 的 local validation 仍為 `HARDWARE_TEST_PENDING`，`CONFIRMED_LOCAL` 維持 0。
+
+WF-RAC-visible matrix 包含：`0x80/0x10` outdoor temperature（conversion 保留既有 `EVIDENCE_CONFLICT`）、`0x80/0x20` indoor temperature、`0x94` current-run energy（`(OP3 << 8 | OP2) * 0.25 kWh`，非 lifetime precision meter）、`0x11` outdoor shared compressor frequency、`0x90` current、`0x85` discharge/hot-gas temperature、`0x13` EEV raw/pulse、`0x81` indoor coil、`0x87` indoor coil outlet、`0x82` outdoor coil raw、`0xB1` TDSH-related raw、`0x7C` unresolved query value、`0x1E/0x1F` no-value responses、`0x0D/0x21/0x32/0x34/0x35` unknown semantic responses，以及 `0xF8` official-app-specific Home Leave extension。`0x34` 的 response 可能使用 OP3，因此不可遺失。
+
+`0x7C` 不得建模為 `compressorProtectionActive`；`0x13` 不得把 raw／255 升級為 calibrated physical percentage。Direct CNS `0x0C` Defrosting 與 `0x05` set-temperature address 只保留 direct-CNS evidence，WF-RAC HTTP visibility 是 UNKNOWN，不得標為 confirmed unsupported，也不得推定 network capability。`0xF8` 的 app-specific round-trip 不代表 generic `OP1=0x00` writes 都安全；generic operation-data write 維持 OUT_OF_SCOPE。
+
+Generic operation-data query 使用 `setAirconStat` 的 no-op COMMAND block 加 variable query segment，並且 response 必須從同一個 `setAirconStat` transaction 解析；不得改成 unauthenticated `getAirconStat` 或稍後再 poll。query command 沿用 R2 safety：writable set bits clear、command byte 5=`0xFF`、必要時 carry-through byte 8、query OP1=`0xFF`。Diagnostic query batch 只記 small/bounded 安全方向，不公開 upstream queue size 或實作 batching。以上 scope 不直接轉成 Matter endpoint，留待 Phase 0.3。
+
+R3 remaining unknowns：`0x0C`／`0x05` WF-RAC HTTP visibility、`0x0D`／`0x21`／`0x32`／`0x34`／`0x35` physical meaning、`0x1E/0x1F` no-value exact reason、`0x7C` non-zero meaning/scope、`0xB1` physical semantics/scope、`0x13` calibrated scale、per-firmware support matrix，以及每個 operation-data field 的 user hardware validation。
+
 ## Evidence matrix
 
 ### CONFIRMED_UPSTREAM

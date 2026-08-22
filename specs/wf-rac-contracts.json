@@ -223,6 +223,38 @@
     "write_strategy": {"selective_delta_or_full_reencode": "HARDWARE_TEST_PENDING", "full_write_is_universal_protocol_requirement": false, "current_state_reencode_is_implementation_strategy": true},
     "remaining_unknowns": ["bytes 1, 13, 14, 16, 17", "CoolHotJudge and command byte 8 full semantics", "self-clean command/state differences", "external temperature write safety", "selective delta versus full re-encode across firmware", "model-specific fields", "all local hardware behavior"]
   },
+  "operation_data_r3": {
+    "visibility_classification_is_separate_from_evidence": true,
+    "visibility_values": ["CONFIRMED_UNSOLICITED_PUSH", "CONFIRMED_QUERY_VALUE", "CONFIRMED_QUERY_RESPONSE_NO_VALUE", "CONFIRMED_QUERY_RESPONSE_UNKNOWN_SEMANTIC", "SPECIAL_APP_EXTENSION", "NO_WF_RAC_HTTP_EVIDENCE"],
+    "raw_segment_fields": ["code", "op1", "op2", "op3"],
+    "generic_query": {"transport_command": "setAirconStat", "response_must_be_parsed_from_same_transaction": true, "normal_writable_set_bits_clear": true, "command_byte_5": 255, "op1": "0xFF", "response_op1_universal_0x10": false},
+    "request_batch": {"small_bounded_required": true, "public_queue_size_constant": false},
+    "generic_operation_data_write": "OUT_OF_SCOPE",
+    "entries": [
+      {"code":"0x80","selector":"0x10","visibility":"CONFIRMED_UNSOLICITED_PUSH","semantic":"outdoor temperature","scope":"outdoor/shared-related","value_quality":"conversion EVIDENCE_CONFLICT","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x80","selector":"0x20","visibility":"CONFIRMED_UNSOLICITED_PUSH","semantic":"indoor temperature","scope":"per-indoor","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x94","visibility":"CONFIRMED_UNSOLICITED_PUSH","semantic":"current-run energy counter; (OP3 << 8 | OP2) * 0.25 kWh","scope":"per-indoor","value_quality":"not lifetime total; resets on power-on; 0.25 kWh granularity","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x11","visibility":"CONFIRMED_QUERY_VALUE","semantic":"compressor frequency","scope":"shared outdoor unit","firmware_variation":"older firmware may return constant zero while running","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x90","visibility":"CONFIRMED_QUERY_VALUE","semantic":"operating current","scope":"shared outdoor unit","firmware_variation":"older firmware may return constant zero","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x85","visibility":"CONFIRMED_QUERY_VALUE","semantic":"discharge/hot-gas temperature","scope":"shared outdoor unit","value_quality":"formula/calibration bounded by existing evidence","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x13","visibility":"CONFIRMED_QUERY_VALUE","semantic":"EEV-related raw/pulse value","scope":"per-indoor","value_quality":"calibrated_open_percentage=false; raw/255 is not calibrated physical percentage","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x81","visibility":"CONFIRMED_QUERY_VALUE","semantic":"indoor coil raw","scope":"per-indoor","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x87","visibility":"CONFIRMED_QUERY_VALUE","semantic":"indoor coil outlet raw","scope":"per-indoor","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x82","visibility":"CONFIRMED_QUERY_VALUE","semantic":"outdoor coil-related raw","scope":"shared outdoor unit","value_quality":"exact physical conversion UNKNOWN","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0xB1","visibility":"CONFIRMED_QUERY_VALUE","semantic":"TDSH/discharge-superheat-related raw","scope":"UNKNOWN/PARTIAL_CORROBORATION","value_quality":"not fully validated physical sensor","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x7C","visibility":"CONFIRMED_QUERY_VALUE","semantic":"UNKNOWN; not compressorProtectionActive","scope":"UNKNOWN/PARTIAL_CORROBORATION","value_quality":"observed response, often zero","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x1E","visibility":"CONFIRMED_QUERY_RESPONSE_NO_VALUE","semantic":"candidate run hours","response_shape":"FF FF FF","value_quality":"usable value unavailable; unsupported is not established; exact cause INFERRED","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x1F","visibility":"CONFIRMED_QUERY_RESPONSE_NO_VALUE","semantic":"candidate fan speed","response_shape":"FF FF FF","value_quality":"usable value unavailable; unsupported is not established","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x0D","visibility":"CONFIRMED_QUERY_RESPONSE_UNKNOWN_SEMANTIC","semantic":"UNKNOWN","response_shape":"00 FF FF","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x21","visibility":"CONFIRMED_QUERY_RESPONSE_UNKNOWN_SEMANTIC","semantic":"UNKNOWN","response_shape":"10 FF FF","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x32","visibility":"CONFIRMED_QUERY_RESPONSE_UNKNOWN_SEMANTIC","semantic":"UNKNOWN","response_shape":"unusual selector/value","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x34","visibility":"CONFIRMED_QUERY_RESPONSE_UNKNOWN_SEMANTIC","semantic":"UNKNOWN; response uses OP3","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x35","visibility":"CONFIRMED_QUERY_RESPONSE_UNKNOWN_SEMANTIC","semantic":"UNKNOWN","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x0C","visibility":"NO_WF_RAC_HTTP_EVIDENCE","semantic":"direct CNS Defrosting; WF-RAC HTTP UNKNOWN","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0x05","visibility":"NO_WF_RAC_HTTP_EVIDENCE","semantic":"direct CNS set-temperature operation-data address; WF-RAC HTTP UNKNOWN","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"},
+      {"code":"0xF8","visibility":"SPECIAL_APP_EXTENSION","semantic":"Home Leave/auto-heating settings; subcodes 27-32","value_quality":"official-app-specific; generic OP1=0 writes remain OUT_OF_SCOPE","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"}
+    ]
+  },
   "result_and_error_taxonomy": {
     "categories": [
       "transport_failure",
