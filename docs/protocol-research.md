@@ -278,6 +278,20 @@ Generic operation-data query 使用 `setAirconStat` 的 no-op COMMAND block 加 
 
 R3 remaining unknowns：`0x0C`／`0x05` WF-RAC HTTP visibility、`0x0D`／`0x21`／`0x32`／`0x34`／`0x35` physical meaning、`0x1E/0x1F` no-value exact reason、`0x7C` non-zero meaning/scope、`0xB1` physical semantics/scope、`0x13` calibrated scale、per-firmware support matrix，以及每個 operation-data field 的 user hardware validation。
 
+## R4：Capability／Model Detection — CONFIRMED_UPSTREAM
+
+`capability_detection_r4` 將 `ModelNrRaw`、wire-layout group、official-app capability group、retail model／series／capacity 與 local observed capability 分開。`ModelNrRaw` 來自 AirconStat RECEIVE `state[0] & 0x7F`，必須保存原值並以 raw value 作 official-app table lookup；wire encoding compatibility 不等於 feature capability identity。
+
+Official-app groups：raw 0=`separate_2021`、1=`global_2022`、2=`high_end_for_japanese_2023`、3=`zt_2025`、64=`fdt_2023`，其餘 official-app fallback 為 `separate_2021`。17 個 flags 已寫入 machine-readable table：power consumption、vacant property、self-clean、LR wind、Entrust、LED、auto heating、Home Leave、temperature information、indoor/outdoor temperature、preset temperature auto、call-center phone、outdoor-temperature display、outside-Tokyo outdoor temperature、CoolHotJudge、preset range 2、operation-data。App flag 不是 wire presence proof，也不是 universal denial gate；特別是 raw 1 的 app `operation_data=false` 不得禁止 R3 generic query。
+
+raw 3 的 official-app capability 是 `zt_2025`，即使部分 parser wire-layout 可視為 group 2，也不可覆蓋 raw capability lookup。Unknown raw 保留 raw、記錄 official-app fallback，但本 project 採 conservative policy：capability status UNKNOWN，不 optimistic enable optional writable features。
+
+Optional gating 只作 capability hint：horizontal vane 需 `wind_direction_lr`、protocol encoding 與 local validation；Entrust／3D Auto 需 `entrust`；vacant property 仍 unresolved；Home Leave 受 `home_leave_mode` 與 tag 248 subcodes 27–32 gating；self-clean flag 不建立 remote start/status/control；LED app flag 不證明 JSON presence 或 writable semantics；energy 需 app hint、observed 0x94 與 local validation；preset range 仍 hardware pending。不得把這些直接轉成 Matter mapping。
+
+Known protocol modes 是 auto、cool、heat、fan、dry，但 per-model support 保持 UNKNOWN，local support 為 `HARDWARE_TEST_PENDING`，不建立無 evidence 的 model mode table。firmType／firmware versions 只作 compatibility／quirk context，不推導 optional capability、retail model 或 size。Wire/capability group 不能可靠還原 SRK series、capacity、revision 或 exact indoor/outdoor model；retail model derivation 保持 false。每個 indoor device 保留自己的 ModelNrRaw 與 capability group，R3 shared outdoor data 不建立 shared capability owner。
+
+R4 remaining unknowns：user-device raw model、每個 optional feature local validation、per-model HVAC modes、unknown future raw behavior、accepted setpoint ranges、LED／autoHeating semantics、app flags versus protocol presence across firmware、exact retail model/size，以及 hardware-specific capability differences。`CONFIRMED_LOCAL` 仍為 0。
+
 ## Evidence matrix
 
 ### CONFIRMED_UPSTREAM

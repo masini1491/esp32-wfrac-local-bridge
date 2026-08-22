@@ -255,6 +255,33 @@
       {"code":"0xF8","visibility":"SPECIAL_APP_EXTENSION","semantic":"Home Leave/auto-heating settings; subcodes 27-32","value_quality":"official-app-specific; generic OP1=0 writes remain OUT_OF_SCOPE","evidence_level":"CONFIRMED_UPSTREAM","local_validation":"HARDWARE_TEST_PENDING"}
     ]
   },
+  "capability_detection_r4": {
+    "model_nr_raw_source": "AirconStat RECEIVE state[0] & 0x7F",
+    "raw_value_must_be_preserved": true,
+    "wire_layout_group_is_separate": true,
+    "app_capability_group_is_separate": true,
+    "retail_model_not_derivable": true,
+    "app_flags_are_not_wire_presence_proof": true,
+    "app_operation_data_flag_is_generic_query_gate": false,
+    "model_layout_examples": [{"model_nr_raw": 3, "wire_layout_group": 2, "app_capability_group": "zt_2025"}],
+    "app_capability_table": {
+      "0": {"group":"separate_2021","flags":{"power_consumption":true,"vacant_property":false,"self_clean_operation":false,"wind_direction_lr":true,"entrust":true,"led_light":true,"auto_heating":true,"home_leave_mode":false,"temp_information":true,"indoor_and_outdoor_temp":true,"preset_temp_auto":false,"call_center_phone_number":false,"outdoor_temp_always_show":false,"outdoor_temp_outside_tokyo":true,"cool_hot_judge":true,"preset_temp_range_2":false,"operation_data":false}},
+      "1": {"group":"global_2022","flags":{"power_consumption":true,"vacant_property":true,"self_clean_operation":true,"wind_direction_lr":true,"entrust":true,"led_light":false,"auto_heating":true,"home_leave_mode":true,"temp_information":true,"indoor_and_outdoor_temp":true,"preset_temp_auto":false,"call_center_phone_number":false,"outdoor_temp_always_show":true,"outdoor_temp_outside_tokyo":false,"cool_hot_judge":true,"preset_temp_range_2":false,"operation_data":false}},
+      "2": {"group":"high_end_for_japanese_2023","flags":{"power_consumption":true,"vacant_property":false,"self_clean_operation":true,"wind_direction_lr":true,"entrust":true,"led_light":false,"auto_heating":false,"home_leave_mode":false,"temp_information":true,"indoor_and_outdoor_temp":true,"preset_temp_auto":false,"call_center_phone_number":true,"outdoor_temp_always_show":false,"outdoor_temp_outside_tokyo":false,"cool_hot_judge":true,"preset_temp_range_2":false,"operation_data":false}},
+      "3": {"group":"zt_2025","flags":{"power_consumption":false,"vacant_property":true,"self_clean_operation":true,"wind_direction_lr":true,"entrust":true,"led_light":false,"auto_heating":true,"home_leave_mode":true,"temp_information":true,"indoor_and_outdoor_temp":true,"preset_temp_auto":false,"call_center_phone_number":false,"outdoor_temp_always_show":true,"outdoor_temp_outside_tokyo":false,"cool_hot_judge":true,"preset_temp_range_2":true,"operation_data":true}},
+      "64": {"group":"fdt_2023","flags":{"power_consumption":false,"vacant_property":false,"self_clean_operation":false,"wind_direction_lr":false,"entrust":false,"led_light":true,"auto_heating":false,"home_leave_mode":false,"temp_information":false,"indoor_and_outdoor_temp":true,"preset_temp_auto":true,"call_center_phone_number":false,"outdoor_temp_always_show":true,"outdoor_temp_outside_tokyo":false,"cool_hot_judge":false,"preset_temp_range_2":false,"operation_data":false}}
+    },
+    "official_app_unknown_fallback": "separate_2021",
+    "unknown_model_policy": "conservative; preserve raw, status UNKNOWN, do not optimistically enable optional writable features",
+    "optional_feature_gates": {"horizontal_vane":"wind_direction_lr + protocol encoding + local validation pending","entrust_3d_auto":"entrust + local validation pending","vacant_property":"vacant_property; access remains unresolved","home_leave":"home_leave_mode; tag 248 subcodes 27-32; local validation pending","self_clean":"self_clean_operation does not establish remote start/status/control","led":"led_light does not prove JSON presence or writable semantics","energy":"app hint plus observed 0x94 plus local validation","preset_temp_range":"preset_temp_range_2; accepted range HARDWARE_TEST_PENDING"},
+    "firmware_metadata_role": "compatibility_and_quirk_context_only",
+    "retail_model_derivable_from_wire": false,
+    "known_protocol_modes": ["auto","cool","heat","fan","dry"],
+    "per_model_hvac_mode_discovery": "UNKNOWN",
+    "local_model_mode_support": "HARDWARE_TEST_PENDING",
+    "local_validation_status": "HARDWARE_TEST_PENDING",
+    "remaining_unknowns": ["user-device ModelNrRaw", "local validation of every optional feature", "per-model HVAC modes", "unknown future raw behavior", "exact setpoint ranges", "LED and autoHeating semantics", "app flags versus protocol presence across firmware", "retail model/size", "hardware-specific differences"]
+  },
   "result_and_error_taxonomy": {
     "categories": [
       "transport_failure",

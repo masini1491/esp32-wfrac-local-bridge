@@ -152,6 +152,24 @@ def check_operation_data_r3(contract: dict[str, Any]) -> None:
         require(entry["local_validation"] == "HARDWARE_TEST_PENDING", f"operation_data_r3.entries[{entry['code']}]: local validation must remain pending")
 
 
+def check_capability_detection_r4(contract: dict[str, Any]) -> None:
+    r4 = contract["capability_detection_r4"]
+    require(r4["model_nr_raw_source"] == "AirconStat RECEIVE state[0] & 0x7F" and r4["raw_value_must_be_preserved"] is True, "capability_detection_r4: ModelNrRaw preservation missing")
+    for key in ("wire_layout_group_is_separate", "app_capability_group_is_separate", "retail_model_not_derivable", "app_flags_are_not_wire_presence_proof"):
+        require(r4[key] is True, f"capability_detection_r4.{key}: boundary missing")
+    require(r4["app_operation_data_flag_is_generic_query_gate"] is False, "capability_detection_r4: operation_data flag cannot deny generic query")
+    example = r4["model_layout_examples"][0]
+    require(example == {"model_nr_raw": 3, "wire_layout_group": 2, "app_capability_group": "zt_2025"}, "capability_detection_r4: raw3/ZT boundary mismatch")
+    flags = r4["app_capability_table"]
+    require(len(flags) == 5 and flags["3"]["group"] == "zt_2025" and flags["3"]["flags"]["operation_data"] is True, "capability_detection_r4: capability table mismatch")
+    require(flags["1"]["flags"]["operation_data"] is False, "capability_detection_r4: raw1 operation_data flag mismatch")
+    require(r4["official_app_unknown_fallback"] == "separate_2021" and "conservative" in r4["unknown_model_policy"], "capability_detection_r4: unknown model policy mismatch")
+    require("self_clean_operation does not establish remote start/status/control" in r4["optional_feature_gates"]["self_clean"], "capability_detection_r4: self-clean boundary missing")
+    require(r4["firmware_metadata_role"] == "compatibility_and_quirk_context_only" and r4["retail_model_derivable_from_wire"] is False, "capability_detection_r4: metadata/model boundary mismatch")
+    require(r4["known_protocol_modes"] == ["auto", "cool", "heat", "fan", "dry"] and r4["per_model_hvac_mode_discovery"] == "UNKNOWN" and r4["local_model_mode_support"] == "HARDWARE_TEST_PENDING", "capability_detection_r4: HVAC mode boundary mismatch")
+    require(r4["local_validation_status"] == "HARDWARE_TEST_PENDING", "capability_detection_r4: local validation must remain pending")
+
+
 def validate(contract: dict[str, Any]) -> None:
     required_sections = {
         "schema_version",
@@ -194,6 +212,7 @@ def validate(contract: dict[str, Any]) -> None:
     check_fields(contract)
     check_aircon_stat_r2(contract)
     check_operation_data_r3(contract)
+    check_capability_detection_r4(contract)
 
     boundaries = contract["command_intent_boundaries"]
     for key in ("intent_only", "does_not_encode_aircon_stat", "does_not_build_json", "does_not_call_http", "does_not_manage_retry_discovery_socket_or_matter_callbacks"):

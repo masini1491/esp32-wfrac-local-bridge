@@ -176,6 +176,27 @@ class ContractValidatorTests(unittest.TestCase):
     def test_operation_data_generic_write_remains_out_of_scope(self) -> None:
         self.assert_rejected(lambda c: c["operation_data_r3"].update(generic_operation_data_write="SUPPORTED"))
 
+    def test_capability_uses_preserved_raw_model_number(self) -> None:
+        self.assert_rejected(lambda c: c["capability_detection_r4"].update(raw_value_must_be_preserved=False))
+
+    def test_raw3_capability_is_not_overwritten_by_wire_layout_group(self) -> None:
+        self.assert_rejected(lambda c: c["capability_detection_r4"]["model_layout_examples"][0].update(app_capability_group="high_end_for_japanese_2023"))
+
+    def test_app_operation_data_false_does_not_deny_generic_query(self) -> None:
+        self.assert_rejected(lambda c: c["capability_detection_r4"].update(app_operation_data_flag_is_generic_query_gate=True))
+
+    def test_self_clean_flag_does_not_establish_remote_control(self) -> None:
+        self.assert_rejected(lambda c: c["capability_detection_r4"]["optional_feature_gates"].update(self_clean="supported remote start"))
+
+    def test_unknown_model_policy_is_conservative(self) -> None:
+        self.assert_rejected(lambda c: c["capability_detection_r4"].update(unknown_model_policy="fallback and enable all"))
+
+    def test_firmware_metadata_is_not_a_capability_map(self) -> None:
+        self.assert_rejected(lambda c: c["capability_detection_r4"].update(firmware_metadata_role="feature capability map"))
+
+    def test_hvac_mode_support_remains_per_model_pending(self) -> None:
+        self.assert_rejected(lambda c: c["capability_detection_r4"].update(per_model_hvac_mode_discovery="CONFIRMED_LOCAL"))
+
 
 if __name__ == "__main__":
     unittest.main()
