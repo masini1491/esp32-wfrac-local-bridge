@@ -254,6 +254,33 @@ class ContractValidatorTests(unittest.TestCase):
     def test_outlet_semantic_is_not_mode_independent(self) -> None:
         self.assert_rejected(lambda c: c["temperature_semantics_r6"]["diagnostic_channels"]["0x87"].update(mode_independent_outlet_semantic=True))
 
+    def test_transport_detection_is_https_first(self) -> None:
+        self.assert_rejected(lambda c: c["transport_security_r7"]["initial_detection"].update(unknown_device_order=["HTTP", "HTTPS"]))
+
+    def test_https_success_stays_sticky(self) -> None:
+        self.assert_rejected(lambda c: c["transport_security_r7"]["https_sticky"].update(automatic_silent_downgrade_to_http=True))
+
+    def test_application_refusal_cannot_trigger_http_fallback(self) -> None:
+        self.assert_rejected(lambda c: c["transport_security_r7"]["https_sticky"].update(application_refusal_triggers_downgrade=True))
+
+    def test_tls_profile_is_not_universal_minimum(self) -> None:
+        self.assert_rejected(lambda c: c["transport_security_r7"]["compatibility_profile"].update(universal_firmware_minimum=True))
+
+    def test_tls_cipher_requirements_remain_unknown(self) -> None:
+        self.assert_rejected(lambda c: c["transport_security_r7"]["legacy_tls"].update(exact_cipher_suite_requirements="KNOWN"))
+
+    def test_unverified_https_is_not_authenticated(self) -> None:
+        self.assert_rejected(lambda c: c["transport_security_r7"]["certificate"].update(unverified_https_classification="verified_secure_transport"))
+
+    def test_http_is_not_confidential(self) -> None:
+        self.assert_rejected(lambda c: c["transport_security_r7"]["http_classification"].update(confidentiality="confidential"))
+
+    def test_tls_identity_does_not_require_ntp(self) -> None:
+        self.assert_rejected(lambda c: c["transport_security_r7"]["r5_time_boundary"].update(daily_control_requires_ntp=True))
+
+    def test_operator_id_is_not_tls_authentication(self) -> None:
+        self.assert_rejected(lambda c: c["transport_security_r7"]["authentication_boundaries"].update(operator_id_is_transport_authentication=True))
+
 
 if __name__ == "__main__":
     unittest.main()

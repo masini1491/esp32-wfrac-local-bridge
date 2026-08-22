@@ -25,7 +25,7 @@
 - R4 capability／model detection：已整理，unknown model與optional features保守 pending。
 - R5 Timestamp / Time Architecture：已整理，local validation 與 exact time-source runtime 仍 pending。
 - R6 Temperature Conversion / Sensor Semantics：已整理；local hardware calibration remains pending。
-- R7 dedicated TLS policy：PENDING；不決定 production TLS policy。
+- R7 TLS / Transport Security Policy：software-only research COMPLETE；device-specific TLS/certificate validation remains HARDWARE_TEST_PENDING。
 - Matter mapping／Phase 0.3：尚未開始。
 
 Source provenance 只在需要時讀 [sources/](references/sources/)；本 index 不重複完整 source history、fixed-byte table、operation-data matrix 或 capability flags。

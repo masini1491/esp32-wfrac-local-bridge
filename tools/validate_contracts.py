@@ -222,6 +222,29 @@ def check_temperature_semantics_r6(contract: dict[str, Any]) -> None:
     require(r6["matter_mapping"] == "PENDING" and r6["local_validation_status"] == "HARDWARE_TEST_PENDING", "temperature_semantics_r6: pending boundaries missing")
 
 
+def check_transport_security_r7(contract: dict[str, Any]) -> None:
+    r7 = contract["transport_security_r7"]
+    require(r7["runtime_implemented"] is False and r7["port"] == 51443, "transport_security_r7: runtime/port boundary mismatch")
+    require(r7["initial_detection"]["unknown_device_order"] == ["HTTPS", "HTTP compatibility fallback"] and r7["initial_detection"]["probe_command"] == "getDeviceInfo", "transport_security_r7: HTTPS-first detection mismatch")
+    require(r7["mdns"]["advertises_transport_scheme"] is False, "transport_security_r7: mDNS cannot declare scheme")
+    sticky = r7["https_sticky"]
+    require(sticky["automatic_silent_downgrade_to_http"] is False and sticky["application_refusal_triggers_downgrade"] is False and sticky["transient_transport_failure_permanent_downgrade"] is False, "transport_security_r7: HTTPS sticky boundary mismatch")
+    profile = r7["compatibility_profile"]
+    require(profile["preferred_tls"] == "TLS 1.2" and profile["preferred_http"] == "HTTP/1.1" and profile["universal_firmware_minimum"] is False, "transport_security_r7: compatibility profile mismatch")
+    legacy = r7["legacy_tls"]
+    require(legacy["exact_min_tls"] == "UNKNOWN" and legacy["exact_cipher_suite_requirements"] == "UNKNOWN" and legacy["global_security_level_downgrade_allowed"] is False, "transport_security_r7: legacy TLS boundary mismatch")
+    cert = r7["certificate"]
+    require(cert["self_signed_observed"] is True and cert["cn_ip_mismatch_observed"] is True and cert["server_identity_verification_preferred"] is True, "transport_security_r7: certificate observations/policy mismatch")
+    require(cert["certificate_identity_strategy"] == "PENDING_HARDWARE_VALIDATION" and cert["unverified_https_classification"] == "encrypted_unauthenticated_transport" and cert["verify_off_preferred"] is False, "transport_security_r7: certificate assurance boundary mismatch")
+    http = r7["http_classification"]
+    require(http["confidentiality"] == "none" and http["server_identity"] == "none", "transport_security_r7: HTTP security classification mismatch")
+    time = r7["r5_time_boundary"]
+    require(time["daily_control_requires_internet"] is False and time["daily_control_requires_dns"] is False and time["daily_control_requires_ntp"] is False and time["tls_identity_verification_must_not_require_public_ntp_for_daily_control"] is True, "transport_security_r7: R5 dependency boundary mismatch")
+    auth = r7["authentication_boundaries"]
+    require(auth["local_api_mutual_tls_required"] is False and auth["cloud_mqtt_security_is_separate_boundary"] is True and auth["operator_id_is_transport_authentication"] is False, "transport_security_r7: authentication boundary mismatch")
+    require(r7["local_validation_status"] == "HARDWARE_TEST_PENDING", "transport_security_r7: local validation must remain pending")
+
+
 def validate(contract: dict[str, Any]) -> None:
     required_sections = {
         "schema_version",
@@ -267,6 +290,7 @@ def validate(contract: dict[str, Any]) -> None:
     check_capability_detection_r4(contract)
     check_time_architecture_r5(contract)
     check_temperature_semantics_r6(contract)
+    check_transport_security_r7(contract)
 
     boundaries = contract["command_intent_boundaries"]
     for key in ("intent_only", "does_not_encode_aircon_stat", "does_not_build_json", "does_not_call_http", "does_not_manage_retry_discovery_socket_or_matter_callbacks"):

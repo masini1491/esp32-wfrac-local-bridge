@@ -6,6 +6,6 @@
 - Priority：PRIMARY
 - Authority boundary：historical/current codec、discovery、state、reliability corroboration。
 - Important files / evidence areas：AirconStat codec、state model、mDNS、HTTP-first historical behavior。
-- Topics：api-envelope、airconstat-fixed-state、operation-data、tls-transport。
+- Topics：api-envelope、airconstat-fixed-state、operation-data、tls-transport；historical HTTP-first fallback、rejectUnauthorized false。
 - Known limitations / conflicts：historical behavior 不自動視為 current firmware truth。
 - Do-not-assume：not local evidence；historical fallback order is not current universal policy。

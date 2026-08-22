@@ -341,6 +341,26 @@
     "local_validation_status": "HARDWARE_TEST_PENDING",
     "remaining_unknowns": ["exact CNS-to-WF-RAC transform", "local hardware calibration", "external injection safety", "model/firmware conversion differences", "0x82 physical unit", "0x85 low-end semantics", "0xB1 physical conversion", "exact runtime quality enum"]
   },
+  "transport_security_r7": {
+    "runtime_implemented": false,
+    "port": 51443,
+    "observed_schemes": {"older_wf_rac":"HTTP","wf_rac_https":"HTTPS","WCBN4612L":"HTTPS"},
+    "scheme_by_every_firmware_version": "UNKNOWN",
+    "mdns": {"service":"_beaver._tcp","txt":"empty","port":51443,"advertises_transport_scheme":false},
+    "initial_detection": {"unknown_device_order":["HTTPS","HTTP compatibility fallback"],"probe_command":"getDeviceInfo","application_side_effect_free":false},
+    "scheme_persistence": {"successful_scheme_per_device_persisted":true,"normal_requests_use_last_known_scheme":true,"rediscovery_only_on_transport_level_evidence":true,"probe_every_poll":false},
+    "https_sticky": {"automatic_silent_downgrade_to_http":false,"application_refusal_triggers_downgrade":false,"transient_transport_failure_permanent_downgrade":false,"explicit_rediscovery_required_for_change":true},
+    "compatibility_profile": {"preferred_tls":"TLS 1.2","preferred_http":"HTTP/1.1","connection_reuse_initially_disabled":true,"connection_header":"close","universal_firmware_minimum":false},
+    "legacy_tls": {"compatibility_issue_established":true,"exact_min_tls":"UNKNOWN","exact_cipher_suite_requirements":"UNKNOWN","global_security_level_downgrade_allowed":false,"weakening_scoped_to_wfrac_connection":true,"hardware_evidence_required":true},
+    "certificate": {"self_signed_observed":true,"cn_ip_mismatch_observed":true,"public_ca_certificate_available":false,"server_identity_verification_preferred":true,"certificate_identity_strategy":"PENDING_HARDWARE_VALIDATION","unverified_https_classification":"encrypted_unauthenticated_transport","verify_off_preferred":false,"insecure_skip_explicitly_degraded":true},
+    "http_classification": {"confidentiality":"none","server_identity":"none","active_attacker_integrity":"none","legacy_compatibility_supported":true},
+    "r5_time_boundary": {"tls_identity_verification_must_not_require_public_ntp_for_daily_control":true,"daily_control_requires_internet":false,"daily_control_requires_dns":false,"daily_control_requires_ntp":false},
+    "authentication_boundaries": {"local_api_mutual_tls_required":false,"cloud_mqtt_security_is_separate_boundary":true,"operator_id_is_transport_authentication":false},
+    "header_compatibility": {"observed":true,"exact_requirement":"HARDWARE_TEST_PENDING"},
+    "failure_layers": ["TCP_CONNECT_FAILURE","TLS_HANDSHAKE_COMPATIBILITY_FAILURE","TLS_SERVER_IDENTITY_FAILURE","HTTP_PROTOCOL_FAILURE","WF_RAC_APPLICATION_REFUSAL"],
+    "local_validation_status":"HARDWARE_TEST_PENDING",
+    "remaining_unknowns":["scheme per firmware","exact TLS/cipher requirements","certificate identity uniqueness/stability/lifecycle","hostname handling with pinning","user/config policy for degraded HTTPS","header casing requirement","certificate validity-time behavior"]
+  },
   "result_and_error_taxonomy": {
     "categories": [
       "transport_failure",

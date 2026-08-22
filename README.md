@@ -50,11 +50,11 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 | 分類 | Physical lines |
 | --- | ---: |
 | Firmware（Phase 0 尚未開始 firmware） | 0 |
-| 開發／驗證工具（tools、tests、GitHub Actions） | 482 |
-| Machine-readable protocol/spec contracts（specs） | 384 |
-| 技術文件（README、AGENTS、docs） | 356 |
+| 開發／驗證工具（tools、tests、GitHub Actions） | 522 |
+| Machine-readable protocol/spec contracts（specs） | 404 |
+| 技術文件（README、AGENTS、docs） | 362 |
 | 其他必要 tracked project files（.gitignore） | 14 |
-| **合計** | **1236** |
+| **合計** | **1302** |
 
 以上為 Git tracked files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 為 0 行，因本專案目前仍處於 Phase 0。
 
