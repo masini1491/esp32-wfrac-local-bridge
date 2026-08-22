@@ -1,9 +1,11 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "wfrac_protocol/aircon_frame.hpp"
+#include "wfrac_protocol/aircon_state.hpp"
 #include "wfrac_protocol/crc16.hpp"
 
 namespace {
@@ -32,6 +34,20 @@ wfrac_protocol::AirconFrameView parse_ok(const std::vector<uint8_t>& raw) {
   wfrac_protocol::AirconFrameView frame{};
   assert(wfrac_protocol::parse_aircon_stat({raw.data(), raw.size()}, &frame) == wfrac_protocol::FrameError::none);
   return frame;
+}
+
+void assert_safe_baseline(const wfrac_protocol::CommandState& state, std::size_t changed_index) {
+  assert(state[5] == 0xFFU);
+  for (std::size_t index = 0; index < state.size(); ++index) {
+    if (index != changed_index && index != 5) assert(state[index] == 0U);
+  }
+  assert(state[13] == 0U && state[14] == 0U && state[16] == 0U && state[17] == 0U);
+}
+
+wfrac_protocol::AirconBlockView receive_block(std::array<uint8_t, wfrac_protocol::kAirconStateBytes> state) {
+  wfrac_protocol::AirconBlockView block{};
+  block.state = state;
+  return block;
 }
 
 }  // namespace
@@ -74,5 +90,76 @@ int main() {
   assert(wfrac_protocol::parse_aircon_stat({truncated_receive.data(), truncated_receive.size()}, &ignored) == wfrac_protocol::FrameError::missing_crc);
   const auto trailing = [&] { auto data = valid; data.push_back(0); return data; }();
   assert(wfrac_protocol::parse_aircon_stat({trailing.data(), trailing.size()}, &ignored) == wfrac_protocol::FrameError::invalid_layout);
+
+  std::array<uint8_t, wfrac_protocol::kAirconStateBytes> receive_state{};
+  receive_state[0] = 0x83U;
+  receive_state[2] = 0x09U;
+  receive_state[3] = 0x07U;
+  receive_state[4] = 41U;
+  receive_state[5] = 154U;
+  auto semantic = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(semantic.model_nr_raw == 3U);
+  assert(semantic.power == wfrac_protocol::PowerState::on);
+  assert(semantic.operation_mode == wfrac_protocol::OperationMode::cool);
+  assert(semantic.target_temperature_half_degrees == 41U);
+  assert(semantic.fan == wfrac_protocol::FanMode::auto_mode);
+  assert(semantic.controller_room_temperature_quarter_degrees == 93);
+
+  receive_state[2] = 0x00U;
+  assert(wfrac_protocol::decode_receive_state(receive_block(receive_state)).power == wfrac_protocol::PowerState::off);
+  receive_state[2] = 0x03U;
+  semantic = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(semantic.power == wfrac_protocol::PowerState::unknown && semantic.power_raw == 3U);
+  for (const auto pair : {std::pair<uint8_t, wfrac_protocol::OperationMode>{0x00U, wfrac_protocol::OperationMode::auto_mode},
+                          {0x04U, wfrac_protocol::OperationMode::dry}, {0x08U, wfrac_protocol::OperationMode::cool},
+                          {0x0CU, wfrac_protocol::OperationMode::fan}, {0x10U, wfrac_protocol::OperationMode::heat}}) {
+    receive_state[2] = pair.first;
+    assert(wfrac_protocol::decode_receive_state(receive_block(receive_state)).operation_mode == pair.second);
+  }
+  receive_state[2] = 0x1CU;
+  assert(wfrac_protocol::decode_receive_state(receive_block(receive_state)).operation_mode == wfrac_protocol::OperationMode::unknown);
+  for (const auto pair : {std::pair<uint8_t, wfrac_protocol::FanMode>{0x07U, wfrac_protocol::FanMode::auto_mode},
+                          {0x00U, wfrac_protocol::FanMode::speed1}, {0x01U, wfrac_protocol::FanMode::speed2},
+                          {0x02U, wfrac_protocol::FanMode::speed3}, {0x06U, wfrac_protocol::FanMode::speed4}}) {
+    receive_state[3] = pair.first;
+    assert(wfrac_protocol::decode_receive_state(receive_block(receive_state)).fan == pair.second);
+  }
+  receive_state[3] = 0x05U;
+  assert(wfrac_protocol::decode_receive_state(receive_block(receive_state)).fan == wfrac_protocol::FanMode::unknown);
+  receive_state[4] = 40U;
+  receive_state[5] = 154U;
+  semantic = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(semantic.target_temperature_half_degrees == 40U);
+  assert(semantic.controller_room_temperature_raw == 154U);
+  assert(semantic.controller_room_temperature_quarter_degrees == 93);
+
+  wfrac_protocol::CommandState command{};
+  assert(wfrac_protocol::encode_set_power(wfrac_protocol::PowerState::off, &command) == wfrac_protocol::EncodeError::none);
+  assert(command[2] == 0x02U); assert_safe_baseline(command, 2);
+  assert(wfrac_protocol::encode_set_power(wfrac_protocol::PowerState::on, &command) == wfrac_protocol::EncodeError::none);
+  assert(command[2] == 0x03U); assert_safe_baseline(command, 2);
+  assert(wfrac_protocol::encode_set_power(wfrac_protocol::PowerState::unknown, &command) == wfrac_protocol::EncodeError::invalid_power);
+
+  for (const auto pair : {std::pair<wfrac_protocol::OperationMode, uint8_t>{wfrac_protocol::OperationMode::auto_mode, 0x20U},
+                          {wfrac_protocol::OperationMode::dry, 0x24U}, {wfrac_protocol::OperationMode::cool, 0x28U},
+                          {wfrac_protocol::OperationMode::fan, 0x2CU}, {wfrac_protocol::OperationMode::heat, 0x30U}}) {
+    assert(wfrac_protocol::encode_set_mode(pair.first, &command) == wfrac_protocol::EncodeError::none);
+    assert(command[2] == pair.second); assert_safe_baseline(command, 2);
+  }
+  assert(wfrac_protocol::encode_set_mode(wfrac_protocol::OperationMode::unknown, &command) == wfrac_protocol::EncodeError::invalid_mode);
+
+  assert(wfrac_protocol::encode_set_target_temperature(40U, &command) == wfrac_protocol::EncodeError::none);
+  assert(command[4] == 0xA8U); assert_safe_baseline(command, 4);
+  assert(wfrac_protocol::encode_set_target_temperature(41U, &command) == wfrac_protocol::EncodeError::none);
+  assert(command[4] == 0xA9U); assert_safe_baseline(command, 4);
+  assert(wfrac_protocol::encode_set_target_temperature(0x80U, &command) == wfrac_protocol::EncodeError::invalid_target_temperature);
+
+  for (const auto pair : {std::pair<wfrac_protocol::FanMode, uint8_t>{wfrac_protocol::FanMode::auto_mode, 0x0FU},
+                          {wfrac_protocol::FanMode::speed1, 0x08U}, {wfrac_protocol::FanMode::speed2, 0x09U},
+                          {wfrac_protocol::FanMode::speed3, 0x0AU}, {wfrac_protocol::FanMode::speed4, 0x0EU}}) {
+    assert(wfrac_protocol::encode_set_fan(pair.first, &command) == wfrac_protocol::EncodeError::none);
+    assert(command[3] == pair.second); assert_safe_baseline(command, 3);
+  }
+  assert(wfrac_protocol::encode_set_fan(wfrac_protocol::FanMode::unknown, &command) == wfrac_protocol::EncodeError::invalid_fan);
   return 0;
 }

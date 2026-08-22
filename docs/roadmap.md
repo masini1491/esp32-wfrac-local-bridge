@@ -20,8 +20,9 @@
 
 ## Phase 1A — Pure Protocol Core
 
-- CRC16-CCITT core：**開始**
-- AirconStat structural framing：**開始**
-- HVAC semantic codec、transport/runtime 與 hardware validation：尚未實作
+- CRC16-CCITT core：**完成**
+- AirconStat structural framing：**完成**
+- Basic fixed-state decoder 與 Power/Mode/Target Temperature/Fan command intents：**完成**
+- Vane、diagnostics、operation-data、capability、Base64、transport/runtime 與 hardware validation：尚未實作
 
 目前狀態：**Phase 1A protocol core 已開始；Reference Deep Review 已完成；實機驗證仍暫緩。**
