@@ -474,15 +474,15 @@ int main() {
          wfrac_protocol::Base64Error::invalid_argument);
 
   const wfrac_protocol::CommandState command_state = wfrac_protocol::make_safe_command_state();
-  wfrac_protocol::CommandState receive_state{};
-  for (std::size_t index = 0U; index < receive_state.size(); ++index) {
-    receive_state[index] = static_cast<uint8_t>(index + 1U);
+  wfrac_protocol::CommandState composed_receive_state{};
+  for (std::size_t index = 0U; index < composed_receive_state.size(); ++index) {
+    composed_receive_state[index] = static_cast<uint8_t>(index + 1U);
   }
   const wfrac_protocol::OperationSegment command_segment{0x11U, 0xFFU, 0xFFU, 0xFFU};
   const std::array<wfrac_protocol::OperationSegment, 2> receive_segments{{
       {0x80U, 0x10U, 0xAAU, 0xBBU}, {0x34U, 0x01U, 0x02U, 0xA5U}}};
   const wfrac_protocol::AirconBlockInput command_input{&command_state, &command_segment, 1U};
-  const wfrac_protocol::AirconBlockInput receive_input{&receive_state, receive_segments.data(), receive_segments.size()};
+  const wfrac_protocol::AirconBlockInput receive_input{&composed_receive_state, receive_segments.data(), receive_segments.size()};
   std::array<uint8_t, 4096> aircon_raw{};
   std::size_t aircon_raw_size = 0U;
   assert(wfrac_protocol::encoded_aircon_stat_size(1U, 2U) == 54U);
@@ -494,7 +494,7 @@ int main() {
   assert(wfrac_protocol::parse_aircon_stat({aircon_raw.data(), aircon_raw_size}, &round_trip_frame) ==
          wfrac_protocol::FrameError::none);
   assert(round_trip_frame.command.state == command_state);
-  assert(round_trip_frame.receive.state == receive_state);
+  assert(round_trip_frame.receive.state == composed_receive_state);
   assert(round_trip_frame.command.segment_count == 1U && round_trip_frame.receive.segment_count == 2U);
   assert(round_trip_frame.command.crc_valid && round_trip_frame.receive.crc_valid);
   assert(round_trip_frame.receive_offset == round_trip_frame.command.encoded_size);
@@ -520,14 +520,14 @@ int main() {
   for (std::size_t index = 0U; index < aircon_raw_size; ++index) assert(decoded_aircon_raw[index] == aircon_raw[index]);
   assert(wfrac_protocol::parse_aircon_stat({decoded_aircon_raw.data(), decoded_aircon_raw_size}, &round_trip_frame) ==
          wfrac_protocol::FrameError::none);
-  assert(round_trip_frame.command.state == command_state && round_trip_frame.receive.state == receive_state);
+  assert(round_trip_frame.command.state == command_state && round_trip_frame.receive.state == composed_receive_state);
   assert(round_trip_frame.command.crc_valid && round_trip_frame.receive.crc_valid);
 
   const auto assert_composition = [&](const wfrac_protocol::OperationSegment* command_segments, std::size_t command_count,
                                       const wfrac_protocol::OperationSegment* receive_segment_data,
                                       std::size_t receive_count) {
     const wfrac_protocol::AirconBlockInput command_case{&command_state, command_segments, command_count};
-    const wfrac_protocol::AirconBlockInput receive_case{&receive_state, receive_segment_data, receive_count};
+    const wfrac_protocol::AirconBlockInput receive_case{&composed_receive_state, receive_segment_data, receive_count};
     std::size_t size = 0U;
     assert(wfrac_protocol::serialize_aircon_stat(command_case, receive_case,
                                                  {aircon_raw.data(), aircon_raw.size()}, &size) ==
@@ -540,14 +540,14 @@ int main() {
   assert(wfrac_protocol::serialize_aircon_stat(command_input, receive_input, {aircon_raw.data(), 53U}, &aircon_raw_size) ==
          wfrac_protocol::AirconStatEncodeError::output_too_small);
   assert(wfrac_protocol::serialize_aircon_stat(command_input,
-                                               {&receive_state, nullptr, 0U},
+                                               {&composed_receive_state, nullptr, 0U},
                                                {aircon_raw.data(), aircon_raw.size()}, &aircon_raw_size) ==
          wfrac_protocol::AirconStatEncodeError::none);
 
   std::array<wfrac_protocol::OperationSegment, 255> maximum_segments{};
   maximum_segments[254] = {0xFEU, 0x01U, 0x02U, 0xA6U};
   const wfrac_protocol::AirconBlockInput maximum_command{&command_state, maximum_segments.data(), maximum_segments.size()};
-  const wfrac_protocol::AirconBlockInput maximum_receive{&receive_state, maximum_segments.data(), maximum_segments.size()};
+  const wfrac_protocol::AirconBlockInput maximum_receive{&composed_receive_state, maximum_segments.data(), maximum_segments.size()};
   const std::size_t maximum_raw_size = wfrac_protocol::encoded_aircon_stat_size(255U, 255U);
   assert(maximum_raw_size == 2082U);
   assert(wfrac_protocol::serialize_aircon_stat(maximum_command, maximum_receive,
