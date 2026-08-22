@@ -25,9 +25,10 @@
 - Basic fixed-state decoder、Power/Mode/Target Temperature/Fan command intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe operation-data query builder、bounded project query batch 1–3、standard Base64 codec 與 generic full AirconStat composition：**完成**
 - Vane、diagnostics、request RECEIVE policy、query transaction runtime、diagnostic physical conversions、advanced fixed-state fields、Device Model、JSON、transport/runtime 與 hardware validation：尚未實作
 
-目前狀態：**Phase 1A protocol core 已開始；Reference Deep Review 已完成；實機驗證仍暫緩。**
+目前狀態：**Phase 1A protocol core 已完成；Reference Deep Review 已完成；實機驗證仍暫緩。**
 
 ## Phase 1B — WF-RAC Device Model
 
 - Basic HVAC state projection 與 tri-state app capability hints：**完成**
-- Advanced protocol fields、diagnostics projection、availability/state ownership、command intent model、transport/runtime、Matter mapping 與 hardware validation：尚未實作
+- Explicit observed state ownership、desired writable-state projection、single pending command skeleton 與 explicit availability state：**完成**
+- Advanced protocol fields、diagnostics projection、observed/desired automatic reconciliation、command → protocol encoding bridge、queue、polling、timeout source、transport/runtime、Matter mapping 與 hardware validation：尚未實作

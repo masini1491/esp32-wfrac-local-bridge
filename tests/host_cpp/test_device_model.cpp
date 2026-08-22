@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <utility>
 
+#include "device_state_test_cases.hpp"
 #include "wfrac_device_model/protocol_mapping.hpp"
 
 namespace {
@@ -95,5 +96,6 @@ int main() {
   const auto unknown_profile = wfrac_protocol::decode_capabilities(127U);
   assert(!unknown_profile.profile_known);
   assert_hints(wfrac_device_model::map_capability_hints(unknown_profile), {});
+  run_device_state_ownership_tests();
   return 0;
 }

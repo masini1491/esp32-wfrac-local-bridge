@@ -45,5 +45,6 @@ jobs:
           components/wfrac_protocol/src/aircon_state.cpp
           components/wfrac_protocol/src/capabilities.cpp
           components/wfrac_device_model/src/protocol_mapping.cpp
+          components/wfrac_device_model/src/device_state.cpp
           tests/host_cpp/test_device_model.cpp
           -o device-model-tests && ./device-model-tests
