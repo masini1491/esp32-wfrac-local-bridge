@@ -53,6 +53,22 @@ Operator ID 代表 controller／remote identity。目前上游整合支援：
 
 Result semantics 必須 command-specific：某些 command 的 `result = 2` 被視為 unregistered，而 `updateAccountInfo` 的 `result = 2` 被視為 account limit。不可建立全域 `result 2` 固定意義規則，並須預留 firmware variation。
 
+R1 command-specific context matrix：`getDeviceInfo` 的 `result = 2` 目前為 `UNKNOWN`；`getAirconStat` 在較新 firmware 缺少 required `airconId` 時可能出現 HTTP 400／`result = 2`；`setAirconStat` 可在 expired／unregistered operator 或 write-refusal context 出現；`updateAccountInfo` 的 `result = 2` 可表示 account table full；`deleteAccountInfo` 的 `result = 2` 目前為 `UNKNOWN`。共同解讀必須同時保留 HTTP status、command、WF-RAC result 與 response body，不得使用 global `switch(result)` 定義所有 command semantics。Observed code family `0, 1, 2, 10, 11, 12, 20, 99, 429` 只作 upstream reference，不是所有 command 的 universal definition。
+
+### R1 identity and registration boundaries
+
+R1 targeted research 進一步確認：`deviceId` 是 request envelope 中的 client-side identifier。上游只確認它必須是存在、非空的 string，會被記錄並傳入 handler；目前沒有證據要求它等於 MAC、`airconId`、固定 UUID，或被作為 AC identity 驗證。因此本 project 將其定義為 stable、non-empty、opaque client identifier，未來方向為 bridge-scoped persistent identifier；這是 project recommendation，不是 universal protocol requirement。
+
+`getDeviceInfo` 不需要 `contents`，也不需要事先知道 `airconId`；它回傳至少 `airconId`、`macAddress`、`apMode`，是 canonical bootstrap mechanism。未來概念流程為：known host/IP → persistent client `deviceId` → persistent `operatorId` → valid timestamp → `getDeviceInfo` → device-reported `airconId` → persist identity → optional/self-managed registration → normal status/control。不得假設 `airconId == MAC`；MAC 只能作 discovery/local identification hint，canonical `airconId` 以 device-reported value 為準。
+
+Operator ID 是 controller／remote identity，必須是 stable opaque identifier；upstream 不同 implementation 的 UUID-based 或 prefixed generation strategy 只是 implementation strategy，不代表 RFC UUID 是 protocol requirement。`accountId` 不建立為第五個 identity；三個主要 upstream integrations 都以 `accountId = operatorId` 用於 `updateAccountInfo` 與 `deleteAccountInfo`，此關係標為 `STRONG_CORROBORATION`。
+
+Self-managed registration 的概念順序為 persistent `operatorId` → bootstrap actual `airconId` → `updateAccountInfo`（`accountId = operatorId`、`airconId = device-reported airconId`、observed `remote = 0`、`timezone = local timezone value`）→ normal write。Mirror mode 使用既有 Operator ID，不自行 register/deregister。正常 reboot 不應自動 deregister；deregistration 應限於明確 ownership removal 或 reset policy。這是 architecture recommendation，不是 protocol constant。
+
+Account table observed limit 為 4。`remoteList` 不可視為可靠的 registered-ID enumeration；上游曾觀察 `numOfAccount = 2` 但 `remoteList = ["", "", "", ""]`。Future bridge 只能可靠管理自己的 Operator ID；table full 時不得猜測或自動刪除未知 account，應要求 explicit user/operator action。`operatorId = "aws"` 仍只作 upstream diagnostic observation，不是 project architecture、default 或 production dependency。
+
+R1 remaining unknowns：`deviceId` 是否存在 hidden handler-specific semantics、`remote = 0 / 1` 的完整語意、`timezone` 的真正 runtime effect、`expires` 的 exact calculation／duration／refresh semantics、各 firmware 完整 command × result matrix，以及 registration eviction／expiry 後跨 firmware 的 recovery behavior。以上維持 `UNKNOWN`；`CONFIRMED_LOCAL` 仍為 none。
+
 ## Discovery — CONFIRMED_UPSTREAM
 
 Homey integration 使用 mDNS-SD；service name `beaver`、protocol `tcp`。這是未來本地探索的研究方向，本 project hardware 為 `HARDWARE_TEST_PENDING`，本階段不實作。

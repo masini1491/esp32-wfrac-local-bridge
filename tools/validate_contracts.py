@@ -83,6 +83,30 @@ def check_fields(contract: dict[str, Any]) -> None:
     require("compressorOn" not in names, "device_model_fields: merged compressorOn is forbidden")
 
 
+def check_identity_and_registration(identity: dict[str, Any]) -> None:
+    require(
+        identity["distinct_identities"] == ["MAC Address", "Device ID", "Aircon ID", "Operator ID"],
+        "identity: identifiers must remain separate",
+    )
+    device_id = identity["device_id_semantics"]
+    require(device_id["role"] == "client_side_identifier", "identity.device_id_semantics.role: mismatch")
+    require(device_id["equivalent_to_mac_address"] is False, "identity.deviceId: cannot equal MAC by contract")
+    require(device_id["equivalent_to_aircon_id"] is False, "identity.deviceId: cannot equal Aircon ID by contract")
+    require(device_id["fixed_uuid_format_required"] is False, "identity.deviceId: fixed UUID is not universal")
+    bootstrap = identity["bootstrap"]
+    require(bootstrap["command"] == "getDeviceInfo", "identity.bootstrap: must use getDeviceInfo")
+    require(bootstrap["canonical_aircon_id_source"] == "device_reported_airconId", "identity.bootstrap: canonical Aircon ID source mismatch")
+    account = identity["account_id_relationship"]
+    require(account["registration_account_id_source"] == "operatorId", "identity.account_id_relationship: accountId source mismatch")
+    require(account["independent_identity"] is False, "identity.accountId: cannot become an independent identity")
+    require(account["confidence"] == "STRONG_CORROBORATION", "identity.accountId: corroboration missing")
+    safety = identity["account_table_ownership_safety"]
+    require(safety["remote_list_is_reliable_enumeration"] is False, "identity.remoteList: cannot be treated as enumeration")
+    require(safety["manage_only_own_operator_id"] is True, "identity.account ownership: must be limited to own operator")
+    require(safety["auto_delete_unknown_accounts"] is False, "identity.account ownership: unknown accounts cannot be auto-deleted")
+    require(safety["table_full_requires_explicit_action"] is True, "identity.account ownership: table-full action must be explicit")
+
+
 def validate(contract: dict[str, Any]) -> None:
     required_sections = {
         "schema_version",
@@ -119,7 +143,7 @@ def validate(contract: dict[str, Any]) -> None:
     require(api["request_fields"]["contents"]["required"] is False, "api_envelope.contents: must be optional")
 
     identity = contract["identity_and_registration"]
-    require(identity["distinct_identities"] == ["MAC Address", "Device ID", "Aircon ID", "Operator ID"], "identity: identifiers must remain separate")
+    check_identity_and_registration(identity)
     require(identity["operator_id_generation_or_persistence_implemented"] is False, "identity: runtime persistence is forbidden")
 
     check_fields(contract)
@@ -131,6 +155,12 @@ def validate(contract: dict[str, Any]) -> None:
     taxonomy = contract["result_and_error_taxonomy"]
     require(taxonomy["protocol_result_is_command_specific"] is True, "result taxonomy: command-specific rule missing")
     require(taxonomy["global_result_2_meaning_forbidden"] is True, "result taxonomy: global result 2 meaning forbidden")
+    contexts = taxonomy["result_two_contexts"]
+    for command in ("getDeviceInfo", "getAirconStat", "setAirconStat", "updateAccountInfo", "deleteAccountInfo"):
+        require(command in contexts, f"result taxonomy.result_two_contexts: missing {command}")
+    require(contexts["getDeviceInfo"] == "UNKNOWN", "result taxonomy: getDeviceInfo result 2 must remain UNKNOWN")
+    require(contexts["deleteAccountInfo"] == "UNKNOWN", "result taxonomy: deleteAccountInfo result 2 must remain UNKNOWN")
+    require(taxonomy["observed_result_code_family"] == [0, 1, 2, 10, 11, 12, 20, 99, 429], "result taxonomy: observed code family mismatch")
     require(taxonomy["timeout_is_protocol_constant"] is False, "result taxonomy: timeout cannot be universal constant")
     require(taxonomy["retry_count_is_protocol_constant"] is False, "result taxonomy: retry count cannot be universal constant")
     require(taxonomy["tls_verification_policy"] in {"UNKNOWN", "INFERRED", "HARDWARE_TEST_PENDING"}, "result taxonomy.tls_verification_policy: finalized policy is forbidden")

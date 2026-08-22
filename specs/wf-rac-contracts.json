@@ -94,17 +94,55 @@
   },
   "identity_and_registration": {
     "distinct_identities": ["MAC Address", "Device ID", "Aircon ID", "Operator ID"],
+    "device_id_semantics": {
+      "role": "client_side_identifier",
+      "type": "string",
+      "constraints": ["stable", "non_empty", "opaque"],
+      "equivalent_to_mac_address": false,
+      "equivalent_to_aircon_id": false,
+      "fixed_uuid_format_required": false,
+      "future_project_direction": "bridge_scoped_persistent_identifier"
+    },
     "bootstrap": {
       "command": "getDeviceInfo",
       "aircon_id_required_before_bootstrap": false,
       "contents_optional": true,
-      "may_return": ["airconId", "macAddress", "apMode"]
+      "may_return": ["airconId", "macAddress", "apMode"],
+      "canonical_aircon_id_source": "device_reported_airconId"
     },
     "registration_modes": [
       { "name": "self_managed", "registration_command": "updateAccountInfo", "deregistration_command": "deleteAccountInfo" },
       { "name": "mirror_existing_operator", "registration_runtime_owned_by_project": false }
     ],
     "account_slots": { "observed_limit": 4, "evidence_level": "CONFIRMED_UPSTREAM" },
+    "account_id_relationship": {
+      "registration_account_id_source": "operatorId",
+      "independent_identity": false,
+      "confidence": "STRONG_CORROBORATION",
+      "evidence_level": "CONFIRMED_UPSTREAM"
+    },
+    "operator_id_semantics": {
+      "role": "controller_or_remote_identity",
+      "stable_opaque_identifier": true,
+      "uuid_format_is_universal_requirement": false,
+      "aws_bypass_is_project_architecture": false
+    },
+    "registration_lifecycle": {
+      "self_managed_sequence": ["persistent_operatorId", "bootstrap_device_reported_airconId", "updateAccountInfo", "normal_write"],
+      "update_account_id_equals_operator_id": true,
+      "update_remote_observed_value": 0,
+      "normal_reboot_auto_deregister": false,
+      "deregister_requires_explicit_ownership_removal_or_reset": true,
+      "mirror_mode_registers_or_deregisters": false
+    },
+    "account_table_ownership_safety": {
+      "remote_list_is_reliable_enumeration": false,
+      "observed_num_of_account": 2,
+      "observed_remote_list": ["", "", "", ""],
+      "manage_only_own_operator_id": true,
+      "auto_delete_unknown_accounts": false,
+      "table_full_requires_explicit_action": true
+    },
     "read_before_registration": { "getAirconStat": true, "evidence_level": "CONFIRMED_UPSTREAM" },
     "write_requires_operator_validation": { "setAirconStat": true, "evidence_level": "CONFIRMED_UPSTREAM" },
     "operator_id_generation_or_persistence_implemented": false
@@ -152,6 +190,14 @@
     ],
     "protocol_result_is_command_specific": true,
     "global_result_2_meaning_forbidden": true,
+    "result_two_contexts": {
+      "getDeviceInfo": "UNKNOWN",
+      "getAirconStat": "missing_required_airconId_may_produce_http_400_or_result_2_on_newer_firmware",
+      "setAirconStat": "expired_or_unregistered_operator_or_write_refusal_context",
+      "updateAccountInfo": "account_table_full",
+      "deleteAccountInfo": "UNKNOWN"
+    },
+    "observed_result_code_family": [0, 1, 2, 10, 11, 12, 20, 99, 429],
     "known_result_context_variation": ["account_table_full", "registration_expired", "unregistered_or_write_refusal"],
     "timeout_is_protocol_constant": false,
     "retry_count_is_protocol_constant": false,
@@ -159,6 +205,12 @@
     "generic_operation_data_write": "OUT_OF_SCOPE"
   },
   "known_uncertainties": [
+    "deviceId hidden handler-specific semantics",
+    "remote value 0 or 1 full semantics",
+    "timezone runtime effect",
+    "expires calculation duration and refresh semantics",
+    "complete firmware-specific command and result matrix",
+    "registration eviction or expiry recovery across firmware",
     "0x80 outdoor temperature conversion conflict",
     "direct CNS/SPI capability versus WF-RAC HTTP capability",
     "exact timeout and retry tuning",

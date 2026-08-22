@@ -64,10 +64,45 @@ class ContractValidatorTests(unittest.TestCase):
             )
         )
 
+    def test_device_id_cannot_be_declared_as_aircon_identity(self) -> None:
+        self.assert_rejected(
+            lambda c: c["identity_and_registration"]["device_id_semantics"].update(
+                equivalent_to_aircon_id=True
+            )
+        )
+
+    def test_aircon_id_bootstrap_source_is_get_device_info(self) -> None:
+        self.assert_rejected(
+            lambda c: c["identity_and_registration"]["bootstrap"].update(
+                canonical_aircon_id_source="macAddress"
+            )
+        )
+
+    def test_account_id_is_not_a_fifth_identity(self) -> None:
+        self.assert_rejected(
+            lambda c: c["identity_and_registration"]["account_id_relationship"].update(
+                independent_identity=True
+            )
+        )
+
+    def test_unknown_accounts_cannot_be_auto_deleted(self) -> None:
+        self.assert_rejected(
+            lambda c: c["identity_and_registration"]["account_table_ownership_safety"].update(
+                auto_delete_unknown_accounts=True
+            )
+        )
+
     def test_result_two_universal_meaning_is_rejected(self) -> None:
         self.assert_rejected(
             lambda c: c["result_and_error_taxonomy"].update(
                 global_result_2_meaning_forbidden=False
+            )
+        )
+
+    def test_result_two_contexts_must_remain_command_specific(self) -> None:
+        self.assert_rejected(
+            lambda c: c["result_and_error_taxonomy"]["result_two_contexts"].update(
+                getDeviceInfo="account_table_full"
             )
         )
 
