@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "device_command_mapping_test_cases.hpp"
+#include "device_operation_query_request_test_cases.hpp"
 #include "device_request_mapping_test_cases.hpp"
 #include "device_reconciliation_test_cases.hpp"
 #include "device_state_test_cases.hpp"
@@ -103,5 +104,6 @@ int main() {
   device_reconciliation_tests::run_device_reconciliation_tests();
   device_command_mapping_tests::run_device_command_mapping_tests();
   device_request_mapping_tests::run_device_request_mapping_tests();
+  device_operation_query_request_tests::run_device_operation_query_request_tests();
   return 0;
 }

@@ -12,9 +12,13 @@ Control request 的 raw AirconStat representation：single Device Model command 
 
 `PROJECT_POLICY / INFERRED`：正式 control request 必須有最新 CRC-valid RECEIVE observation。builder 複製其 18-byte raw state 作 compatibility baseline，只 patch 本次 intent 的 receive-side field，並拒絕 fabricated constant RECEIVE half 或缺少 baseline 的 request。此 policy 不是 universal WF-RAC protocol requirement。
 
+## Operation-data query request composition
+
+`PROJECT_POLICY / INFERRED`：full safe operation-data query request 已實作為 1–3 個既有 allowlisted generic query segments、最新 CRC-valid RECEIVE compatibility baseline、COMMAND byte 8 bit `0x08` carry，以及 RECEIVE no-request sentinel。COMMAND 只帶實際 query segments；RECEIVE 不複製 observation 的 response segments。此為 pure raw AirconStat composition，仍未建立 Base64/API envelope 或任何 request runtime。
+
 ## Known unknowns
 
-Operation-data full request composition、Base64/API envelope、transport execution，以及本 project policy 在使用者硬體上的行為皆為 `HARDWARE_TEST_PENDING`。`CONFIRMED_LOCAL = 0`。
+Base64/API envelope、transport execution，以及本 project policy 在使用者硬體上的行為皆為 `HARDWARE_TEST_PENDING`。`CONFIRMED_LOCAL = 0`。
 
 ## Provenance pointers
 

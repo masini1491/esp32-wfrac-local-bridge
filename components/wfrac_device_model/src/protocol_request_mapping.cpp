@@ -73,4 +73,36 @@ ProtocolRequestMappingError build_control_aircon_stat(const CommandIntent& inten
   return ProtocolRequestMappingError::none;
 }
 
+OperationQueryRequestError build_operation_query_aircon_stat(const uint8_t* codes, std::size_t count,
+                                                             const wfrac_protocol::AirconBlockView& latest_receive,
+                                                             wfrac_protocol::MutableByteView output,
+                                                             std::size_t* encoded_size) {
+  if (encoded_size != nullptr) *encoded_size = 0U;
+  if (output.data == nullptr || encoded_size == nullptr || codes == nullptr) {
+    return OperationQueryRequestError::invalid_argument;
+  }
+  if (count == 0U || count > 3U) return OperationQueryRequestError::batch_size_out_of_range;
+  if (!latest_receive.crc_valid) return OperationQueryRequestError::invalid_receive_baseline;
+
+  wfrac_protocol::OperationSegment command_segments[3]{};
+  for (std::size_t index = 0; index < count; ++index) {
+    if (!wfrac_protocol::is_known_safe_operation_query_code(codes[index])) {
+      return OperationQueryRequestError::invalid_query_code;
+    }
+    command_segments[index] = wfrac_protocol::make_operation_query_segment(codes[index]);
+  }
+
+  wfrac_protocol::CommandState command_state = wfrac_protocol::make_safe_command_state();
+  carry_command_byte8(latest_receive, &command_state);
+  const wfrac_protocol::CommandState receive_state = latest_receive.state;
+  const wfrac_protocol::AirconBlockInput command{&command_state, command_segments, count};
+  const wfrac_protocol::AirconBlockInput receive{&receive_state, &kNoRequestSentinel, 1U};
+  if (wfrac_protocol::serialize_aircon_stat(command, receive, output, encoded_size) !=
+      wfrac_protocol::AirconStatEncodeError::none) {
+    *encoded_size = 0U;
+    return OperationQueryRequestError::request_encode_error;
+  }
+  return OperationQueryRequestError::none;
+}
+
 }  // namespace wfrac_device_model
