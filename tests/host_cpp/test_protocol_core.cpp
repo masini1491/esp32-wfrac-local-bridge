@@ -8,6 +8,7 @@
 #include "wfrac_protocol/aircon_state.hpp"
 #include "wfrac_protocol/capabilities.hpp"
 #include "wfrac_protocol/crc16.hpp"
+#include "wfrac_protocol/operation_data.hpp"
 
 namespace {
 
@@ -208,5 +209,102 @@ int main() {
     assert(profile.group == wfrac_protocol::CapabilityGroup::unknown);
     assert_flags(profile.flags, {});
   }
+
+  const auto assert_operation = [](const wfrac_protocol::OperationSegment& raw,
+                                   wfrac_protocol::OperationSemanticKind kind,
+                                   wfrac_protocol::OperationScope scope,
+                                   wfrac_protocol::OperationValueQuality quality,
+                                   bool code_known = true, bool unit_relation_known = false) {
+    const auto decoded = wfrac_protocol::decode_operation_segment(raw);
+    assert(decoded.raw.code == raw.code && decoded.raw.op1 == raw.op1);
+    assert(decoded.raw.op2 == raw.op2 && decoded.raw.op3 == raw.op3);
+    assert(decoded.kind == kind);
+    assert(decoded.scope == scope);
+    assert(decoded.value_quality == quality);
+    assert(decoded.code_known == code_known);
+    assert(decoded.unit_relation_known == unit_relation_known);
+  };
+  assert_operation({0x80U, 0x10U, 0xABU, 0xCDU}, wfrac_protocol::OperationSemanticKind::outdoor_ambient,
+                    wfrac_protocol::OperationScope::shared_outdoor,
+                    wfrac_protocol::OperationValueQuality::canonical_ambient_raw_pending_lookup);
+  assert_operation({0x80U, 0x20U, 0x01U, 0xFEU}, wfrac_protocol::OperationSemanticKind::indoor_ambient,
+                    wfrac_protocol::OperationScope::per_indoor,
+                    wfrac_protocol::OperationValueQuality::canonical_ambient_raw_pending_lookup);
+  assert_operation({0x80U, 0x30U, 0x02U, 0x03U}, wfrac_protocol::OperationSemanticKind::unknown,
+                    wfrac_protocol::OperationScope::unknown,
+                    wfrac_protocol::OperationValueQuality::unknown_semantic, false);
+  assert_operation({0x94U, 0x10U, 0x12U, 0x34U}, wfrac_protocol::OperationSemanticKind::current_run_energy,
+                    wfrac_protocol::OperationScope::per_indoor,
+                    wfrac_protocol::OperationValueQuality::bounded_derived_available_later, true, true);
+  assert_operation({0x11U, 0x01U, 0x02U, 0x03U}, wfrac_protocol::OperationSemanticKind::compressor_frequency,
+                    wfrac_protocol::OperationScope::shared_outdoor, wfrac_protocol::OperationValueQuality::raw_only);
+  assert_operation({0x90U, 0x04U, 0x05U, 0x06U}, wfrac_protocol::OperationSemanticKind::operating_current,
+                    wfrac_protocol::OperationScope::shared_outdoor, wfrac_protocol::OperationValueQuality::raw_only);
+  assert_operation({0x85U, 0x07U, 0x08U, 0x09U}, wfrac_protocol::OperationSemanticKind::discharge_hot_gas_temperature,
+                    wfrac_protocol::OperationScope::shared_outdoor,
+                    wfrac_protocol::OperationValueQuality::bounded_derived_available_later);
+  assert_operation({0x13U, 0x0AU, 0x0BU, 0x0CU}, wfrac_protocol::OperationSemanticKind::eev_raw,
+                    wfrac_protocol::OperationScope::per_indoor, wfrac_protocol::OperationValueQuality::raw_only);
+  assert_operation({0x81U, 0x10U, 171U, 0x0DU}, wfrac_protocol::OperationSemanticKind::thi_r1,
+                    wfrac_protocol::OperationScope::per_indoor,
+                    wfrac_protocol::OperationValueQuality::bounded_derived_available_later);
+  assert_operation({0x87U, 0x11U, 171U, 0x0EU}, wfrac_protocol::OperationSemanticKind::thi_r3,
+                    wfrac_protocol::OperationScope::per_indoor,
+                    wfrac_protocol::OperationValueQuality::bounded_derived_available_later);
+  assert_operation({0x82U, 0x12U, 0x0FU, 0x10U}, wfrac_protocol::OperationSemanticKind::tho_r1,
+                    wfrac_protocol::OperationScope::shared_outdoor, wfrac_protocol::OperationValueQuality::raw_only);
+  assert_operation({0xB1U, 0x13U, 0x11U, 0x12U}, wfrac_protocol::OperationSemanticKind::tdsh_raw,
+                    wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::raw_only);
+  assert_operation({0x7CU, 0x14U, 0x13U, 0x14U}, wfrac_protocol::OperationSemanticKind::protection_diagnostic_unknown,
+                    wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::unknown_semantic);
+  assert_operation({0x1EU, 0x15U, 0x16U, 0x17U}, wfrac_protocol::OperationSemanticKind::run_hours_candidate,
+                    wfrac_protocol::OperationScope::unknown,
+                    wfrac_protocol::OperationValueQuality::no_usable_value_established);
+  assert_operation({0x1FU, 0x18U, 0x19U, 0x1AU}, wfrac_protocol::OperationSemanticKind::fan_speed_candidate,
+                    wfrac_protocol::OperationScope::unknown,
+                    wfrac_protocol::OperationValueQuality::no_usable_value_established);
+  assert_operation({0x0DU, 0x19U, 0x1AU, 0x1BU}, wfrac_protocol::OperationSemanticKind::unknown_semantic_0d,
+                    wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::unknown_semantic);
+  assert_operation({0x21U, 0x1CU, 0x1DU, 0x1EU}, wfrac_protocol::OperationSemanticKind::unknown_semantic_21,
+                    wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::unknown_semantic);
+  assert_operation({0x32U, 0x1FU, 0x20U, 0x21U}, wfrac_protocol::OperationSemanticKind::unknown_semantic_32,
+                    wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::unknown_semantic);
+  assert_operation({0x34U, 0x22U, 0x23U, 0xA5U}, wfrac_protocol::OperationSemanticKind::unknown_semantic_34,
+                    wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::unknown_semantic);
+  assert_operation({0x35U, 0x24U, 0x25U, 0x26U}, wfrac_protocol::OperationSemanticKind::unknown_semantic_35,
+                    wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::unknown_semantic);
+  assert_operation({0xF8U, 0x00U, 0x27U, 0x28U}, wfrac_protocol::OperationSemanticKind::home_leave_extension,
+                    wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::special_extension);
+  assert_operation({0xFEU, 0x29U, 0x2AU, 0x2BU}, wfrac_protocol::OperationSemanticKind::unknown,
+                    wfrac_protocol::OperationScope::unknown,
+                    wfrac_protocol::OperationValueQuality::unknown_semantic, false);
+  assert_operation({0x05U, 0x2CU, 0x2DU, 0x2EU}, wfrac_protocol::OperationSemanticKind::unknown,
+                    wfrac_protocol::OperationScope::unknown,
+                    wfrac_protocol::OperationValueQuality::unknown_semantic, false);
+  assert_operation({0x0CU, 0x2FU, 0x30U, 0x31U}, wfrac_protocol::OperationSemanticKind::unknown,
+                    wfrac_protocol::OperationScope::unknown,
+                    wfrac_protocol::OperationValueQuality::unknown_semantic, false);
+
+  wfrac_protocol::AirconBlockView zero_segments{};
+  wfrac_protocol::OperationSegment extracted{};
+  assert(!wfrac_protocol::operation_segment_at(zero_segments, 0U, &extracted));
+  const std::array<uint8_t, 4> one_segment{{0x94U, 0x32U, 0x33U, 0x34U}};
+  wfrac_protocol::AirconBlockView one_block{};
+  one_block.segment_count = 1U;
+  one_block.segments = {one_segment.data(), one_segment.size()};
+  assert(wfrac_protocol::operation_segment_at(one_block, 0U, &extracted));
+  assert(extracted.code == 0x94U && extracted.op1 == 0x32U && extracted.op2 == 0x33U && extracted.op3 == 0x34U);
+  assert(!wfrac_protocol::operation_segment_at(one_block, 1U, &extracted));
+  const std::array<uint8_t, 8> multiple_segments{{0x11U, 0x35U, 0x36U, 0x37U, 0x82U, 0x38U, 0x39U, 0x3AU}};
+  wfrac_protocol::AirconBlockView multiple_blocks{};
+  multiple_blocks.segment_count = 2U;
+  multiple_blocks.segments = {multiple_segments.data(), multiple_segments.size()};
+  assert(wfrac_protocol::operation_segment_at(multiple_blocks, 0U, &extracted));
+  assert(extracted.code == 0x11U && extracted.op3 == 0x37U);
+  assert(wfrac_protocol::operation_segment_at(multiple_blocks, 1U, &extracted));
+  assert(extracted.code == 0x82U && extracted.op1 == 0x38U && extracted.op2 == 0x39U && extracted.op3 == 0x3AU);
+  assert(!wfrac_protocol::operation_segment_at(multiple_blocks, 2U, &extracted));
+  multiple_blocks.segments.size = 7U;
+  assert(!wfrac_protocol::operation_segment_at(multiple_blocks, 1U, &extracted));
   return 0;
 }

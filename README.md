@@ -6,7 +6,7 @@
 
 Phase 0 的 machine-readable software foundation 已建立於 [`specs/wf-rac-contracts.json`](specs/wf-rac-contracts.json)，僅整理研究 contract，不包含 runtime implementation。
 
-目前 software-only validation 流程為：`specs/wf-rac-contracts.json` → `tools/validate_contracts.py` → `tests/host/test_validate_contracts.py`，並新增 `components/wfrac_protocol/` 的 C++17 CRC16／AirconStat structural framing、basic fixed-state decoder、四個 safe command intents 與 capability profile decoder host tests，皆由 GitHub Actions 執行。Python host tests 目前為 64 個；C++ protocol core tests 為 1 個 executable；`CONFIRMED_LOCAL = 0`，hardware/runtime validation 仍為 `HARDWARE_TEST_PENDING`。
+目前 software-only validation 流程為：`specs/wf-rac-contracts.json` → `tools/validate_contracts.py` → `tests/host/test_validate_contracts.py`，並新增 `components/wfrac_protocol/` 的 C++17 CRC16／AirconStat structural framing、basic fixed-state decoder、四個 safe command intents、capability profile decoder 與 operation-data raw segment parser/classifier host tests，皆由 GitHub Actions 執行。Python host tests 目前為 64 個；C++ protocol core tests 為 1 個 executable；`CONFIRMED_LOCAL = 0`，hardware/runtime validation 仍為 `HARDWARE_TEST_PENDING`。
 
 最小 host validation commands：
 
@@ -18,7 +18,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1A — Pure Protocol Core**。參考資料研究基準已建立；目前已實作 portable CRC16、structural framing、basic fixed-state decoder、Power/Mode/Target Temperature/Fan intents 與 capability profile decoder；其他 semantic codec、transport、runtime 與實機驗證仍暫緩。
+目前是 **Phase 1A — Pure Protocol Core**。參考資料研究基準已建立；目前已實作 portable CRC16、structural framing、basic fixed-state decoder、Power/Mode/Target Temperature/Fan intents、capability profile decoder 與 operation-data raw segment parser/classifier；query builder/runtime、diagnostic physical conversions、transport、runtime 與實機驗證仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -49,12 +49,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core） | 367 |
-| 開發／驗證工具（tools、tests、GitHub Actions） | 873 |
+| Firmware（Phase 1A protocol core） | 538 |
+| 開發／驗證工具（tools、tests、GitHub Actions） | 972 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
 | 技術文件（README、AGENTS、docs） | 548 |
 | 其他必要 tracked project files（.gitignore） | 14 |
-| **合計** | **2206** |
+| **合計** | **2476** |
 
 以上為 Git tracked files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 
