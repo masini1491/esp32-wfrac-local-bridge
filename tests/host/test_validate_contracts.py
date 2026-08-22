@@ -116,7 +116,7 @@ class ContractValidatorTests(unittest.TestCase):
     def test_outdoor_temperature_conflict_must_remain_known(self) -> None:
         self.assert_rejected(
             lambda c: c["known_uncertainties"].remove(
-                "0x80 outdoor temperature conversion conflict"
+                "exact CNS-to-WF-RAC temperature representation transform and local hardware validation"
             )
         )
 
@@ -228,6 +228,31 @@ class ContractValidatorTests(unittest.TestCase):
 
     def test_esp_idf_is_not_wf_rac_authority(self) -> None:
         self.assert_rejected(lambda c: c["references"][-1].update(authority_boundary="WF-RAC protocol authority"))
+
+    def test_network_ambient_uses_lookup_not_cns_formula(self) -> None:
+        self.assert_rejected(lambda c: c["temperature_semantics_r6"]["network_ambient_0x80"].update(decoder="direct CNS linear formula"))
+
+    def test_controller_room_temperature_is_not_indoor_ambient_alias(self) -> None:
+        self.assert_rejected(lambda c: c["temperature_semantics_r6"]["basic_concepts"]["controller_room_temperature"].update(is_canonical_0x80_indoor_alias=True))
+
+    def test_temperature_lookup_shape_remains_nonlinear(self) -> None:
+        self.assert_rejected(lambda c: c["temperature_semantics_r6"]["network_ambient_0x80"].update(fixed_temperature_increment_per_raw_code=True))
+
+    def test_coil_diagnostics_preserve_raw_and_bounded_calibration(self) -> None:
+        self.assert_rejected(lambda c: c["temperature_semantics_r6"]["diagnostic_channels"]["0x81"].update(raw_preservable=False))
+        self.assert_rejected(lambda c: c["temperature_semantics_r6"]["diagnostic_channels"]["0x87"].update(precision_calibration_guaranteed=True))
+
+    def test_coil_curve_cannot_be_reused_for_outdoor_sensor(self) -> None:
+        self.assert_rejected(lambda c: c["temperature_semantics_r6"]["diagnostic_channels"]["0x82"].update(reuse_indoor_coil_curve=True))
+
+    def test_b1_remains_raw_only(self) -> None:
+        self.assert_rejected(lambda c: c["temperature_semantics_r6"]["diagnostic_channels"]["0xB1"].update(celsius_conversion_established=True))
+
+    def test_discharge_low_end_semantics_remain_unresolved(self) -> None:
+        self.assert_rejected(lambda c: c["temperature_semantics_r6"]["diagnostic_channels"]["0x85"].update(low_raw_semantics_universally_established=True))
+
+    def test_outlet_semantic_is_not_mode_independent(self) -> None:
+        self.assert_rejected(lambda c: c["temperature_semantics_r6"]["diagnostic_channels"]["0x87"].update(mode_independent_outlet_semantic=True))
 
 
 if __name__ == "__main__":

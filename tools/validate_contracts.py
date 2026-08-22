@@ -198,6 +198,30 @@ def check_time_architecture_r5(contract: dict[str, Any]) -> None:
     require(r5["runtime_implemented"] is False, "time_architecture_r5: runtime implementation is out of scope")
 
 
+def check_temperature_semantics_r6(contract: dict[str, Any]) -> None:
+    r6 = contract["temperature_semantics_r6"]
+    require(r6["runtime_implemented"] is False, "temperature_semantics_r6: runtime implementation is out of scope")
+    basic = r6["basic_concepts"]
+    require(basic["target_setpoint"]["decode"] == "raw / 2 C" and basic["target_setpoint"]["is_ambient_measurement"] is False, "temperature_semantics_r6: target boundary mismatch")
+    require(basic["controller_room_temperature"]["is_canonical_0x80_indoor_alias"] is False, "temperature_semantics_r6: controller/ambient alias forbidden")
+    require(basic["external_room_temperature_injection"]["no_injection_value"] == "0xFF" and basic["external_room_temperature_injection"]["write_safety"] == "HARDWARE_TEST_PENDING", "temperature_semantics_r6: injection boundary mismatch")
+    ambient = r6["network_ambient_0x80"]
+    require(ambient["decoder"] == "official Smart M-Air derived lookup table" and ambient["table_count"] == 2 and ambient["entries_per_table"] == 256, "temperature_semantics_r6: network lookup metadata mismatch")
+    require(ambient["nonlinear"] is True and ambient["fixed_temperature_increment_per_raw_code"] is False, "temperature_semantics_r6: nonlinear lookup boundary mismatch")
+    resolution = r6["representation_layer_resolution"]
+    require(resolution["network_decoder_conflict_status"] == "resolved_by_representation_layer" and resolution["direct_cns_formula_applicable_to_wfrac_network_op2"] is False, "temperature_semantics_r6: representation resolution mismatch")
+    require(r6["lookup_table_process"]["full_lookup_tables_embedded"] is False, "temperature_semantics_r6: full lookup table embedding forbidden")
+    diagnostics = r6["diagnostic_channels"]
+    for code in ("0x81", "0x87", "0x85"):
+        require(diagnostics[code]["raw_preservable"] is True, f"temperature_semantics_r6.{code}: raw preservation missing")
+        require(diagnostics[code]["precision_calibration_guaranteed"] is False if code != "0x85" else diagnostics[code]["low_raw_semantics_universally_established"] is False, f"temperature_semantics_r6.{code}: calibration boundary mismatch")
+    require(diagnostics["0x81"]["highest_thermometer_supported_raw_anchor"] == 170 and diagnostics["0x81"]["above_anchor"] == "EXTRAPOLATED / INFERRED", "temperature_semantics_r6.0x81: anchor boundary mismatch")
+    require(diagnostics["0x87"]["mode_independent_outlet_semantic"] is False, "temperature_semantics_r6.0x87: outlet semantic boundary mismatch")
+    require(diagnostics["0x82"]["raw_only"] is True and diagnostics["0x82"]["reuse_indoor_coil_curve"] is False, "temperature_semantics_r6.0x82: raw-only boundary mismatch")
+    require(diagnostics["0xB1"]["raw_only"] is True and diagnostics["0xB1"]["celsius_conversion_established"] is False, "temperature_semantics_r6.0xB1: raw-only boundary mismatch")
+    require(r6["matter_mapping"] == "PENDING" and r6["local_validation_status"] == "HARDWARE_TEST_PENDING", "temperature_semantics_r6: pending boundaries missing")
+
+
 def validate(contract: dict[str, Any]) -> None:
     required_sections = {
         "schema_version",
@@ -242,6 +266,7 @@ def validate(contract: dict[str, Any]) -> None:
     check_operation_data_r3(contract)
     check_capability_detection_r4(contract)
     check_time_architecture_r5(contract)
+    check_temperature_semantics_r6(contract)
 
     boundaries = contract["command_intent_boundaries"]
     for key in ("intent_only", "does_not_encode_aircon_stat", "does_not_build_json", "does_not_call_http", "does_not_manage_retry_discovery_socket_or_matter_callbacks"):
@@ -262,7 +287,7 @@ def validate(contract: dict[str, Any]) -> None:
     require(taxonomy["generic_operation_data_write"] == "OUT_OF_SCOPE", "result taxonomy: generic write must be out of scope")
 
     uncertainties = set(contract["known_uncertainties"])
-    require("0x80 outdoor temperature conversion conflict" in uncertainties, "known_uncertainties: 0x80 conflict missing")
+    require("exact CNS-to-WF-RAC temperature representation transform and local hardware validation" in uncertainties, "known_uncertainties: 0x80 representation boundary missing")
     require("Matter optional feature mapping" in uncertainties, "known_uncertainties: Matter mapping pending")
 
 

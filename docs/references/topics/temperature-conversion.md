@@ -1,28 +1,31 @@
-# Temperature conversion
+# Temperature Conversion / Sensor Semantics
 
 ## Scope
 
-目前已存在的 basic state、operation-data 與 CNS/SPI temperature evidence；R6 dedicated research 尚未開始。
+R6 canonical temperature concepts、WF-RAC network lookup boundary、diagnostic sensor quality與 multi-split scope；不包含 runtime codec、full lookup tables 或 Matter mapping。
 
 ## Authoritative project conclusions
 
-- Basic target temperature 是 AirconStat state path；controller room temperature 是 state／DB3 path；operation-data temperature 不可與 basic state 混用。
-- `0x80` indoor/outdoor evidence 存在；outdoor conversion 保留 `EVIDENCE_CONFLICT`：WF-RAC nonlinear lookup 與 direct CNS `(raw - 94) * 0.25` 不自行選邊。
-- `0x81`／`0x87` coil evidence 存在；`0x82` outdoor coil raw 存在但 conversion 未建立。Rough／approximate formulas 不升級為 confirmed calibration。
+- Basic concepts 必須分離：`target_setpoint` 是 RECEIVE state[4]/DB2、raw/2 °C、0.5 °C resolution，屬 control；`controller_room_temperature` 是 RECEIVE state[5]/DB3、(raw−61)/4 °C、nominal 0.25 °C，屬 controller input；`external_room_temperature_injection` 是 COMMAND byte[5]/DB3，`0xFF` no injection，candidate encoding `round(T*4)+61`，write safety pending。Controller room state 不等於 0x80 indoor ambient alias。
+- WF-RAC network `0x80` selector `0x10` 是 outdoor ambient、`0x20` 是 indoor ambient；canonical decoder 是 official Smart M-Air derived nonlinear lookup，2 tables × 256 entries，outdoor −50 至 43 °C、indoor −30 至 52 °C，fixed increment=false，存在 repeated/clamped low-end values。
+- 舊 WF-RAC lookup／direct CNS formula conflict 已由 representation layer resolution 處理：CNS indoor `(raw−61)/4`、CNS outdoor `(raw−94)*0.25` 只適用 direct CNS/SPI，不能解 WF-RAC network OP2；exact bridge transform 仍未知，cross-layer difference 保留。Full 512 values 不嵌入 contract。
+- `0x81` THI-R1 與 `0x87` THI-R3 是 per-indoor heat-exchanger sensors，raw 必須保留；candidate NTC curve R25=5200Ω、B=3900K、G=367、Rs=1912Ω，raw 170 是最高明確 thermometer-supported anchor，以上為 extrapolated/inferred，非 precision calibration。`0x87` 的 outlet 是 cooling-context wording，不是 mode-independent universal semantic。
+- `0x82` THO-R1 是 shared outdoor raw-only channel，不重用 indoor curve，physical unit UNKNOWN。`0x85` shared outdoor discharge/hot-gas raw 可在 observed normal range 以 raw/2+32 °C 解讀，但 low-end semantics 未 universal establish，raw 保留。`0xB1` shared outdoor TDSH/discharge-superheat diagnostic raw-only，無 confirmed Celsius conversion。
+- Diagnostic quality 必須區分 canonical ambient、diagnostic derived temperature、raw diagnostic。Multi-split scope：0x80 indoor／0x81／0x87 per indoor；0x80 outdoor／0x82／0x85 shared outdoor。Feature/data scope 不等於 capability identity。
 
 ## High-risk invariants
 
-Protocol presence 不等於 local reporting；不得把 conflict 解決成 universal formula 或把 operation-data raw 變成 precision sensor。
+不得把 state[5]、0x80 indoor ambient、或任何 diagnostic raw 合併成 generic temperature；不得把 direct CNS formula 套到 WF-RAC OP2；不得宣稱 0x81/0x87 precision calibration、0x82 indoor curve、0xB1 Celsius 或 0x85 raw zero fixed 32 °C。
 
 ## Known unknowns / pending validation
 
-Model／firmware conversion、coil calibration 與 local hardware readings：`HARDWARE_TEST_PENDING`。
+Exact CNS-to-WF-RAC transform、external injection safety、model/firmware calibration、0x82 physical unit、0x85 low-end semantics、0xB1 conversion、unknown extra sensors 與 local hardware：`UNKNOWN`／`HARDWARE_TEST_PENDING`。TH R2、TH4、TH5 等沒有 known WF-RAC network mapping，不宣稱 universally unsupported。
 
-**R6 dedicated temperature research：PENDING**
+**R6 dedicated Temperature Conversion / Sensor Semantics：COMPLETE**
 
 ## Related machine-readable contract
 
-`device_model_fields.outdoor_temperature`、`operation_data_r3`。
+`temperature_semantics_r6`、`device_model_fields`、`operation_data_r3`。
 
 ## Provenance pointers
 

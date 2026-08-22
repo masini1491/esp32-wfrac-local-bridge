@@ -24,7 +24,7 @@
 - R3 operation-data WF-RAC-visible matrix：已整理，query與所有 field local validation pending。
 - R4 capability／model detection：已整理，unknown model與optional features保守 pending。
 - R5 Timestamp / Time Architecture：已整理，local validation 與 exact time-source runtime 仍 pending。
-- R6 dedicated temperature research：PENDING；既有 conversion conflict 不自行解決。
+- R6 Temperature Conversion / Sensor Semantics：已整理；local hardware calibration remains pending。
 - R7 dedicated TLS policy：PENDING；不決定 production TLS policy。
 - Matter mapping／Phase 0.3：尚未開始。
 
