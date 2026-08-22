@@ -4,7 +4,7 @@
 
 - 0.0 — 專案初始化：**完成**
 - 0.1 Reference Deep Review — **Complete**
-- Software-only machine-readable foundation — **Complete**（contract、validator、12 個 targeted host tests 與 GitHub Actions software validation gate）
+- Software-only machine-readable foundation — **Complete**（contract、validator、64 個 targeted host tests 與 GitHub Actions software validation gate）
 - 0.2 — WF-RAC Protocol / State Map：研究基礎已建立；實機相關工作暫緩
 - 0.3 — Matter Room Air Conditioner Mapping：暫緩
 - 0.4 — Local API Hardware Validation Plan：待未來恢復實作時進行
@@ -22,7 +22,7 @@
 
 - CRC16-CCITT core：**完成**
 - AirconStat structural framing：**完成**
-- Basic fixed-state decoder 與 Power/Mode/Target Temperature/Fan command intents：**完成**
-- Vane、diagnostics、operation-data、capability、Base64、transport/runtime 與 hardware validation：尚未實作
+- Basic fixed-state decoder、Power/Mode/Target Temperature/Fan command intents 與 capability profile decoder：**完成**
+- Vane、diagnostics、operation-data semantic parser、advanced fixed-state fields、Device Model、Base64、transport/runtime 與 hardware validation：尚未實作
 
 目前狀態：**Phase 1A protocol core 已開始；Reference Deep Review 已完成；實機驗證仍暫緩。**

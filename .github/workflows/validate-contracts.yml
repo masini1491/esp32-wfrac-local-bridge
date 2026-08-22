@@ -29,5 +29,6 @@ jobs:
           components/wfrac_protocol/src/crc16.cpp
           components/wfrac_protocol/src/aircon_frame.cpp
           components/wfrac_protocol/src/aircon_state.cpp
+          components/wfrac_protocol/src/capabilities.cpp
           tests/host_cpp/test_protocol_core.cpp
           -o protocol-core-tests && ./protocol-core-tests

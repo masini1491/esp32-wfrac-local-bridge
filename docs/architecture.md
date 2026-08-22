@@ -1,6 +1,6 @@
 # Architecture
 
-`Phase 1A — Pure Protocol Core` 已開始；目前實作 portable WF-RAC Protocol 的 CRC16、AirconStat structural framing、basic RECEIVE fixed-state decode 與四個 safe COMMAND intents，沒有 transport、runtime 或 hardware implementation。
+`Phase 1A — Pure Protocol Core` 已開始；目前實作 portable WF-RAC Protocol 的 CRC16、AirconStat structural framing、basic RECEIVE fixed-state decode、四個 safe COMMAND intents 與 capability profile decoder，沒有 transport、runtime 或 hardware implementation。
 
 ```text
 WF-RAC Transport (HTTP :51443 / HTTPS :51443)

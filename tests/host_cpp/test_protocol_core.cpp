@@ -6,6 +6,7 @@
 
 #include "wfrac_protocol/aircon_frame.hpp"
 #include "wfrac_protocol/aircon_state.hpp"
+#include "wfrac_protocol/capabilities.hpp"
 #include "wfrac_protocol/crc16.hpp"
 
 namespace {
@@ -161,5 +162,51 @@ int main() {
     assert(command[3] == pair.second); assert_safe_baseline(command, 3);
   }
   assert(wfrac_protocol::encode_set_fan(wfrac_protocol::FanMode::unknown, &command) == wfrac_protocol::EncodeError::invalid_fan);
+
+  const auto assert_flags = [](const wfrac_protocol::CapabilityFlags& actual,
+                               const wfrac_protocol::CapabilityFlags& expected) {
+    assert(actual.power_consumption == expected.power_consumption);
+    assert(actual.vacant_property == expected.vacant_property);
+    assert(actual.self_clean_operation == expected.self_clean_operation);
+    assert(actual.wind_direction_lr == expected.wind_direction_lr);
+    assert(actual.entrust == expected.entrust);
+    assert(actual.led_light == expected.led_light);
+    assert(actual.auto_heating == expected.auto_heating);
+    assert(actual.home_leave_mode == expected.home_leave_mode);
+    assert(actual.temp_information == expected.temp_information);
+    assert(actual.indoor_and_outdoor_temp == expected.indoor_and_outdoor_temp);
+    assert(actual.preset_temp_auto == expected.preset_temp_auto);
+    assert(actual.call_center_phone_number == expected.call_center_phone_number);
+    assert(actual.outdoor_temp_always_show == expected.outdoor_temp_always_show);
+    assert(actual.outdoor_temp_outside_tokyo == expected.outdoor_temp_outside_tokyo);
+    assert(actual.cool_hot_judge == expected.cool_hot_judge);
+    assert(actual.preset_temp_range_2 == expected.preset_temp_range_2);
+    assert(actual.operation_data == expected.operation_data);
+  };
+  const auto assert_profile = [&](uint8_t raw, wfrac_protocol::CapabilityGroup group,
+                                  const wfrac_protocol::CapabilityFlags& flags) {
+    const auto profile = wfrac_protocol::decode_capabilities(raw);
+    assert(profile.model_nr_raw == raw);
+    assert(profile.profile_known);
+    assert(profile.group == group);
+    assert_flags(profile.flags, flags);
+  };
+  assert_profile(0U, wfrac_protocol::CapabilityGroup::separate_2021,
+                 {true, false, false, true, true, true, true, false, true, true, false, false, false, true, true, false, false});
+  assert_profile(1U, wfrac_protocol::CapabilityGroup::global_2022,
+                 {true, true, true, true, true, false, true, true, true, true, false, false, true, false, true, false, false});
+  assert_profile(2U, wfrac_protocol::CapabilityGroup::high_end_for_japanese_2023,
+                 {true, false, true, true, true, false, false, false, true, true, false, true, false, false, true, false, false});
+  assert_profile(3U, wfrac_protocol::CapabilityGroup::zt_2025,
+                 {false, true, true, true, true, false, true, true, true, true, false, false, true, false, true, true, true});
+  assert_profile(64U, wfrac_protocol::CapabilityGroup::fdt_2023,
+                 {false, false, false, false, false, true, false, false, false, true, true, false, true, false, false, false, false});
+  for (const uint8_t raw : {4U, 63U, 65U, 127U}) {
+    const auto profile = wfrac_protocol::decode_capabilities(raw);
+    assert(profile.model_nr_raw == raw);
+    assert(!profile.profile_known);
+    assert(profile.group == wfrac_protocol::CapabilityGroup::unknown);
+    assert_flags(profile.flags, {});
+  }
   return 0;
 }
