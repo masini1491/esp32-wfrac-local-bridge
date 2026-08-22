@@ -36,3 +36,14 @@ jobs:
           components/wfrac_protocol/src/aircon_stat.cpp
           tests/host_cpp/test_protocol_core.cpp
           -o protocol-core-tests && ./protocol-core-tests
+
+      - name: Run C++ device model tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_protocol/include
+          -Icomponents/wfrac_device_model/include
+          components/wfrac_protocol/src/aircon_state.cpp
+          components/wfrac_protocol/src/capabilities.cpp
+          components/wfrac_device_model/src/protocol_mapping.cpp
+          tests/host_cpp/test_device_model.cpp
+          -o device-model-tests && ./device-model-tests

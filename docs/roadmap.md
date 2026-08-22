@@ -26,3 +26,8 @@
 - Vane、diagnostics、request RECEIVE policy、query transaction runtime、diagnostic physical conversions、advanced fixed-state fields、Device Model、JSON、transport/runtime 與 hardware validation：尚未實作
 
 目前狀態：**Phase 1A protocol core 已開始；Reference Deep Review 已完成；實機驗證仍暫緩。**
+
+## Phase 1B — WF-RAC Device Model
+
+- Basic HVAC state projection 與 tri-state app capability hints：**完成**
+- Advanced protocol fields、diagnostics projection、availability/state ownership、command intent model、transport/runtime、Matter mapping 與 hardware validation：尚未實作

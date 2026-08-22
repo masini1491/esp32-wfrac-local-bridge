@@ -1,6 +1,6 @@
 # Development discipline
 
-本 repository 目前進入 Phase 1A — Pure Protocol Core。允許 portable C/C++、pure WF-RAC protocol codec、host-side unit tests，以及 minimal ESP-IDF component-compatible structure；Phase 1A 只能實作 WF-RAC Protocol。仍禁止 Wi-Fi runtime、socket、HTTP/HTTPS、TLS、mDNS runtime、NVS、actual WF-RAC requests、hardware test、Matter/MQTT runtime、WebUI、credential handling，以及未經要求的 scope expansion。
+本 repository 目前進入 Phase 1B — WF-RAC Device Model。允許既有 Phase 1A protocol core 維護、portable WF-RAC Device Model、protocol → Device Model mapping、host-side unit tests，以及 minimal ESP-IDF component-compatible structure。仍禁止 Wi-Fi runtime、socket、HTTP/HTTPS、TLS、mDNS runtime、NVS、actual WF-RAC requests、hardware test、Matter Adapter／Matter runtime、MQTT、WebUI、credential handling，以及未經要求的 scope expansion。
 
 正式 framework 是 ESP-IDF；ESP32-C6 為 primary、ESP32-C3 為 compatibility target；Matter-over-Wi-Fi 是 primary transport。固定 layering：WF-RAC Transport → WF-RAC Protocol → WF-RAC Device Model → Matter Adapter → Matter over Wi-Fi。
 

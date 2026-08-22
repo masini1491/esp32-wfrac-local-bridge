@@ -2,7 +2,7 @@
 
 這是將 Mitsubishi Heavy Industries WF-RAC 空調銜接至 Matter 的本地研究與架構基準。
 
-研究 reference set 已補強，並記錄 AirconStat 與 MHI CNS/SPI-derived semantics 的高階關係；本專案已進入 Phase 1A Pure Protocol Core，實機驗證目前暫緩。
+研究 reference set 已補強，並記錄 AirconStat 與 MHI CNS/SPI-derived semantics 的高階關係；本專案已進入 Phase 1B WF-RAC Device Model，實機驗證目前暫緩。
 
 Phase 0 的 machine-readable software foundation 已建立於 [`specs/wf-rac-contracts.json`](specs/wf-rac-contracts.json)，僅整理研究 contract，不包含 runtime implementation。
 
@@ -18,7 +18,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1A — Pure Protocol Core**。參考資料研究基準已建立；目前已實作 portable CRC16、structural framing、basic fixed-state decoder、Power/Mode/Target Temperature/Fan intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe operation-data query builder、bounded project query batch 1–3、standard Base64 codec 與 generic full AirconStat composer；request RECEIVE policy、JSON envelope、query runtime、transport、runtime 與實機驗證仍暫緩。
+目前是 **Phase 1B — WF-RAC Device Model**。Phase 1A Protocol Core #1–#6 已完成；目前另有 basic HVAC state projection 與 tri-state app capability hints。advanced protocol fields、diagnostics projection、availability/state ownership、command intent model、request RECEIVE policy、JSON envelope、transport/runtime、Matter mapping 與實機驗證仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -49,12 +49,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core） | 895 |
-| 開發／驗證工具（tools、tests、GitHub Actions） | 1224 |
+| Firmware（Phase 1A protocol core／Phase 1B device model） | 1037 |
+| 開發／驗證工具（tools、tests、GitHub Actions） | 1334 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 548 |
+| 技術文件（README、AGENTS、docs） | 553 |
 | 其他必要 tracked project files（.gitignore） | 14 |
-| **合計** | **3085** |
+| **合計** | **3342** |
 
 以上為 Git tracked files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 

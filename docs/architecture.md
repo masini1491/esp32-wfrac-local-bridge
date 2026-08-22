@@ -1,6 +1,6 @@
 # Architecture
 
-`Phase 1A — Pure Protocol Core` 已開始；目前實作 portable WF-RAC Protocol 的 CRC16、AirconStat structural framing、basic RECEIVE fixed-state decode、四個 safe COMMAND intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe query builder、standard Base64 codec 與 generic full AirconStat composer，沒有 request policy、transport、runtime 或 hardware implementation。
+`Phase 1B — WF-RAC Device Model` 已開始；目前實作 portable WF-RAC Protocol Core #1–#6，以及基本 HVAC state projection 與 tri-state app capability hints。Device Model 只依賴 protocol semantic types，不處理 raw AirconStat、transport、runtime、hardware 或 Matter implementation。
 
 ```text
 WF-RAC Transport (HTTP :51443 / HTTPS :51443)
@@ -10,7 +10,7 @@ WF-RAC API Envelope → AirconStat Codec → WF-RAC Device Model
 Matter Adapter → Matter over Wi-Fi
 ```
 
-Transport 不預設為 plain HTTP；legacy firmware 可能使用 HTTP，newer WF-RAC-HTTPS firmware 可能使用 HTTPS。較新的上游行為包含 self-signed certificate、TLS 1.2、ALPN `http/1.1`、`Connection: close` 與一次只允許單一連線的限制；這些不是所有 firmware 的通用要求。本階段不建立 implementation。API envelope 的 `airconStat` 是 Base64 binary payload，另有 CRC16-CCITT codec；本階段不建立 codec。
+Transport 不預設為 plain HTTP；legacy firmware 可能使用 HTTP，newer WF-RAC-HTTPS firmware 可能使用 HTTPS。較新的上游行為包含 self-signed certificate、TLS 1.2、ALPN `http/1.1`、`Connection: close` 與一次只允許單一連線的限制；這些不是所有 firmware 的通用要求。本階段不建立 transport implementation。API envelope 的 `airconStat` 是 Base64 binary payload；portable Base64、CRC16、block serialization 與 generic full AirconStat composition 已在 Protocol Core 實作，但 request RECEIVE policy、JSON envelope 與 runtime 尚未建立。
 
 Matter Adapter 只對 Device Model 發出高階 request，如 `setPower()`、`setMode()`、`setTargetTemperature()`、`setFanMode()`、`requestStatus()`；不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。Device Model 應與傳輸層及上層整合介面解耦，保持清楚的模組邊界與可測試性。
 
