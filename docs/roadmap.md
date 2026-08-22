@@ -41,4 +41,5 @@
 
 - Portable transport contract、endpoint/request/response DTO、transport error 與 HTTP status 分離、FakeTransport 與獨立 local host test gate：**完成**
 - Portable TimeProvider（trusted／estimated／unavailable）、64-bit Unix timestamp、五個 typed local API request builders、JSON escaping、AirconStat CRC validation／Base64 wrapping、`accountId=operatorId` 與 compatibility `remote=0` serialization：**完成**
-- Platform clock source、Operator ID persistence、registration lifecycle／response parsing、HTTPS-first scheme state machine、sticky per-device scheme cache、ESP-IDF HTTP/TLS transport、mDNS、retry/rate limiting、NVS、hardware validation 與 Matter：尚未實作
+- HTTPS-first portable scheme policy、caller-owned per-device in-memory cache、sticky HTTPS／HTTP、explicit `scheme_mismatch`-only HTTP compatibility fallback decision，以及 TLS identity failure taxonomy：**完成**
+- Platform clock source、Operator ID persistence、registration lifecycle／response parsing、persistent scheme cache／NVS、ESP-IDF error mapping、certificate policy、actual HTTP/TLS transport、mDNS、retry/rate limiting、rediscovery trigger、hardware validation 與 Matter：尚未實作

@@ -18,7 +18,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable transport contract、endpoint/request/response DTO、TransportError 與 HTTP status 的明確分離、test-only FakeTransport、portable TimeProvider，以及五個 typed WF-RAC API request builders（JSON escaping、64-bit timestamp、AirconStat CRC validation／Base64 wrapping、`accountId=operatorId` 與 compatibility `remote=0` serialization）。platform clock source、Operator ID persistence、registration lifecycle／response parsing、HTTPS-first scheme state machine、per-device scheme cache、ESP-IDF HTTP/TLS transport、mDNS、retry/rate limiting、NVS、Matter mapping 與實機驗證仍暫緩。
+目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable transport contract、endpoint/request/response DTO、TransportError 與 HTTP status 的明確分離、test-only FakeTransport、HTTPS-first scheme policy、caller-owned per-device in-memory scheme cache、sticky HTTPS／HTTP、explicit HTTP compatibility fallback decision、portable TimeProvider，以及五個 typed WF-RAC API request builders（JSON escaping、64-bit timestamp、AirconStat CRC validation／Base64 wrapping、`accountId=operatorId` 與 compatibility `remote=0` serialization）。platform clock source、Operator ID persistence、registration lifecycle／response parsing、persistent scheme cache／NVS、ESP-IDF error mapping、certificate policy、actual HTTP/TLS transport、mDNS、retry/rate limiting、rediscovery trigger、Matter mapping 與實機驗證仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -49,12 +49,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 1997 |
-| 開發／驗證工具（tools、tests、GitHub Actions） | 2791 |
+| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 2075 |
+| 開發／驗證工具（tools、tests、GitHub Actions） | 2927 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 596 |
+| 技術文件（README、AGENTS、docs） | 615 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 32 |
-| **合計** | **5820** |
+| **合計** | **6053** |
 
 以上為 Git tracked files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 

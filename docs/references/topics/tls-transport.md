@@ -19,9 +19,19 @@ R7 software-only transport/security policy；不包含 TLS runtime、HTTP client
 
 不得把 verify-off、TLS 1.0、SECLEVEL、特定 cipher、hostname skip 或 insecure ESP-TLS configuration 直接變成 universal production constants；不得用 application result/refusal 掩蓋 transport discovery，也不得以 public NTP 作 daily-control prerequisite。
 
+## Software policy implementation
+
+- Unknown device 採 HTTPS-first；caller-owned per-device in-memory cache 記錄 HTTP／HTTPS confirmed state。
+- Automatic HTTP compatibility fallback 只由 `unknown + HTTPS + scheme_mismatch` 明確決策觸發。`scheme_mismatch` 必須由未來 backend 提供足以證明 scheme 選錯的 transport evidence；這是 project safety implementation policy，不宣稱所有 upstream 或 platform error 都能提供此分類。
+- Generic TLS negotiation／handshake failure 保持 `tls_failure`，不得推定 scheme mismatch；certificate、hostname 或 server identity verification failure 分為 `tls_identity_failure`，且禁止自動 downgrade HTTP。
+- HTTPS confirmed 後保持 sticky；timeout、connection／I/O failure、generic TLS failure、TLS identity failure 或後續 scheme mismatch 均不清除 cache 或觸發 HTTP。HTTP confirmed 同樣保持 sticky，rediscovery 必須由 caller 明確清除 cache。
+- `TransportError::none` 表示已透過 attempted scheme 收到 HTTP response，application status 不參與 scheme policy。`response_too_large` 也確認 scheme，但原 request 結果仍維持 failure。
+- Scheme policy 只選擇單一明確 `TransportScheme` 並更新 cache，不呼叫 transport；`ITransport::perform()` 仍只代表一次 physical attempt，不執行 fallback。
+- Persistent cache／NVS、ESP-IDF error 到 `scheme_mismatch`／`tls_identity_failure` 的實際 mapping、rediscovery trigger 與 request runtime 仍 pending。
+
 ## Known unknowns / pending validation
 
-Per-firmware scheme、exact TLS/cipher profile、certificate uniqueness/stability/lifecycle、hostname handling、degraded HTTPS user policy、header casing、certificate validity-time behavior 與 local device：`HARDWARE_TEST_PENDING`。
+Per-firmware scheme、exact TLS/cipher profile、certificate uniqueness/stability/lifecycle、hostname handling、degraded HTTPS user policy、header casing、certificate validity-time behavior、ESP-IDF error mapping 與 local device：`HARDWARE_TEST_PENDING`。
 
 **R7 TLS / Transport Security Policy：COMPLETE**
 

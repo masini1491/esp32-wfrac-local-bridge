@@ -41,6 +41,8 @@ enum class TransportError {
   timeout,
   connection_failure,
   tls_failure,
+  tls_identity_failure,
+  scheme_mismatch,
   io_failure,
   response_too_large,
 };
