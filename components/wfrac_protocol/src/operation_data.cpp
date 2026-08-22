@@ -1,5 +1,7 @@
 #include "wfrac_protocol/operation_data.hpp"
 
+#include "wfrac_protocol/aircon_block.hpp"
+
 namespace wfrac_protocol {
 namespace {
 
@@ -102,6 +104,68 @@ OperationData decode_operation_segment(const OperationSegment& raw) {
   OperationData result{};
   result.raw = raw;
   return result;
+}
+
+OperationSegment make_operation_query_segment(uint8_t code) { return {code, 0xFFU, 0xFFU, 0xFFU}; }
+
+bool is_known_safe_operation_query_code(uint8_t code) {
+  switch (code) {
+    case 0x11U:
+    case 0x90U:
+    case 0x85U:
+    case 0x13U:
+    case 0x81U:
+    case 0x87U:
+    case 0x82U:
+    case 0xB1U:
+    case 0x7CU:
+    case 0x1EU:
+    case 0x1FU:
+    case 0x0DU:
+    case 0x21U:
+    case 0x32U:
+    case 0x34U:
+    case 0x35U:
+      return true;
+    default:
+      return false;
+  }
+}
+
+namespace {
+
+OperationQueryError map_block_error(BlockEncodeError error) {
+  switch (error) {
+    case BlockEncodeError::none: return OperationQueryError::none;
+    case BlockEncodeError::output_too_small: return OperationQueryError::output_too_small;
+    case BlockEncodeError::invalid_argument:
+    case BlockEncodeError::invalid_segment_view:
+    case BlockEncodeError::segment_count_overflow:
+      return OperationQueryError::invalid_argument;
+  }
+  return OperationQueryError::invalid_argument;
+}
+
+}  // namespace
+
+OperationQueryError build_safe_operation_query(uint8_t code, ByteView output, std::size_t* encoded_size) {
+  if (!is_known_safe_operation_query_code(code)) return OperationQueryError::invalid_code;
+  const OperationSegment segment = make_operation_query_segment(code);
+  const CommandState command = make_safe_command_state();
+  return map_block_error(serialize_aircon_block(command, &segment, 1U, output, encoded_size));
+}
+
+OperationQueryError build_safe_operation_query_batch(const uint8_t* codes, std::size_t count, ByteView output,
+                                                     std::size_t* encoded_size) {
+  if (count == 0U || count > 3U) return OperationQueryError::batch_size_out_of_range;
+  if (codes == nullptr) return OperationQueryError::invalid_argument;
+  OperationSegment segments[3]{};
+  for (std::size_t index = 0; index < count; ++index) {
+    if (!is_known_safe_operation_query_code(codes[index])) return OperationQueryError::invalid_code;
+    segments[index] = make_operation_query_segment(codes[index]);
+  }
+  const CommandState command = make_safe_command_state();
+  return map_block_error(serialize_aircon_block(command, segments, count, output, encoded_size));
 }
 
 }  // namespace wfrac_protocol

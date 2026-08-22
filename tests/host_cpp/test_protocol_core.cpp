@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "wfrac_protocol/aircon_frame.hpp"
+#include "wfrac_protocol/aircon_block.hpp"
 #include "wfrac_protocol/aircon_state.hpp"
 #include "wfrac_protocol/capabilities.hpp"
 #include "wfrac_protocol/crc16.hpp"
@@ -306,5 +307,100 @@ int main() {
   assert(!wfrac_protocol::operation_segment_at(multiple_blocks, 2U, &extracted));
   multiple_blocks.segments.size = 7U;
   assert(!wfrac_protocol::operation_segment_at(multiple_blocks, 1U, &extracted));
+
+  wfrac_protocol::CommandState safe_state = wfrac_protocol::make_safe_command_state();
+  std::array<uint8_t, 1041> serialized{};
+  std::size_t encoded_size = 0U;
+  assert(wfrac_protocol::encoded_aircon_block_size(0U) == 21U);
+  assert(wfrac_protocol::encoded_aircon_block_size(255U) == 1041U);
+  assert(wfrac_protocol::encoded_aircon_block_size(256U) == 0U);
+  assert(wfrac_protocol::serialize_aircon_block(safe_state, nullptr, 0U,
+                                                {serialized.data(), serialized.size()}, &encoded_size) ==
+         wfrac_protocol::BlockEncodeError::none);
+  assert(encoded_size == 21U && serialized[18] == 0U && serialized[5] == 0xFFU);
+  uint16_t serialized_crc = static_cast<uint16_t>(serialized[19]) |
+                            (static_cast<uint16_t>(serialized[20]) << 8U);
+  assert(serialized_crc == wfrac_protocol::crc16_ccitt(serialized.data(), 19U));
+
+  const wfrac_protocol::OperationSegment one_raw{0xFEU, 0x10U, 0x20U, 0xA5U};
+  assert(wfrac_protocol::serialize_aircon_block(safe_state, &one_raw, 1U,
+                                                {serialized.data(), serialized.size()}, &encoded_size) ==
+         wfrac_protocol::BlockEncodeError::none);
+  assert(encoded_size == 25U && serialized[18] == 1U);
+  assert(serialized[19] == 0xFEU && serialized[20] == 0x10U && serialized[21] == 0x20U && serialized[22] == 0xA5U);
+  serialized_crc = static_cast<uint16_t>(serialized[23]) | (static_cast<uint16_t>(serialized[24]) << 8U);
+  assert(serialized_crc == wfrac_protocol::crc16_ccitt(serialized.data(), 23U));
+
+  const std::array<wfrac_protocol::OperationSegment, 3> three_raw{{
+      {0x11U, 0xFFU, 0xFFU, 0x01U}, {0x90U, 0xFFU, 0xFFU, 0x02U}, {0x85U, 0xFFU, 0xFFU, 0x03U}}};
+  assert(wfrac_protocol::serialize_aircon_block(safe_state, three_raw.data(), three_raw.size(),
+                                                {serialized.data(), serialized.size()}, &encoded_size) ==
+         wfrac_protocol::BlockEncodeError::none);
+  assert(encoded_size == 33U && serialized[18] == 3U);
+  assert(serialized[19] == 0x11U && serialized[23] == 0x90U && serialized[27] == 0x85U);
+  assert(serialized[22] == 0x01U && serialized[26] == 0x02U && serialized[30] == 0x03U);
+  assert(wfrac_protocol::serialize_aircon_block(safe_state, &one_raw, 1U, {serialized.data(), 24U}, &encoded_size) ==
+         wfrac_protocol::BlockEncodeError::output_too_small);
+  assert(wfrac_protocol::serialize_aircon_block(safe_state, nullptr, 1U,
+                                                {serialized.data(), serialized.size()}, &encoded_size) ==
+         wfrac_protocol::BlockEncodeError::invalid_segment_view);
+  assert(wfrac_protocol::serialize_aircon_block(safe_state, &one_raw, 1U, {nullptr, serialized.size()}, &encoded_size) ==
+         wfrac_protocol::BlockEncodeError::invalid_argument);
+  assert(wfrac_protocol::serialize_aircon_block(safe_state, &one_raw, 1U,
+                                                {serialized.data(), serialized.size()}, nullptr) ==
+         wfrac_protocol::BlockEncodeError::invalid_argument);
+  std::array<wfrac_protocol::OperationSegment, 255> max_raw{};
+  max_raw[254] = {0xFEU, 0x01U, 0x02U, 0xA6U};
+  assert(wfrac_protocol::serialize_aircon_block(safe_state, max_raw.data(), max_raw.size(),
+                                                {serialized.data(), serialized.size()}, &encoded_size) ==
+         wfrac_protocol::BlockEncodeError::none);
+  assert(encoded_size == 1041U && serialized[18] == 255U && serialized[1037] == 0xFEU);
+  serialized_crc = static_cast<uint16_t>(serialized[1039]) | (static_cast<uint16_t>(serialized[1040]) << 8U);
+  assert(serialized_crc == wfrac_protocol::crc16_ccitt(serialized.data(), 1039U));
+
+  const auto query = wfrac_protocol::make_operation_query_segment(0xF8U);
+  assert(query.code == 0xF8U && query.op1 == 0xFFU && query.op2 == 0xFFU && query.op3 == 0xFFU);
+  assert(!wfrac_protocol::is_known_safe_operation_query_code(0x05U));
+  const std::array<uint8_t, 16> safe_query_codes{{0x11U, 0x90U, 0x85U, 0x13U, 0x81U, 0x87U, 0x82U, 0xB1U,
+                                                   0x7CU, 0x1EU, 0x1FU, 0x0DU, 0x21U, 0x32U, 0x34U, 0x35U}};
+  for (const uint8_t code : safe_query_codes) assert(wfrac_protocol::is_known_safe_operation_query_code(code));
+  for (const uint8_t code : {0x05U, 0x0CU, 0xF8U, 0xFEU, 0x80U, 0x94U}) {
+    assert(!wfrac_protocol::is_known_safe_operation_query_code(code));
+    assert(wfrac_protocol::build_safe_operation_query(code, {serialized.data(), serialized.size()}, &encoded_size) ==
+           wfrac_protocol::OperationQueryError::invalid_code);
+  }
+  assert(wfrac_protocol::build_safe_operation_query(0x11U, {serialized.data(), serialized.size()}, &encoded_size) ==
+         wfrac_protocol::OperationQueryError::none);
+  assert(encoded_size == 25U && serialized[5] == 0xFFU && serialized[18] == 1U);
+  assert(serialized[19] == 0x11U && serialized[20] == 0xFFU && serialized[21] == 0xFFU && serialized[22] == 0xFFU);
+  for (const std::size_t index : {13U, 14U, 16U, 17U}) assert(serialized[index] == 0U);
+  serialized_crc = static_cast<uint16_t>(serialized[23]) | (static_cast<uint16_t>(serialized[24]) << 8U);
+  assert(serialized_crc == wfrac_protocol::crc16_ccitt(serialized.data(), 23U));
+
+  const std::array<uint8_t, 3> query_batch{{0x11U, 0x90U, 0x85U}};
+  for (std::size_t count = 1U; count <= 3U; ++count) {
+    assert(wfrac_protocol::build_safe_operation_query_batch(query_batch.data(), count,
+                                                            {serialized.data(), serialized.size()}, &encoded_size) ==
+           wfrac_protocol::OperationQueryError::none);
+    assert(encoded_size == wfrac_protocol::encoded_aircon_block_size(count));
+    assert(serialized[18] == count);
+    for (std::size_t index = 0; index < count; ++index) {
+      const std::size_t offset = 19U + index * 4U;
+      assert(serialized[offset] == query_batch[index]);
+      assert(serialized[offset + 1U] == 0xFFU && serialized[offset + 2U] == 0xFFU && serialized[offset + 3U] == 0xFFU);
+    }
+  }
+  assert(wfrac_protocol::build_safe_operation_query_batch(nullptr, 0U,
+                                                           {serialized.data(), serialized.size()}, &encoded_size) ==
+         wfrac_protocol::OperationQueryError::batch_size_out_of_range);
+  const std::array<uint8_t, 4> too_many{{0x11U, 0x90U, 0x85U, 0x13U}};
+  assert(wfrac_protocol::build_safe_operation_query_batch(too_many.data(), too_many.size(),
+                                                           {serialized.data(), serialized.size()}, &encoded_size) ==
+         wfrac_protocol::OperationQueryError::batch_size_out_of_range);
+  assert(wfrac_protocol::build_safe_operation_query_batch(nullptr, 1U,
+                                                           {serialized.data(), serialized.size()}, &encoded_size) ==
+         wfrac_protocol::OperationQueryError::invalid_argument);
+  assert(wfrac_protocol::build_safe_operation_query(0x11U, {serialized.data(), 24U}, &encoded_size) ==
+         wfrac_protocol::OperationQueryError::output_too_small);
   return 0;
 }

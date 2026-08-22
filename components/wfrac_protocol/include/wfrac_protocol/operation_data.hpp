@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "wfrac_protocol/aircon_frame.hpp"
+#include "wfrac_protocol/aircon_state.hpp"
 
 namespace wfrac_protocol {
 
@@ -60,5 +61,19 @@ struct OperationData {
 
 bool operation_segment_at(const AirconBlockView& block, std::size_t index, OperationSegment* output);
 OperationData decode_operation_segment(const OperationSegment& raw);
+
+enum class OperationQueryError {
+  none,
+  invalid_code,
+  invalid_argument,
+  output_too_small,
+  batch_size_out_of_range,
+};
+
+OperationSegment make_operation_query_segment(uint8_t code);
+bool is_known_safe_operation_query_code(uint8_t code);
+OperationQueryError build_safe_operation_query(uint8_t code, ByteView output, std::size_t* encoded_size);
+OperationQueryError build_safe_operation_query_batch(const uint8_t* codes, std::size_t count, ByteView output,
+                                                     std::size_t* encoded_size);
 
 }  // namespace wfrac_protocol
