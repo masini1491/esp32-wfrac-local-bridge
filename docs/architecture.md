@@ -10,7 +10,7 @@ WF-RAC API Envelope → AirconStat Codec → WF-RAC Device Model
 Matter Adapter → Matter over Wi-Fi
 ```
 
-Transport attempt 必須明確指定 HTTP 或 HTTPS；legacy firmware 可能使用 HTTP，newer WF-RAC-HTTPS firmware 可能使用 HTTPS。較新的上游行為包含 self-signed certificate、TLS 1.2、ALPN `http/1.1`、`Connection: close` 與一次只允許單一連線的限制；這些不是所有 firmware 的通用要求。目前 contract 只表示 caller-supplied bounded timeout 與 single physical attempt，不含 HTTPS-first、fallback、cache、retry、rate limiting、TLS handshake 或 actual HTTP implementation。API envelope 已用 caller-owned buffer 實作 typed `getDeviceInfo`／`getAirconStat`／`setAirconStat` JSON builders；它會以 64-bit TimeProvider sample 建立 timestamp、escape opaque IDs，並在 Base64 wrapping 前驗證 AirconStat 結構與兩個 CRC。platform clock source、registration builders、envelope dispatch 與 runtime 仍未建立。
+Transport attempt 必須明確指定 HTTP 或 HTTPS；legacy firmware 可能使用 HTTP，newer WF-RAC-HTTPS firmware 可能使用 HTTPS。較新的上游行為包含 self-signed certificate、TLS 1.2、ALPN `http/1.1`、`Connection: close` 與一次只允許單一連線的限制；這些不是所有 firmware 的通用要求。目前 contract 只表示 caller-supplied bounded timeout 與 single physical attempt，不含 HTTPS-first、fallback、cache、retry、rate limiting、TLS handshake 或 actual HTTP implementation。API envelope 已用 caller-owned buffer 實作五個 typed local JSON builders；它會以 64-bit TimeProvider sample 建立 timestamp、escape opaque IDs，並在 Base64 wrapping 前驗證 AirconStat 結構與兩個 CRC。registration builders 固定從 context operatorId 取得 accountId，update 使用 compatibility `remote=0`；這些仍只是 request serialization，不包含 Operator ID persistence、lifecycle、response parsing、envelope dispatch 或 runtime。
 
 Matter Adapter 只對 Device Model 發出高階 request，如 `setPower()`、`setMode()`、`setTargetTemperature()`、`setFanMode()`、`requestStatus()`；不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。Device Model 應與傳輸層及上層整合介面解耦，保持清楚的模組邊界與可測試性。
 

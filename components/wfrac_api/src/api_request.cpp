@@ -13,8 +13,32 @@ namespace {
 constexpr char kGetDeviceInfoPath[] = "/beaver/command/getDeviceInfo";
 constexpr char kGetAirconStatPath[] = "/beaver/command/getAirconStat";
 constexpr char kSetAirconStatPath[] = "/beaver/command/setAirconStat";
+constexpr char kUpdateAccountInfoPath[] = "/beaver/command/updateAccountInfo";
+constexpr char kDeleteAccountInfoPath[] = "/beaver/command/deleteAccountInfo";
 
-enum class RequestKind { get_device_info, get_aircon_stat, set_aircon_stat };
+enum class RequestKind { get_device_info, get_aircon_stat, set_aircon_stat, update_account_info, delete_account_info };
+
+const char* command_name(RequestKind kind) {
+  switch (kind) {
+    case RequestKind::get_device_info: return "getDeviceInfo";
+    case RequestKind::get_aircon_stat: return "getAirconStat";
+    case RequestKind::set_aircon_stat: return "setAirconStat";
+    case RequestKind::update_account_info: return "updateAccountInfo";
+    case RequestKind::delete_account_info: return "deleteAccountInfo";
+  }
+  return "";
+}
+
+const char* request_path(RequestKind kind) {
+  switch (kind) {
+    case RequestKind::get_device_info: return kGetDeviceInfoPath;
+    case RequestKind::get_aircon_stat: return kGetAirconStatPath;
+    case RequestKind::set_aircon_stat: return kSetAirconStatPath;
+    case RequestKind::update_account_info: return kUpdateAccountInfoPath;
+    case RequestKind::delete_account_info: return kDeleteAccountInfoPath;
+  }
+  return nullptr;
+}
 
 bool non_empty(const char* value) { return value != nullptr && value[0] != '\0'; }
 
@@ -63,22 +87,22 @@ bool append_literal_size(const char* literal, std::size_t* total) {
   return append_size(length, total);
 }
 
-bool calculate_size(RequestKind kind, const ApiClientContext& context, const char* aircon_id, int64_t timestamp,
-                    std::size_t base64_size, std::size_t* total) {
+bool calculate_size(RequestKind kind, const ApiClientContext& context, const char* aircon_id, const char* timezone,
+                    int64_t timestamp, std::size_t base64_size, std::size_t* total) {
   std::size_t api_version_size = 0;
   std::size_t device_id_size = 0;
   std::size_t operator_id_size = 0;
   std::size_t aircon_id_size = 0;
+  std::size_t timezone_size = 0;
   if (!escaped_size(context.api_version, &api_version_size) || !escaped_size(context.device_id, &device_id_size) ||
       !escaped_size(context.operator_id, &operator_id_size) ||
-      (aircon_id != nullptr && !escaped_size(aircon_id, &aircon_id_size))) {
+      (aircon_id != nullptr && !escaped_size(aircon_id, &aircon_id_size)) ||
+      (timezone != nullptr && !escaped_size(timezone, &timezone_size))) {
     return false;
   }
 
   std::size_t size = 0;
-  const char* command = kind == RequestKind::get_device_info
-                            ? "getDeviceInfo"
-                            : (kind == RequestKind::get_aircon_stat ? "getAirconStat" : "setAirconStat");
+  const char* command = command_name(kind);
   if (!append_literal_size("{\"apiVer\":\"", &size) || !append_size(api_version_size, &size) ||
       !append_literal_size("\",\"command\":\"", &size) || !append_literal_size(command, &size) ||
       !append_literal_size("\",\"deviceId\":\"", &size) || !append_size(device_id_size, &size) ||
@@ -93,9 +117,21 @@ bool calculate_size(RequestKind kind, const ApiClientContext& context, const cha
         !append_literal_size("\"}}", &size)) {
       return false;
     }
-  } else if (!append_literal_size(",\"contents\":{\"airconId\":\"", &size) || !append_size(aircon_id_size, &size) ||
+  } else if (kind == RequestKind::set_aircon_stat &&
+             (!append_literal_size(",\"contents\":{\"airconId\":\"", &size) || !append_size(aircon_id_size, &size) ||
              !append_literal_size("\",\"airconStat\":\"", &size) || !append_size(base64_size, &size) ||
-             !append_literal_size("\"}}", &size)) {
+             !append_literal_size("\"}}", &size))) {
+    return false;
+  } else if (kind == RequestKind::update_account_info &&
+             (!append_literal_size(",\"contents\":{\"accountId\":\"", &size) || !append_size(operator_id_size, &size) ||
+              !append_literal_size("\",\"airconId\":\"", &size) || !append_size(aircon_id_size, &size) ||
+              !append_literal_size("\",\"remote\":0,\"timezone\":\"", &size) || !append_size(timezone_size, &size) ||
+              !append_literal_size("\"}}", &size))) {
+    return false;
+  } else if (kind == RequestKind::delete_account_info &&
+             (!append_literal_size(",\"contents\":{\"accountId\":\"", &size) || !append_size(operator_id_size, &size) ||
+              !append_literal_size("\",\"airconId\":\"", &size) || !append_size(aircon_id_size, &size) ||
+              !append_literal_size("\"}}", &size))) {
     return false;
   }
   *total = size;
@@ -159,13 +195,14 @@ ApiRequestError validate_time(ITimeProvider* provider, TimeSample* sample) {
   return ApiRequestError::none;
 }
 
-ApiRequestError build_request(RequestKind kind, const ApiClientContext& context, const char* aircon_id,
+ApiRequestError build_request(RequestKind kind, const ApiClientContext& context, const char* aircon_id, const char* timezone,
                               wfrac_protocol::ByteView raw_aircon_stat, ITimeProvider* time_provider,
                               wfrac_protocol::MutableByteView output, ApiRequestView* request) {
   reset_request(request);
   const ApiRequestError context_error = validate_context(context, time_provider, output, request);
   if (context_error != ApiRequestError::none) return context_error;
   if (kind != RequestKind::get_device_info && !non_empty(aircon_id)) return ApiRequestError::invalid_argument;
+  if (kind == RequestKind::update_account_info && !non_empty(timezone)) return ApiRequestError::invalid_argument;
 
   std::size_t base64_size = 0;
   if (kind == RequestKind::set_aircon_stat) {
@@ -184,7 +221,7 @@ ApiRequestError build_request(RequestKind kind, const ApiClientContext& context,
   if (time_error != ApiRequestError::none) return time_error;
 
   std::size_t required_size = 0;
-  if (!calculate_size(kind, context, aircon_id, sample.unix_seconds, base64_size, &required_size)) {
+  if (!calculate_size(kind, context, aircon_id, timezone, sample.unix_seconds, base64_size, &required_size)) {
     return ApiRequestError::size_overflow;
   }
   if (required_size > output.size) return ApiRequestError::output_too_small;
@@ -193,9 +230,7 @@ ApiRequestError build_request(RequestKind kind, const ApiClientContext& context,
   append_literal("{\"apiVer\":\"", output.data, &cursor);
   append_escaped(context.api_version, output.data, &cursor);
   append_literal("\",\"command\":\"", output.data, &cursor);
-  append_literal(kind == RequestKind::get_device_info ? "getDeviceInfo"
-                                                        : (kind == RequestKind::get_aircon_stat ? "getAirconStat" : "setAirconStat"),
-                 output.data, &cursor);
+  append_literal(command_name(kind), output.data, &cursor);
   append_literal("\",\"deviceId\":\"", output.data, &cursor);
   append_escaped(context.device_id, output.data, &cursor);
   append_literal("\",\"operatorId\":\"", output.data, &cursor);
@@ -204,27 +239,39 @@ ApiRequestError build_request(RequestKind kind, const ApiClientContext& context,
   append_positive_decimal(sample.unix_seconds, output.data, &cursor);
   if (kind == RequestKind::get_device_info) {
     append_literal("}", output.data, &cursor);
-  } else {
+  } else if (kind == RequestKind::get_aircon_stat) {
     append_literal(",\"contents\":{\"airconId\":\"", output.data, &cursor);
     append_escaped(aircon_id, output.data, &cursor);
-    if (kind == RequestKind::get_aircon_stat) {
-      append_literal("\"}}", output.data, &cursor);
-    } else {
-      append_literal("\",\"airconStat\":\"", output.data, &cursor);
-      std::size_t encoded_size = 0;
-      if (wfrac_protocol::base64_encode(raw_aircon_stat, {output.data + cursor, base64_size}, &encoded_size) !=
-              wfrac_protocol::Base64Error::none ||
-          encoded_size != base64_size) {
-        reset_request(request);
-        return ApiRequestError::base64_failure;
-      }
-      cursor += encoded_size;
-      append_literal("\"}}", output.data, &cursor);
+    append_literal("\"}}", output.data, &cursor);
+  } else if (kind == RequestKind::set_aircon_stat) {
+    append_literal(",\"contents\":{\"airconId\":\"", output.data, &cursor);
+    append_escaped(aircon_id, output.data, &cursor);
+    append_literal("\",\"airconStat\":\"", output.data, &cursor);
+    std::size_t encoded_size = 0;
+    if (wfrac_protocol::base64_encode(raw_aircon_stat, {output.data + cursor, base64_size}, &encoded_size) !=
+            wfrac_protocol::Base64Error::none ||
+        encoded_size != base64_size) {
+      reset_request(request);
+      return ApiRequestError::base64_failure;
     }
+    cursor += encoded_size;
+    append_literal("\"}}", output.data, &cursor);
+  } else if (kind == RequestKind::update_account_info) {
+    append_literal(",\"contents\":{\"accountId\":\"", output.data, &cursor);
+    append_escaped(context.operator_id, output.data, &cursor);
+    append_literal("\",\"airconId\":\"", output.data, &cursor);
+    append_escaped(aircon_id, output.data, &cursor);
+    append_literal("\",\"remote\":0,\"timezone\":\"", output.data, &cursor);
+    append_escaped(timezone, output.data, &cursor);
+    append_literal("\"}}", output.data, &cursor);
+  } else {
+    append_literal(",\"contents\":{\"accountId\":\"", output.data, &cursor);
+    append_escaped(context.operator_id, output.data, &cursor);
+    append_literal("\",\"airconId\":\"", output.data, &cursor);
+    append_escaped(aircon_id, output.data, &cursor);
+    append_literal("\"}}", output.data, &cursor);
   }
-  request->path = kind == RequestKind::get_device_info
-                      ? kGetDeviceInfoPath
-                      : (kind == RequestKind::get_aircon_stat ? kGetAirconStatPath : kSetAirconStatPath);
+  request->path = request_path(kind);
   request->body = {output.data, cursor};
   request->timestamp = sample.unix_seconds;
   request->time_quality = sample.quality;
@@ -235,19 +282,33 @@ ApiRequestError build_request(RequestKind kind, const ApiClientContext& context,
 
 ApiRequestError build_get_device_info_request(const ApiClientContext& context, ITimeProvider* time_provider,
                                               wfrac_protocol::MutableByteView output, ApiRequestView* request) {
-  return build_request(RequestKind::get_device_info, context, nullptr, {}, time_provider, output, request);
+  return build_request(RequestKind::get_device_info, context, nullptr, nullptr, {}, time_provider, output, request);
 }
 
 ApiRequestError build_get_aircon_stat_request(const ApiClientContext& context, const char* aircon_id,
                                               ITimeProvider* time_provider, wfrac_protocol::MutableByteView output,
                                               ApiRequestView* request) {
-  return build_request(RequestKind::get_aircon_stat, context, aircon_id, {}, time_provider, output, request);
+  return build_request(RequestKind::get_aircon_stat, context, aircon_id, nullptr, {}, time_provider, output, request);
 }
 
 ApiRequestError build_set_aircon_stat_request(const ApiClientContext& context, const char* aircon_id,
                                               wfrac_protocol::ByteView raw_aircon_stat, ITimeProvider* time_provider,
                                               wfrac_protocol::MutableByteView output, ApiRequestView* request) {
-  return build_request(RequestKind::set_aircon_stat, context, aircon_id, raw_aircon_stat, time_provider, output,
+  return build_request(RequestKind::set_aircon_stat, context, aircon_id, nullptr, raw_aircon_stat, time_provider,
+                       output, request);
+}
+
+ApiRequestError build_update_account_info_request(const ApiClientContext& context, const char* aircon_id,
+                                                  const char* timezone, ITimeProvider* time_provider,
+                                                  wfrac_protocol::MutableByteView output, ApiRequestView* request) {
+  return build_request(RequestKind::update_account_info, context, aircon_id, timezone, {}, time_provider, output,
+                       request);
+}
+
+ApiRequestError build_delete_account_info_request(const ApiClientContext& context, const char* aircon_id,
+                                                  ITimeProvider* time_provider, wfrac_protocol::MutableByteView output,
+                                                  ApiRequestView* request) {
+  return build_request(RequestKind::delete_account_info, context, aircon_id, nullptr, {}, time_provider, output,
                        request);
 }
 

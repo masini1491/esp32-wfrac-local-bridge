@@ -9,6 +9,7 @@ Identity、Operator ID、account table ownership 與 registration lifecycle。
 - MAC Address、Device ID、Aircon ID、Operator ID 必須分離。`deviceId` 是 stable、non-empty、opaque client identifier，不等於 MAC／Aircon ID，UUID 不是 universal requirement。
 - `getDeviceInfo` 不需預先知道 Aircon ID；canonical Aircon ID 是 device-reported `airconId`。
 - Self-managed 模式持久化自身 Operator ID 並使用 `updateAccountInfo`／`deleteAccountInfo`；mirror 模式使用既有 Operator ID，不自行 register/deregister。`accountId = operatorId` 為 strong corroboration。
+- Portable `updateAccountInfo`／`deleteAccountInfo` request builders 已 software implemented；兩者固定以 `ApiClientContext.operator_id` 序列化 `accountId`，不接受獨立 accountId。update 的 `remote=0` 是 observed upstream／project compatibility value，不代表 remote semantics 已完整理解。
 - 觀察 account slots 上限為 4；`remoteList` 不可靠，不得自動刪除未知 accounts，只管理自己的 Operator ID。正常 reboot 不應自動 deregister。`aws` bypass 不是 project architecture。
 - `result = 2` 只可在 command context 解讀；expires lifecycle、remote 完整語意與 timezone effect 仍未知。時間細節見 [timestamp-time.md](timestamp-time.md)。
 
@@ -18,7 +19,7 @@ Identity、Operator ID、account table ownership 與 registration lifecycle。
 
 ## Known unknowns / pending validation
 
-Device-specific hidden semantics、remote `0/1`、expires calculation／refresh、registration expiry recovery：`UNKNOWN`／`HARDWARE_TEST_PENDING`。
+Operator ID generation/persistence、self-managed/mirror runtime selection、registration response parsing、Device-specific hidden semantics、remote `0/1`、expires calculation／refresh、registration expiry recovery：`UNKNOWN`／`HARDWARE_TEST_PENDING`。
 
 ## Related machine-readable contract
 

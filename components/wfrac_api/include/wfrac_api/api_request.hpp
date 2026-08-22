@@ -40,5 +40,11 @@ ApiRequestError build_get_aircon_stat_request(const ApiClientContext& context, c
 ApiRequestError build_set_aircon_stat_request(const ApiClientContext& context, const char* aircon_id,
                                               wfrac_protocol::ByteView raw_aircon_stat, ITimeProvider* time_provider,
                                               wfrac_protocol::MutableByteView output, ApiRequestView* request);
+ApiRequestError build_update_account_info_request(const ApiClientContext& context, const char* aircon_id,
+                                                  const char* timezone, ITimeProvider* time_provider,
+                                                  wfrac_protocol::MutableByteView output, ApiRequestView* request);
+ApiRequestError build_delete_account_info_request(const ApiClientContext& context, const char* aircon_id,
+                                                  ITimeProvider* time_provider, wfrac_protocol::MutableByteView output,
+                                                  ApiRequestView* request);
 
 }  // namespace wfrac_api

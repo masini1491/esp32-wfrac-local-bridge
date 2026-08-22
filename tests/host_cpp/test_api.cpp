@@ -196,5 +196,113 @@ int main() {
     assert_reset(short_request);
   }
 
+  {
+    const wfrac_api::ApiClientContext context{"1.0", "dev", "op"};
+    FakeTimeProvider time;
+    time.sample = {1770000000, wfrac_api::TimeQuality::trusted};
+    std::array<uint8_t, 256> output{};
+    wfrac_api::ApiRequestView request{};
+    assert(wfrac_api::build_update_account_info_request(context, "ac", "Asia/Taipei", &time,
+                                                        {output.data(), output.size()}, &request) ==
+           wfrac_api::ApiRequestError::none);
+    assert(std::strcmp(request.path, "/beaver/command/updateAccountInfo") == 0 && time.calls == 1U);
+    assert(body_text(request) ==
+           "{\"apiVer\":\"1.0\",\"command\":\"updateAccountInfo\",\"deviceId\":\"dev\",\"operatorId\":\"op\",\"timestamp\":1770000000,\"contents\":{\"accountId\":\"op\",\"airconId\":\"ac\",\"remote\":0,\"timezone\":\"Asia/Taipei\"}}");
+    assert(body_text(request).find("\"accountId\":\"dev\"") == std::string::npos);
+  }
+
+  {
+    const wfrac_api::ApiClientContext context{"1.0", "dev", "op"};
+    FakeTimeProvider time;
+    time.sample = {5000000000LL, wfrac_api::TimeQuality::estimated};
+    std::array<uint8_t, 256> output{};
+    wfrac_api::ApiRequestView request{};
+    assert(wfrac_api::build_delete_account_info_request(context, "ac", &time, {output.data(), output.size()}, &request) ==
+           wfrac_api::ApiRequestError::none);
+    assert(std::strcmp(request.path, "/beaver/command/deleteAccountInfo") == 0 && time.calls == 1U);
+    const std::string body = body_text(request);
+    assert(body ==
+           "{\"apiVer\":\"1.0\",\"command\":\"deleteAccountInfo\",\"deviceId\":\"dev\",\"operatorId\":\"op\",\"timestamp\":5000000000,\"contents\":{\"accountId\":\"op\",\"airconId\":\"ac\"}}");
+    assert(request.time_quality == wfrac_api::TimeQuality::estimated);
+    assert(body.find("remote") == std::string::npos && body.find("timezone") == std::string::npos);
+  }
+
+  {
+    const char operator_id[] = {'o', '"', '\\', '\n', '\t', '\x01', '\0'};
+    const char aircon_id[] = {'a', '"', '\\', '\n', '\t', '\x01', '\0'};
+    const char timezone[] = {'z', '"', '\\', '\n', '\t', '\x01', '\0'};
+    const wfrac_api::ApiClientContext context{"1.0", "dev", operator_id};
+    FakeTimeProvider time;
+    time.sample = {1, wfrac_api::TimeQuality::trusted};
+    std::array<uint8_t, 256> output{};
+    wfrac_api::ApiRequestView request{};
+    assert(wfrac_api::build_update_account_info_request(context, aircon_id, timezone, &time,
+                                                        {output.data(), output.size()}, &request) ==
+           wfrac_api::ApiRequestError::none);
+    assert(body_text(request).find("\"accountId\":\"o\\\"\\\\\\n\\t\\u0001\"") != std::string::npos);
+    assert(body_text(request).find("\"airconId\":\"a\\\"\\\\\\n\\t\\u0001\"") != std::string::npos);
+    assert(body_text(request).find("\"timezone\":\"z\\\"\\\\\\n\\t\\u0001\"") != std::string::npos);
+  }
+
+  {
+    FakeTimeProvider time;
+    time.sample = {1, wfrac_api::TimeQuality::trusted};
+    std::array<uint8_t, 256> output{};
+    wfrac_api::ApiRequestView request{};
+    assert(wfrac_api::build_update_account_info_request(kContext, nullptr, "UTC", &time, {output.data(), output.size()},
+                                                        &request) == wfrac_api::ApiRequestError::invalid_argument);
+    assert(wfrac_api::build_update_account_info_request(kContext, "ac", "", &time, {output.data(), output.size()},
+                                                        &request) == wfrac_api::ApiRequestError::invalid_argument);
+    assert(wfrac_api::build_delete_account_info_request(kContext, "", &time, {output.data(), output.size()}, &request) ==
+           wfrac_api::ApiRequestError::invalid_argument);
+    assert(time.calls == 0U);
+  }
+
+  {
+    FakeTimeProvider initial_time;
+    initial_time.sample = {2, wfrac_api::TimeQuality::trusted};
+    std::array<uint8_t, 256> large{};
+    wfrac_api::ApiRequestView initial{};
+    assert(wfrac_api::build_update_account_info_request(kContext, "ac", "UTC", &initial_time, {large.data(), large.size()},
+                                                        &initial) == wfrac_api::ApiRequestError::none);
+    std::vector<uint8_t> exact(initial.body.size);
+    FakeTimeProvider exact_time;
+    exact_time.sample = {2, wfrac_api::TimeQuality::trusted};
+    wfrac_api::ApiRequestView exact_request{};
+    assert(wfrac_api::build_update_account_info_request(kContext, "ac", "UTC", &exact_time, {exact.data(), exact.size()},
+                                                        &exact_request) == wfrac_api::ApiRequestError::none);
+    std::vector<uint8_t> short_buffer(initial.body.size - 1U);
+    FakeTimeProvider short_time;
+    short_time.sample = {2, wfrac_api::TimeQuality::trusted};
+    wfrac_api::ApiRequestView short_request{"stale", {short_buffer.data(), 1U}, 1, wfrac_api::TimeQuality::trusted};
+    assert(wfrac_api::build_update_account_info_request(kContext, "ac", "UTC", &short_time,
+                                                        {short_buffer.data(), short_buffer.size()}, &short_request) ==
+           wfrac_api::ApiRequestError::output_too_small);
+    assert_reset(short_request);
+  }
+
+  {
+    FakeTimeProvider initial_time;
+    initial_time.sample = {2, wfrac_api::TimeQuality::trusted};
+    std::array<uint8_t, 256> large{};
+    wfrac_api::ApiRequestView initial{};
+    assert(wfrac_api::build_delete_account_info_request(kContext, "ac", &initial_time, {large.data(), large.size()}, &initial) ==
+           wfrac_api::ApiRequestError::none);
+    std::vector<uint8_t> exact(initial.body.size);
+    FakeTimeProvider exact_time;
+    exact_time.sample = {2, wfrac_api::TimeQuality::trusted};
+    wfrac_api::ApiRequestView exact_request{};
+    assert(wfrac_api::build_delete_account_info_request(kContext, "ac", &exact_time, {exact.data(), exact.size()},
+                                                        &exact_request) == wfrac_api::ApiRequestError::none);
+    std::vector<uint8_t> short_buffer(initial.body.size - 1U);
+    FakeTimeProvider short_time;
+    short_time.sample = {2, wfrac_api::TimeQuality::trusted};
+    wfrac_api::ApiRequestView short_request{"stale", {short_buffer.data(), 1U}, 1, wfrac_api::TimeQuality::trusted};
+    assert(wfrac_api::build_delete_account_info_request(kContext, "ac", &short_time,
+                                                        {short_buffer.data(), short_buffer.size()}, &short_request) ==
+           wfrac_api::ApiRequestError::output_too_small);
+    assert_reset(short_request);
+  }
+
   return 0;
 }
