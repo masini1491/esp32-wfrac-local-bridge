@@ -66,6 +66,17 @@ void run_device_state_ownership_tests() {
   assert(wfrac_device_model::stage_desired_intent(SetFanIntent{FanSetting::unknown}, &desired) ==
          DeviceStateError::invalid_control_target);
 
+  DeviceState invalid_pending{};
+  assert(wfrac_device_model::begin_pending_command(SetPowerIntent{PowerState::unknown}, &invalid_pending) ==
+         DeviceStateError::invalid_control_target);
+  assert(!invalid_pending.pending.intent.has_value());
+  assert(wfrac_device_model::begin_pending_command(SetModeIntent{HvacMode::unknown}, &invalid_pending) ==
+         DeviceStateError::invalid_control_target);
+  assert(!invalid_pending.pending.intent.has_value());
+  assert(wfrac_device_model::begin_pending_command(SetFanIntent{FanSetting::unknown}, &invalid_pending) ==
+         DeviceStateError::invalid_control_target);
+  assert(!invalid_pending.pending.intent.has_value());
+
   DeviceState ownership{};
   wfrac_device_model::apply_observation(zero_observation, &ownership);
   const CommandIntent turn_on = SetPowerIntent{PowerState::on};
