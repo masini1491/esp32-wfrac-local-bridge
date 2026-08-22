@@ -354,7 +354,10 @@ int main() {
   assert(wfrac_protocol::serialize_aircon_block(safe_state, max_raw.data(), max_raw.size(),
                                                 {serialized.data(), serialized.size()}, &encoded_size) ==
          wfrac_protocol::BlockEncodeError::none);
-  assert(encoded_size == 1041U && serialized[18] == 255U && serialized[1037] == 0xFEU);
+  assert(encoded_size == 1041U);
+  assert(serialized[18] == 255U);
+  assert(serialized[1035] == 0xFEU && serialized[1036] == 0x01U && serialized[1037] == 0x02U &&
+         serialized[1038] == 0xA6U);
   serialized_crc = static_cast<uint16_t>(serialized[1039]) | (static_cast<uint16_t>(serialized[1040]) << 8U);
   assert(serialized_crc == wfrac_protocol::crc16_ccitt(serialized.data(), 1039U));
 
