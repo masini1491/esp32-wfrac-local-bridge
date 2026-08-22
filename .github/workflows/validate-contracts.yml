@@ -42,8 +42,13 @@ jobs:
           g++ -std=c++17 -Wall -Wextra -Werror
           -Icomponents/wfrac_protocol/include
           -Icomponents/wfrac_device_model/include
+          components/wfrac_protocol/src/crc16.cpp
+          components/wfrac_protocol/src/aircon_frame.cpp
           components/wfrac_protocol/src/aircon_state.cpp
           components/wfrac_protocol/src/capabilities.cpp
+          components/wfrac_protocol/src/operation_data.cpp
+          components/wfrac_protocol/src/aircon_block.cpp
+          components/wfrac_protocol/src/aircon_stat.cpp
           components/wfrac_device_model/src/protocol_mapping.cpp
           components/wfrac_device_model/src/device_state.cpp
           components/wfrac_device_model/src/protocol_command_mapping.cpp
