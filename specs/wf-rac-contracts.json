@@ -64,6 +64,15 @@
       "purpose": "MHI CNS/SPI cross-reference for AirconStat state/frame semantics, set-bit semantics, operation-data address space, and MHI capability.",
       "authority_boundary": "Not a WF-RAC HTTP/HTTPS API authority; direct CNS/SPI capability does not prove WF-RAC network-visible capability.",
       "evidence_role": "CONFIRMED_UPSTREAM"
+    },
+    {
+      "repository": "espressif/esp-idf",
+      "revision": "0276131402f5383545ce5fc74f71d548fe5f3ffc",
+      "license": "Apache-2.0",
+      "priority": "PRIMARY / OFFICIAL PLATFORM",
+      "purpose": "ESP32-C6 / ESP-IDF system time, RTC reset behavior, POSIX time, SNTP optionality, timezone separation, and 64-bit time_t reference.",
+      "authority_boundary": "ESP-IDF platform behavior only; not WF-RAC protocol authority.",
+      "evidence_role": "CONFIRMED_UPSTREAM"
     }
   ],
   "api_envelope": {
@@ -281,6 +290,32 @@
     "local_model_mode_support": "HARDWARE_TEST_PENDING",
     "local_validation_status": "HARDWARE_TEST_PENDING",
     "remaining_unknowns": ["user-device ModelNrRaw", "local validation of every optional feature", "per-model HVAC modes", "unknown future raw behavior", "exact setpoint ranges", "LED and autoHeating semantics", "app flags versus protocol presence across firmware", "retail model/size", "hardware-specific differences"]
+  },
+  "time_architecture_r5": {
+    "runtime_implemented": false,
+    "wf_rac_timestamp": {
+      "required": true,
+      "non_zero": true,
+      "unit": "unix_seconds",
+      "firmware_parse_64_bit": true,
+      "writes_module_time_global": true,
+      "module_has_independent_rtc": false,
+      "client_is_time_source": true,
+      "freshness_validation_established": false,
+      "replay_protection_role_established": false,
+      "cryptographic_authentication_role_established": false,
+      "fixed_timestamp_fallback_allowed": false
+    },
+    "timezone": {"role": "account_metadata", "separate_from_unix_epoch": true, "exact_runtime_effect": "UNKNOWN"},
+    "expires": {"depends_on_module_time": true, "exact_representation": "UNKNOWN", "duration": "UNKNOWN", "refresh_semantics": "UNKNOWN", "universal_schedule_constant": false},
+    "esp_idf": {"rtc_survives_non_power_on_reset": true, "power_on_reset_resets_rtc_timer": true, "system_time_apis": ["time", "gettimeofday", "settimeofday", "adjtime"], "sntp_is_optional_time_acquisition_method": true, "timezone_conversion_separate": true, "time_t_64_bit_since_v5": true, "authority_boundary": "ESP-IDF platform behavior only; not WF-RAC protocol authority"},
+    "future_time_provider": {"separate_service_boundary": true, "daily_control_requires_internet": false, "daily_control_requires_dns": false, "daily_control_requires_ntp": false, "time_quality_model_required": true, "minimum_conceptual_states": ["trusted", "estimated/degraded", "unavailable"], "exact_runtime_enum": "PENDING", "implementation": false},
+    "persisted_checkpoint": {"is_trusted_current_time": false, "may_support_degraded_estimate": true},
+    "power_loss": {"exact_elapsed_wall_time_after_power_loss_without_external_source": "unavailable"},
+    "external_rtc": {"selected": false, "required_by_current_architecture": false},
+    "registration_correction": {"clock_correction_is_architecture_inference": true, "requires_explicit_expired_or_unregistered_refusal": true, "unknown_account_deletion": false, "self_managed_reregistration_bounded": true},
+    "degraded_time": {"best_available_progressing_estimate_is_project_recommendation": true, "hardware_validation": "HARDWARE_TEST_PENDING"},
+    "remaining_unknowns": ["freshness/replay hidden firmware behavior", "timezone runtime effect", "expires representation/lifetime/refresh", "clock correction behavior", "trusted time source selection", "exact runtime quality enum", "all local hardware behavior"]
   },
   "result_and_error_taxonomy": {
     "categories": [

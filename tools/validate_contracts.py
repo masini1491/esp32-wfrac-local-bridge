@@ -170,6 +170,34 @@ def check_capability_detection_r4(contract: dict[str, Any]) -> None:
     require(r4["local_validation_status"] == "HARDWARE_TEST_PENDING", "capability_detection_r4: local validation must remain pending")
 
 
+def check_time_architecture_r5(contract: dict[str, Any]) -> None:
+    r5 = contract["time_architecture_r5"]
+    esp_reference = next((reference for reference in contract["references"] if reference.get("repository") == "espressif/esp-idf"), None)
+    require(esp_reference is not None and esp_reference["revision"] == "0276131402f5383545ce5fc74f71d548fe5f3ffc" and "not WF-RAC protocol authority" in esp_reference["authority_boundary"], "time_architecture_r5: ESP-IDF reference boundary mismatch")
+    timestamp = r5["wf_rac_timestamp"]
+    for key in ("required", "non_zero", "writes_module_time_global", "client_is_time_source"):
+        require(timestamp[key] is True, f"time_architecture_r5.timestamp.{key}: invariant missing")
+    require(timestamp["unit"] == "unix_seconds" and timestamp["firmware_parse_64_bit"] is True, "time_architecture_r5.timestamp: unit/width mismatch")
+    for key in ("freshness_validation_established", "replay_protection_role_established", "cryptographic_authentication_role_established"):
+        require(timestamp[key] is False, f"time_architecture_r5.timestamp.{key}: security role cannot be finalized")
+    require(timestamp["fixed_timestamp_fallback_allowed"] is False and timestamp["module_has_independent_rtc"] is False, "time_architecture_r5.timestamp: clock source boundary mismatch")
+    require(r5["timezone"]["separate_from_unix_epoch"] is True and r5["timezone"]["exact_runtime_effect"] == "UNKNOWN", "time_architecture_r5: timezone boundary mismatch")
+    expires = r5["expires"]
+    require(expires["duration"] == "UNKNOWN" and expires["refresh_semantics"] == "UNKNOWN" and expires["universal_schedule_constant"] is False, "time_architecture_r5: expires must remain unknown")
+    esp = r5["esp_idf"]
+    require(esp["rtc_survives_non_power_on_reset"] is True and esp["power_on_reset_resets_rtc_timer"] is True, "time_architecture_r5: reset boundary mismatch")
+    require(esp["sntp_is_optional_time_acquisition_method"] is True and "not WF-RAC protocol authority" in esp["authority_boundary"], "time_architecture_r5: ESP-IDF authority boundary mismatch")
+    provider = r5["future_time_provider"]
+    for key in ("daily_control_requires_internet", "daily_control_requires_dns", "daily_control_requires_ntp"):
+        require(provider[key] is False, f"time_architecture_r5.provider.{key}: daily control dependency forbidden")
+    require(provider["time_quality_model_required"] is True and provider["implementation"] is False, "time_architecture_r5: provider implementation boundary mismatch")
+    require(r5["persisted_checkpoint"]["is_trusted_current_time"] is False, "time_architecture_r5: checkpoint cannot be trusted current time")
+    require(r5["power_loss"]["exact_elapsed_wall_time_after_power_loss_without_external_source"] == "unavailable", "time_architecture_r5: power-loss boundary mismatch")
+    require(r5["external_rtc"]["selected"] is False and r5["external_rtc"]["required_by_current_architecture"] is False, "time_architecture_r5: external RTC boundary mismatch")
+    require(r5["registration_correction"]["unknown_account_deletion"] is False, "time_architecture_r5: ownership safety mismatch")
+    require(r5["runtime_implemented"] is False, "time_architecture_r5: runtime implementation is out of scope")
+
+
 def validate(contract: dict[str, Any]) -> None:
     required_sections = {
         "schema_version",
@@ -213,6 +241,7 @@ def validate(contract: dict[str, Any]) -> None:
     check_aircon_stat_r2(contract)
     check_operation_data_r3(contract)
     check_capability_detection_r4(contract)
+    check_time_architecture_r5(contract)
 
     boundaries = contract["command_intent_boundaries"]
     for key in ("intent_only", "does_not_encode_aircon_stat", "does_not_build_json", "does_not_call_http", "does_not_manage_retry_discovery_socket_or_matter_callbacks"):

@@ -197,6 +197,38 @@ class ContractValidatorTests(unittest.TestCase):
     def test_hvac_mode_support_remains_per_model_pending(self) -> None:
         self.assert_rejected(lambda c: c["capability_detection_r4"].update(per_model_hvac_mode_discovery="CONFIRMED_LOCAL"))
 
+    def test_timestamp_required_and_nonzero(self) -> None:
+        for key in ("required", "non_zero"):
+            with self.subTest(key=key):
+                self.assert_rejected(lambda c, key=key: c["time_architecture_r5"]["wf_rac_timestamp"].update({key: False}))
+
+    def test_timestamp_security_roles_remain_unestablished(self) -> None:
+        self.assert_rejected(lambda c: c["time_architecture_r5"]["wf_rac_timestamp"].update(replay_protection_role_established=True))
+
+    def test_timezone_is_not_epoch_adjustment(self) -> None:
+        self.assert_rejected(lambda c: c["time_architecture_r5"]["timezone"].update(separate_from_unix_epoch=False))
+
+    def test_expires_does_not_gain_invented_ttl(self) -> None:
+        self.assert_rejected(lambda c: c["time_architecture_r5"]["expires"].update(duration=86400))
+
+    def test_daily_control_does_not_require_ntp(self) -> None:
+        self.assert_rejected(lambda c: c["time_architecture_r5"]["future_time_provider"].update(daily_control_requires_ntp=True))
+
+    def test_checkpoint_is_not_trusted_current_time(self) -> None:
+        self.assert_rejected(lambda c: c["time_architecture_r5"]["persisted_checkpoint"].update(is_trusted_current_time=True))
+
+    def test_fixed_timestamp_fallback_is_forbidden(self) -> None:
+        self.assert_rejected(lambda c: c["time_architecture_r5"]["wf_rac_timestamp"].update(fixed_timestamp_fallback_allowed=True))
+
+    def test_power_loss_cannot_reconstruct_exact_wall_time(self) -> None:
+        self.assert_rejected(lambda c: c["time_architecture_r5"]["power_loss"].update(exact_elapsed_wall_time_after_power_loss_without_external_source="known"))
+
+    def test_timestamp_requires_64_bit_capability(self) -> None:
+        self.assert_rejected(lambda c: c["time_architecture_r5"]["wf_rac_timestamp"].update(firmware_parse_64_bit=False))
+
+    def test_esp_idf_is_not_wf_rac_authority(self) -> None:
+        self.assert_rejected(lambda c: c["references"][-1].update(authority_boundary="WF-RAC protocol authority"))
+
 
 if __name__ == "__main__":
     unittest.main()
