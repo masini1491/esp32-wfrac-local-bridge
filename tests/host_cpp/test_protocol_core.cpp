@@ -1,9 +1,12 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <utility>
 #include <vector>
 
+#include "wfrac_protocol/aircon_stat.hpp"
+#include "wfrac_protocol/base64.hpp"
 #include "wfrac_protocol/aircon_frame.hpp"
 #include "wfrac_protocol/aircon_block.hpp"
 #include "wfrac_protocol/aircon_state.hpp"
@@ -405,5 +408,152 @@ int main() {
          wfrac_protocol::OperationQueryError::invalid_argument);
   assert(wfrac_protocol::build_safe_operation_query(0x11U, {serialized.data(), 24U}, &encoded_size) ==
          wfrac_protocol::OperationQueryError::output_too_small);
+
+  const auto assert_base64_vector = [](const char* plain, const char* expected) {
+    const std::size_t plain_size = std::strlen(plain);
+    const std::size_t expected_size = std::strlen(expected);
+    assert(wfrac_protocol::base64_encoded_size(plain_size) == expected_size);
+    std::array<uint8_t, 64> encoded{};
+    std::size_t actual_size = 0U;
+    assert(wfrac_protocol::base64_encode(
+               {reinterpret_cast<const uint8_t*>(plain), plain_size}, {encoded.data(), encoded.size()}, &actual_size) ==
+           wfrac_protocol::Base64Error::none);
+    assert(actual_size == expected_size);
+    assert(std::memcmp(encoded.data(), expected, expected_size) == 0);
+    std::array<uint8_t, 64> decoded{};
+    std::size_t decoded_size = 0U;
+    assert(wfrac_protocol::base64_decode({encoded.data(), actual_size}, {decoded.data(), decoded.size()}, &decoded_size) ==
+           wfrac_protocol::Base64Error::none);
+    assert(decoded_size == plain_size);
+    assert(std::memcmp(decoded.data(), plain, plain_size) == 0);
+  };
+  assert_base64_vector("", "");
+  assert_base64_vector("f", "Zg==");
+  assert_base64_vector("fo", "Zm8=");
+  assert_base64_vector("foo", "Zm9v");
+  assert_base64_vector("foob", "Zm9vYg==");
+  assert_base64_vector("fooba", "Zm9vYmE=");
+  assert_base64_vector("foobar", "Zm9vYmFy");
+  const std::array<uint8_t, 4> binary_input{{0x00U, 0xFFU, 0x80U, 0x01U}};
+  std::array<uint8_t, 16> binary_encoded{};
+  std::size_t binary_encoded_size = 0U;
+  assert(wfrac_protocol::base64_encode({binary_input.data(), binary_input.size()},
+                                       {binary_encoded.data(), binary_encoded.size()}, &binary_encoded_size) ==
+         wfrac_protocol::Base64Error::none);
+  std::array<uint8_t, 4> binary_decoded{};
+  std::size_t binary_decoded_size = 0U;
+  assert(wfrac_protocol::base64_decode({binary_encoded.data(), binary_encoded_size},
+                                       {binary_decoded.data(), binary_decoded.size()}, &binary_decoded_size) ==
+         wfrac_protocol::Base64Error::none);
+  assert(binary_decoded_size == binary_input.size());
+  assert(binary_decoded == binary_input);
+  const auto invalid_b64 = [](const char* value, std::size_t size, wfrac_protocol::Base64Error expected_error) {
+    std::array<uint8_t, 16> output{};
+    std::size_t decoded_size = 0U;
+    assert(wfrac_protocol::base64_decode({reinterpret_cast<const uint8_t*>(value), size},
+                                         {output.data(), output.size()}, &decoded_size) == expected_error);
+  };
+  invalid_b64("Zg=", 3U, wfrac_protocol::Base64Error::invalid_length);
+  invalid_b64("Zm$=", 4U, wfrac_protocol::Base64Error::invalid_character);
+  invalid_b64("Z=8=", 4U, wfrac_protocol::Base64Error::invalid_padding);
+  invalid_b64("Zg=A", 4U, wfrac_protocol::Base64Error::invalid_padding);
+  invalid_b64("Zg===", 5U, wfrac_protocol::Base64Error::invalid_length);
+  std::array<uint8_t, 2> too_small{};
+  std::size_t invalid_size = 0U;
+  assert(wfrac_protocol::base64_encode({reinterpret_cast<const uint8_t*>("foo"), 3U},
+                                       {too_small.data(), too_small.size()}, &invalid_size) ==
+         wfrac_protocol::Base64Error::output_too_small);
+  assert(wfrac_protocol::base64_decode({reinterpret_cast<const uint8_t*>("Zg=="), 4U},
+                                       {too_small.data(), 0U}, &invalid_size) ==
+         wfrac_protocol::Base64Error::output_too_small);
+  assert(wfrac_protocol::base64_encode({nullptr, 1U}, {too_small.data(), too_small.size()}, &invalid_size) ==
+         wfrac_protocol::Base64Error::invalid_argument);
+  assert(wfrac_protocol::base64_decode({nullptr, 4U}, {too_small.data(), too_small.size()}, &invalid_size) ==
+         wfrac_protocol::Base64Error::invalid_argument);
+  assert(wfrac_protocol::base64_decoded_size({reinterpret_cast<const uint8_t*>("Zg=="), 4U}, nullptr) ==
+         wfrac_protocol::Base64Error::invalid_argument);
+
+  const wfrac_protocol::CommandState command_state = wfrac_protocol::make_safe_command_state();
+  wfrac_protocol::CommandState receive_state{};
+  for (std::size_t index = 0U; index < receive_state.size(); ++index) {
+    receive_state[index] = static_cast<uint8_t>(index + 1U);
+  }
+  const wfrac_protocol::OperationSegment command_segment{0x11U, 0xFFU, 0xFFU, 0xFFU};
+  const std::array<wfrac_protocol::OperationSegment, 2> receive_segments{{
+      {0x80U, 0x10U, 0xAAU, 0xBBU}, {0x34U, 0x01U, 0x02U, 0xA5U}}};
+  const wfrac_protocol::AirconBlockInput command_input{&command_state, &command_segment, 1U};
+  const wfrac_protocol::AirconBlockInput receive_input{&receive_state, receive_segments.data(), receive_segments.size()};
+  std::array<uint8_t, 4096> aircon_raw{};
+  std::size_t aircon_raw_size = 0U;
+  assert(wfrac_protocol::encoded_aircon_stat_size(1U, 2U) == 54U);
+  assert(wfrac_protocol::serialize_aircon_stat(command_input, receive_input,
+                                               {aircon_raw.data(), aircon_raw.size()}, &aircon_raw_size) ==
+         wfrac_protocol::AirconStatEncodeError::none);
+  assert(aircon_raw_size == 54U);
+  wfrac_protocol::AirconFrameView round_trip_frame{};
+  assert(wfrac_protocol::parse_aircon_stat({aircon_raw.data(), aircon_raw_size}, &round_trip_frame) ==
+         wfrac_protocol::FrameError::none);
+  assert(round_trip_frame.command.state == command_state);
+  assert(round_trip_frame.receive.state == receive_state);
+  assert(round_trip_frame.command.segment_count == 1U && round_trip_frame.receive.segment_count == 2U);
+  assert(round_trip_frame.command.crc_valid && round_trip_frame.receive.crc_valid);
+  assert(round_trip_frame.receive_offset == round_trip_frame.command.encoded_size);
+  wfrac_protocol::OperationSegment round_trip_segment{};
+  assert(wfrac_protocol::operation_segment_at(round_trip_frame.command, 0U, &round_trip_segment));
+  assert(round_trip_segment.code == command_segment.code && round_trip_segment.op3 == command_segment.op3);
+  for (std::size_t index = 0U; index < receive_segments.size(); ++index) {
+    assert(wfrac_protocol::operation_segment_at(round_trip_frame.receive, index, &round_trip_segment));
+    assert(round_trip_segment.code == receive_segments[index].code && round_trip_segment.op1 == receive_segments[index].op1 &&
+           round_trip_segment.op2 == receive_segments[index].op2 && round_trip_segment.op3 == receive_segments[index].op3);
+  }
+  std::array<uint8_t, 4096> aircon_base64{};
+  std::size_t aircon_base64_size = 0U;
+  assert(wfrac_protocol::base64_encode({aircon_raw.data(), aircon_raw_size},
+                                       {aircon_base64.data(), aircon_base64.size()}, &aircon_base64_size) ==
+         wfrac_protocol::Base64Error::none);
+  std::array<uint8_t, 4096> decoded_aircon_raw{};
+  std::size_t decoded_aircon_raw_size = 0U;
+  assert(wfrac_protocol::base64_decode({aircon_base64.data(), aircon_base64_size},
+                                       {decoded_aircon_raw.data(), decoded_aircon_raw.size()}, &decoded_aircon_raw_size) ==
+         wfrac_protocol::Base64Error::none);
+  assert(decoded_aircon_raw_size == aircon_raw_size);
+  for (std::size_t index = 0U; index < aircon_raw_size; ++index) assert(decoded_aircon_raw[index] == aircon_raw[index]);
+  assert(wfrac_protocol::parse_aircon_stat({decoded_aircon_raw.data(), decoded_aircon_raw_size}, &round_trip_frame) ==
+         wfrac_protocol::FrameError::none);
+  assert(round_trip_frame.command.state == command_state && round_trip_frame.receive.state == receive_state);
+  assert(round_trip_frame.command.crc_valid && round_trip_frame.receive.crc_valid);
+
+  const auto assert_composition = [&](const wfrac_protocol::OperationSegment* command_segments, std::size_t command_count,
+                                      const wfrac_protocol::OperationSegment* receive_segment_data,
+                                      std::size_t receive_count) {
+    const wfrac_protocol::AirconBlockInput command_case{&command_state, command_segments, command_count};
+    const wfrac_protocol::AirconBlockInput receive_case{&receive_state, receive_segment_data, receive_count};
+    std::size_t size = 0U;
+    assert(wfrac_protocol::serialize_aircon_stat(command_case, receive_case,
+                                                 {aircon_raw.data(), aircon_raw.size()}, &size) ==
+           wfrac_protocol::AirconStatEncodeError::none);
+    assert(size == wfrac_protocol::encoded_aircon_stat_size(command_count, receive_count));
+  };
+  assert_composition(nullptr, 0U, nullptr, 0U);
+  assert_composition(nullptr, 0U, receive_segments.data(), receive_segments.size());
+  assert_composition(&command_segment, 1U, nullptr, 0U);
+  assert(wfrac_protocol::serialize_aircon_stat(command_input, receive_input, {aircon_raw.data(), 53U}, &aircon_raw_size) ==
+         wfrac_protocol::AirconStatEncodeError::output_too_small);
+  assert(wfrac_protocol::serialize_aircon_stat(command_input,
+                                               {&receive_state, nullptr, 0U},
+                                               {aircon_raw.data(), aircon_raw.size()}, &aircon_raw_size) ==
+         wfrac_protocol::AirconStatEncodeError::none);
+
+  std::array<wfrac_protocol::OperationSegment, 255> maximum_segments{};
+  maximum_segments[254] = {0xFEU, 0x01U, 0x02U, 0xA6U};
+  const wfrac_protocol::AirconBlockInput maximum_command{&command_state, maximum_segments.data(), maximum_segments.size()};
+  const wfrac_protocol::AirconBlockInput maximum_receive{&receive_state, maximum_segments.data(), maximum_segments.size()};
+  const std::size_t maximum_raw_size = wfrac_protocol::encoded_aircon_stat_size(255U, 255U);
+  assert(maximum_raw_size == 2082U);
+  assert(wfrac_protocol::serialize_aircon_stat(maximum_command, maximum_receive,
+                                               {aircon_raw.data(), aircon_raw.size()}, &aircon_raw_size) ==
+         wfrac_protocol::AirconStatEncodeError::none);
+  assert(aircon_raw_size == maximum_raw_size);
+  assert(wfrac_protocol::base64_encoded_size(maximum_raw_size) == 2776U);
   return 0;
 }

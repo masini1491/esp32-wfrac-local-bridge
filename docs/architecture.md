@@ -1,6 +1,6 @@
 # Architecture
 
-`Phase 1A — Pure Protocol Core` 已開始；目前實作 portable WF-RAC Protocol 的 CRC16、AirconStat structural framing、basic RECEIVE fixed-state decode、四個 safe COMMAND intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer 與 safe query builder，沒有 full request composition、transport、runtime 或 hardware implementation。
+`Phase 1A — Pure Protocol Core` 已開始；目前實作 portable WF-RAC Protocol 的 CRC16、AirconStat structural framing、basic RECEIVE fixed-state decode、四個 safe COMMAND intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe query builder、standard Base64 codec 與 generic full AirconStat composer，沒有 request policy、transport、runtime 或 hardware implementation。
 
 ```text
 WF-RAC Transport (HTTP :51443 / HTTPS :51443)
