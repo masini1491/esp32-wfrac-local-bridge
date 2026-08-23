@@ -13,6 +13,7 @@ WF-RAC local API boundary、handlers、discovery、request serialization 與 com
 - mDNS service 為 `_beaver._tcp`；advertised port 只作提示，expected API port 仍是 `51443`。
 - Request 必須 serialized、one-at-a-time，約 1 秒 pacing；timeout/retry 是 upstream behavior，不是 universal constants。Result semantics 必須 command-specific。
 - Reviewed 五個 local commands 都已有 portable request builder：`getDeviceInfo`、`getAirconStat`、`setAirconStat`、`updateAccountInfo` 與 `deleteAccountInfo`。builders 使用 caller-owned buffer、JSON escaping、64-bit Unix timestamp，並在 AirconStat wrapping 前驗證 CRC；actual HTTP request 仍 pending。
+- `getAirconStat` response parser 已將 contents 的 `airconStat` JSON string 經 Base64 decode、AirconStat structural parse 與 COMMAND／RECEIVE 雙 CRC gate 轉成 portable `AirconFrameView`；response `airconId` 目前 optional，其他 contents fields bounded-skip。這是 software validation，不代表已從實機取得 response。
 
 ## High-risk invariants
 

@@ -19,5 +19,6 @@ static_assert(classify_esp_http_failure({ESP_FAIL, 0, ESP_OK, 0, 1}) != Transpor
 static_assert(std::is_base_of_v<wfrac_transport::ITransport, wfrac_transport_espidf::EspHttpTransport>);
 static_assert(sizeof(wfrac_client::RequestExecutionReport) >= sizeof(std::size_t));
 static_assert(sizeof(wfrac_api::ApiResponseEnvelopeView) >= sizeof(int64_t));
+static_assert(sizeof(wfrac_api::GetAirconStatContents) >= sizeof(std::size_t));
 
 extern "C" void app_main(void) {}

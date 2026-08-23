@@ -36,7 +36,7 @@ platform adapter
 
 `wfrac_client` 不 serialize JSON、不建 timestamp、不 parse response，也不實作 HTTP/TLS。它將已建立的 `ApiRequestView` 以原 body 交給首次 attempt，立即以 SchemePolicy 記錄結果；只有 policy 明確回傳 `retry_http_compatibility` 才以同一 body 作唯一 HTTP fallback。因此每次 executor 最多兩次 physical attempts，沒有 loop 或 automatic rediscovery。
 
-raw HTTP response bytes → `wfrac_api` response envelope → command/result/contents → typed `getDeviceInfo` bootstrap fields。response parser 不依賴 HTTP status、Transport 或 ESP-IDF；nonzero result 只是保留的 command-specific data，不是 generic parse failure。
+raw HTTP response bytes → `wfrac_api` response envelope → command/result/contents → typed `getDeviceInfo` bootstrap fields。response parser 不依賴 HTTP status、Transport 或 ESP-IDF；nonzero result 只是保留的 command-specific data，不是 generic parse failure。`getAirconStat` contents parser 以 caller-owned scratch 將 JSON-decoded Base64 text 交給 `wfrac_protocol::base64_decode`，再以 `parse_aircon_stat` 驗證結構與 COMMAND／RECEIVE CRC；只有兩個 CRC 都有效才輸出 `AirconFrameView`，供未來 Protocol semantic／Device Model integration 使用。
 
 ```text
 WF-RAC API bytes

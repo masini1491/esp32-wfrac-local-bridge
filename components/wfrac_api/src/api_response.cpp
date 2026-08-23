@@ -3,6 +3,8 @@
 #include <cstring>
 #include <limits>
 
+#include "wfrac_protocol/base64.hpp"
+
 namespace wfrac_api { namespace {
 constexpr int kMaxDepth = 16;
 struct Span { const uint8_t* begin = nullptr; const uint8_t* end = nullptr; };
@@ -37,4 +39,98 @@ ApiResponseError decode(Span s,wfrac_protocol::MutableByteView out,std::size_t* 
 }
 ApiResponseError parse_api_response_envelope(wfrac_protocol::ByteView input,const char* expected,ApiResponseEnvelopeView* out){if(out)*out={};if(!out||!expected||!*expected||(input.size&& !input.data))return ApiResponseError::invalid_argument;Reader r(input);if(!r.take('{'))return ApiResponseError::malformed_json;bool cmd=false,res=false,contents=false;Span cv{},content{};if(!r.take('}'))for(;;){Span k;auto e=r.string(&k);if(e!=ApiResponseError::none)return e;if(!r.take(':'))return ApiResponseError::malformed_json;if(eq(k,"command")){if(cmd)return ApiResponseError::malformed_json;e=r.string(&cv);if(e!=ApiResponseError::none)return e;cmd=true;}else if(eq(k,"result")){if(res)return ApiResponseError::malformed_json;e=r.integer(&out->result);if(e!=ApiResponseError::none)return e;res=true;}else if(eq(k,"contents")){if(contents)return ApiResponseError::malformed_json;r.ws();const uint8_t* b=r.pos();e=r.value(0);if(e!=ApiResponseError::none)return e;content={b,r.pos()};contents=true;}else{e=r.value(0);if(e!=ApiResponseError::none)return e;}if(r.take('}'))break;if(!r.take(','))return ApiResponseError::malformed_json;}if(!r.done())return ApiResponseError::malformed_json;if(!cmd||!res)return ApiResponseError::missing_required_field;if(!eq(cv,expected))return ApiResponseError::unexpected_command;out->has_contents=contents;out->contents_json=contents?wfrac_protocol::ByteView{content.begin,static_cast<size_t>(content.end-content.begin)}:wfrac_protocol::ByteView{};return ApiResponseError::none;}
 ApiResponseError parse_get_device_info_contents(wfrac_protocol::ByteView in,wfrac_protocol::MutableByteView air,wfrac_protocol::MutableByteView mac,GetDeviceInfoContents* out){if(out)*out={};if(!out||(in.size&&!in.data))return ApiResponseError::invalid_argument;if(air.size&&air.data)air.data[0]=0;if(mac.size&&mac.data)mac.data[0]=0;Reader r(in);if(!r.take('{'))return ApiResponseError::invalid_field_type;bool id=false,hm=false,ha=false;if(!r.take('}'))for(;;){Span k,v;auto e=r.string(&k);if(e!=ApiResponseError::none)return e;if(!r.take(':'))return ApiResponseError::malformed_json;if(eq(k,"airconId")){if(id)return ApiResponseError::malformed_json;e=r.string(&v);if(e!=ApiResponseError::none)return e;e=decode(v,air,&out->aircon_id_size);if(e!=ApiResponseError::none){*out={};return e;}id=true;}else if(eq(k,"macAddress")){if(hm)return ApiResponseError::malformed_json;e=r.string(&v);if(e!=ApiResponseError::none)return e;e=decode(v,mac,&out->mac_address_size);if(e!=ApiResponseError::none){*out={};return e;}out->has_mac_address=true;hm=true;}else if(eq(k,"apMode")){if(ha)return ApiResponseError::malformed_json;e=r.integer(&out->ap_mode);if(e!=ApiResponseError::none)return e;out->has_ap_mode=true;ha=true;}else{e=r.value(0);if(e!=ApiResponseError::none)return e;}if(r.take('}'))break;if(!r.take(','))return ApiResponseError::malformed_json;}if(!r.done())return ApiResponseError::malformed_json;if(!id){*out={};return ApiResponseError::missing_required_field;}return ApiResponseError::none;}
+
+static ApiResponseError base64_error(wfrac_protocol::Base64Error error) {
+  switch (error) {
+    case wfrac_protocol::Base64Error::none:
+      return ApiResponseError::none;
+    case wfrac_protocol::Base64Error::output_too_small:
+      return ApiResponseError::output_too_small;
+    case wfrac_protocol::Base64Error::invalid_argument:
+      return ApiResponseError::invalid_argument;
+    case wfrac_protocol::Base64Error::size_overflow:
+      return ApiResponseError::integer_overflow;
+    case wfrac_protocol::Base64Error::invalid_length:
+    case wfrac_protocol::Base64Error::invalid_character:
+    case wfrac_protocol::Base64Error::invalid_padding:
+      return ApiResponseError::invalid_base64;
+  }
+  return ApiResponseError::invalid_base64;
+}
+
+ApiResponseError parse_get_aircon_stat_contents(
+    wfrac_protocol::ByteView in,
+    wfrac_protocol::MutableByteView air,
+    wfrac_protocol::MutableByteView scratch,
+    wfrac_protocol::MutableByteView raw,
+    GetAirconStatContents* out) {
+  if (out != nullptr) *out = {};
+  if (out == nullptr || (in.size != 0U && in.data == nullptr)) return ApiResponseError::invalid_argument;
+  if (air.size != 0U && air.data != nullptr) air.data[0] = 0;
+  if (scratch.size != 0U && scratch.data != nullptr) scratch.data[0] = 0;
+
+  Reader reader(in);
+  if (!reader.take('{')) return ApiResponseError::invalid_field_type;
+  bool has_aircon_stat = false;
+  bool has_aircon_id = false;
+  Span aircon_stat{};
+  Span aircon_id{};
+  if (!reader.take('}')) {
+    for (;;) {
+      Span key{};
+      ApiResponseError error = reader.string(&key);
+      if (error != ApiResponseError::none) return error;
+      if (!reader.take(':')) return ApiResponseError::malformed_json;
+      if (eq(key, "airconStat")) {
+        if (has_aircon_stat) return ApiResponseError::malformed_json;
+        error = reader.string(&aircon_stat);
+        if (error != ApiResponseError::none) return error;
+        has_aircon_stat = true;
+      } else if (eq(key, "airconId")) {
+        if (has_aircon_id) return ApiResponseError::malformed_json;
+        error = reader.string(&aircon_id);
+        if (error != ApiResponseError::none) return error;
+        has_aircon_id = true;
+      } else {
+        error = reader.value(0);
+        if (error != ApiResponseError::none) return error;
+      }
+      if (reader.take('}')) break;
+      if (!reader.take(',')) return ApiResponseError::malformed_json;
+    }
+  }
+  if (!reader.done()) return ApiResponseError::malformed_json;
+  if (!has_aircon_stat) return ApiResponseError::missing_required_field;
+
+  GetAirconStatContents parsed{};
+  if (has_aircon_id) {
+    ApiResponseError error = decode(aircon_id, air, &parsed.aircon_id_size);
+    if (error != ApiResponseError::none) return error;
+    parsed.has_aircon_id = true;
+  }
+
+  ApiResponseError error = decode(aircon_stat, scratch, &parsed.encoded_aircon_stat_size);
+  if (error != ApiResponseError::none) return error;
+
+  std::size_t raw_size = 0U;
+  error = base64_error(wfrac_protocol::base64_decoded_size(
+      {scratch.data, parsed.encoded_aircon_stat_size}, &raw_size));
+  if (error != ApiResponseError::none) return error;
+  if (raw.size < raw_size) return ApiResponseError::output_too_small;
+  error = base64_error(wfrac_protocol::base64_decode(
+      {scratch.data, parsed.encoded_aircon_stat_size}, raw, &raw_size));
+  if (error != ApiResponseError::none) return error;
+
+  wfrac_protocol::AirconFrameView frame{};
+  if (wfrac_protocol::parse_aircon_stat({raw.data, raw_size}, &frame) !=
+      wfrac_protocol::FrameError::none) {
+    return ApiResponseError::invalid_aircon_stat;
+  }
+  if (!frame.command.crc_valid || !frame.receive.crc_valid) return ApiResponseError::crc_mismatch;
+
+  parsed.raw_aircon_stat_size = raw_size;
+  parsed.frame = frame;
+  *out = parsed;
+  return ApiResponseError::none;
+}
 }  // namespace wfrac_api
