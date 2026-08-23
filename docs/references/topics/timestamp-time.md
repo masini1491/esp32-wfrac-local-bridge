@@ -11,7 +11,7 @@ R5 canonical time architecture record，涵蓋 WF-RAC timestamp、module clock�
 - `updateAccountInfo.contents.timezone` 是 per-account metadata，與 UTC Unix epoch 分離；exact runtime effect、expires representation／lifetime／duration／refresh 與 timezone participation 仍 UNKNOWN。`expires` 只能作 diagnostic/advisory metadata，不是 universal scheduling constant。
 - Clock correction 是 project architecture inference：只有 device 明確回報 expired/unregistered refusal，才 bounded 地處理自己的 self-managed registration；不得刪除 unknown accounts、清空 account table 或猜測 ownership。
 - ESP-IDF evidence：RTC timer 可跨一般 reset／sleep保持，但 power-on reset 會重置；high-resolution timer 不跨 reset。software/watchdog reset 不等於 power loss，power loss 後也不能由 NVS checkpoint 知道 exact elapsed wall time。`time()`、`gettimeofday()`、`settimeofday()`、`adjtime()` 可使用；SNTP 是 optional acquisition／correction mechanism，不是 system-time prerequisite。
-- Future conceptual boundary：trusted/best-available time source → Time Provider → WF-RAC API Envelope → Transport。portable `ITimeProvider`、`TimeSample` 與 trusted／estimated／unavailable quality 已實作；actual platform clock source 仍 pending。
+- Time boundary 已實作：`wfrac_time_espidf::EspSystemTimeProvider` 以 `gettimeofday()` 讀取 ESP-IDF POSIX system clock，RAM 初始 quality 必為 unavailable，僅 explicit seed/adopt 可設為 estimated/trusted。seed 使用 `settimeofday()`，因此會改變 process/device-wide system time；adopt 只採納已設定的 clock。沒有 timezone correction、automatic trust heuristic、fixed/build timestamp、SNTP 或 persistence；power-cycle後 quality recovery 仍 pending。
 - Daily local control 不要求 Internet、DNS 或 NTP。Persisted checkpoint 不是 trusted current time，只能作 lower-quality degraded estimate。External battery RTC 目前未選定且非 current architecture requirement。Future timestamp representation 必須 64-bit capable。
 
 ## High-risk invariants

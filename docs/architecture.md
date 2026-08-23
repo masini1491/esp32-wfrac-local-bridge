@@ -53,6 +53,16 @@ RECEIVE semantic decode → BasicHvacState → DeviceState observation/reconcili
 `wfrac_device_model` 的 read-path boundary 只認 `AirconFrameView`，不依賴 API、Transport 或 ESP-IDF，並在 mapping 時再次確認雙 CRC 與基本 block layout。成功 observation 不改 availability；reconciliation 的 observed-converged 只表示 state target 與 observation 相同，並非 transport confirmation 或 command causality。
 
 ```text
+future trusted/estimated time source
+        ↓ explicit seed/adopt
+ESP-IDF POSIX system clock
+        ↓ gettimeofday
+EspSystemTimeProvider → ITimeProvider → WF-RAC API builder
+```
+
+`wfrac_time_espidf` 是 platform adapter，只依賴 portable `wfrac_api`。它不取得時間：無 SNTP、DNS、Internet、Wi-Fi、RTC 或 NVS；quality 在每個 provider instance 初始 unavailable。seed 的 `settimeofday()` 具 process/device-wide global clock effect，adopt 不改 clock，兩者都必須由 future runtime 明確呼叫。
+
+```text
 WF-RAC API bytes
         ↓
 TransportRequest

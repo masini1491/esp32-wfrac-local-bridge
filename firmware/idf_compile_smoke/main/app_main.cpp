@@ -5,6 +5,7 @@
 #include "wfrac_client/request_executor.hpp"
 #include "wfrac_api/api_response.hpp"
 #include "wfrac_device_model/protocol_observation.hpp"
+#include "wfrac_time_espidf/esp_system_time_provider.hpp"
 
 using wfrac_transport::TransportError;
 using wfrac_transport_espidf::EspHttpFailureEvidence;
@@ -22,5 +23,6 @@ static_assert(sizeof(wfrac_client::RequestExecutionReport) >= sizeof(std::size_t
 static_assert(sizeof(wfrac_api::ApiResponseEnvelopeView) >= sizeof(int64_t));
 static_assert(sizeof(wfrac_api::GetAirconStatContents) >= sizeof(std::size_t));
 static_assert(sizeof(wfrac_device_model::ObservationReconciliationResult) >= sizeof(std::size_t));
+static_assert(std::is_base_of_v<wfrac_api::ITimeProvider, wfrac_time_espidf::EspSystemTimeProvider>);
 
 extern "C" void app_main(void) {}
