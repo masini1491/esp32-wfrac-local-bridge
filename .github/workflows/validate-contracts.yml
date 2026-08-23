@@ -75,3 +75,19 @@ jobs:
           components/wfrac_api/src/api_request.cpp
           tests/host_cpp/test_api.cpp
           -o api-tests && ./api-tests
+
+      - name: Run C++ Client tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_protocol/include
+          -Icomponents/wfrac_api/include
+          -Icomponents/wfrac_transport/include
+          -Icomponents/wfrac_client/include
+          components/wfrac_protocol/src/crc16.cpp
+          components/wfrac_protocol/src/aircon_frame.cpp
+          components/wfrac_protocol/src/base64.cpp
+          components/wfrac_api/src/api_request.cpp
+          components/wfrac_transport/src/scheme_policy.cpp
+          components/wfrac_client/src/request_executor.cpp
+          tests/host_cpp/test_client.cpp
+          -o client-tests && ./client-tests
