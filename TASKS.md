@@ -5,8 +5,9 @@
 ## Codex 共通執行規則
 
 - 每次只執行使用者當次明確授權的 stage；不得因本佇列存在就自行處理其他項目。
-- 開始時先讀 `AGENTS.md`、本 `TASKS.md` 與該 stage 直接相關檔案；依 Level 0→5 漸進式擴張，禁止預設 repo-wide 掃描。
-- Git preflight：先確認 `git status --short`、目前 branch、HEAD。若不是預期 branch、存在來源不明 dirty changes、merge/rebase/cherry-pick 未完成，STOP；不得 reset --hard、force push、丟棄或改寫未知變更。
+- **Remote-sync bootstrap：** Codex 本機 repository 可能落後 GitHub。每次 task 開始，在依賴 local `AGENTS.md` / `TASKS.md` 內容前，先確認 repository identity、`git status --short`、branch、HEAD，然後 `git fetch origin`。若目前為預期 `main`、working tree clean，且 local `main` 可由 `origin/main` fast-forward，使用 fast-forward-only 方式同步（例如 `git pull --ff-only origin main`）；若已與 `origin/main` 相同則直接繼續。若 dirty、unexpected branch、local ahead/diverged、無法 fast-forward，或 merge/rebase/cherry-pick 未完成，STOP 並回報，不得覆蓋、reset、stash/丟棄未知變更或自行 merge/rebase。**只有完成這個同步判斷後，才以最新 local `AGENTS.md` / `TASKS.md` 為 task source。**
+- 同步後讀 `AGENTS.md`、本 `TASKS.md` 與該 stage 直接相關檔案；依 Level 0→5 漸進式擴張，禁止預設 repo-wide 掃描。若同步後根目錄沒有 `TASKS.md`，不得憑舊記憶執行已移除的 stage；依使用者當次明確指令處理或 STOP 詢問。
+- Git safety：不得 reset --hard、force push、丟棄或改寫未知變更；不得為了讓工作樹變乾淨而自行 stash/delete user work。
 - Debug / patch 順序：Evidence → Root Cause → Focused Patch → Targeted Validation。Root cause 只能標為 `CONFIRMED ROOT CAUSE`、`HIGH-CONFIDENCE LIKELY ROOT CAUSE`、`INSUFFICIENT OBSERVABILITY`；只有前兩者可直接 patch，第三種先加最小觀測或 STOP。
 - 同一 root cause 自動 retry 最多 1 次；第二次失敗時分類 `SOURCE` / `TOOLCHAIN` / `ENVIRONMENT` / `INFRASTRUCTURE` / `SERVICE` / `HARDWARE_REQUIRED`，不要無限重跑。
 - Validation 由小到大：static/targeted verifier → targeted test → related build → 必要 matrix → full regression。不要為小 patch 預設跑最大驗證。
@@ -15,6 +16,12 @@
 - 成功驗證後必須同步更新本檔：**刪除整個已完成 stage 的 prompt/metadata 與對應 inventory 項目**，不要留下 Completed 記錄。若尚有 Deferred/Blocked/TODO 則保留本檔；完全無未完成工作時刪除 `TASKS.md`。
 - Commit/push 前 `git diff --check`；只提交本 stage scope。禁止 force push/history rewrite。
 - Codex final report 保持精簡，只列：`Root cause / research gap`、`Modified files`、`Validation`、`Pending / TASKS.md state`；不要重述大量背景。
+
+### Codex 短指令啟動格式
+
+使用者可在 Codex UI 手動選好本 stage 指定的模型與推理強度後，只貼短指令：
+
+> 先安全同步最新 `origin/main`（僅允許 clean、fast-forward-only；異常即 STOP）。同步後讀根目錄 `AGENTS.md` 與 `TASKS.md`，完整執行 `TASKS.md` 的「<Stage 名稱>」，只執行該 stage。成功驗證後依 `TASKS.md` 規則更新 queue、commit 並 push。
 
 ## Codex staged execution plan — 流量恢復後依序執行
 
@@ -32,7 +39,7 @@
 
 **Codex Prompt：**
 
-> 在目前 `main` 上執行「Stage A — Parser memory/correctness hardening」。遵守 `AGENTS.md`、`TASKS.md` 共通規則。先做 Git preflight，再只讀 `components/wfrac_api/src/api_response.cpp`、public response header 與直接相關 host tests；不要做 repo-wide 掃描。已知 root causes 已確認，不要重新設計 parser architecture。
+> 在目前 `main` 上執行「Stage A — Parser memory/correctness hardening」。遵守 `AGENTS.md`、`TASKS.md` 共通規則。先完成 remote-sync bootstrap，再只讀 `components/wfrac_api/src/api_response.cpp`、public response header 與直接相關 host tests；不要做 repo-wide 掃描。已知 root causes 已確認，不要重新設計 parser architecture。
 >
 > 僅處理以下 scope：
 > 1. 修正 response string `decode()`：empty string / zero-capacity / null caller output 不得造成 null write。**不要因此把原本不允許的 required empty identity/string 改成合法值**；只修 memory safety 與 deterministic error behavior。
@@ -61,7 +68,7 @@
 
 **Codex Prompt：**
 
-> 執行「Stage B — JSON string semantics / UTF-8 hardening」。必須以 Stage A 已完成的 `main` 為 baseline。遵守 `AGENTS.md`、`TASKS.md` 共通規則；Git preflight 後只讀目前 `api_response.cpp`、public response header 與直接相關 host tests。
+> 執行「Stage B — JSON string semantics / UTF-8 hardening」。必須以 Stage A 已完成的 `main` 為 baseline。遵守 `AGENTS.md`、`TASKS.md` 共通規則；先完成 remote-sync bootstrap，再只讀目前 `api_response.cpp`、public response header 與直接相關 host tests。
 >
 > 僅處理：
 > 1. known JSON keys 與 top-level `command` 必須依 **decoded JSON string value** 比較，使合法 escape（例如 `\uXXXX`）與等價 raw spelling語意相同。語意相同但 spelling 不同的 duplicate known key（例如 `airconId` + `aircon\u0049d`）仍必須被視為 duplicate/reject；不要放寬 duplicate-key 或 known-field type rules。
@@ -90,7 +97,7 @@
 
 **Codex Prompt：**
 
-> 執行「Stage C — ESP-IDF transport diagnostics correctness」。遵守 `AGENTS.md`、`TASKS.md` 共通規則。Git preflight 後只讀 `wfrac_transport_espidf` error classifier、`EspHttpTransport`、直接相關 tests/compile-smoke，以及必要的 pinned ESP-IDF transport/TLS reference topic；不要重新研究整個 repo或做泛化網搜。
+> 執行「Stage C — ESP-IDF transport diagnostics correctness」。遵守 `AGENTS.md`、`TASKS.md` 共通規則。先完成 remote-sync bootstrap，再只讀 `wfrac_transport_espidf` error classifier、`EspHttpTransport`、直接相關 tests/compile-smoke，以及必要的 pinned ESP-IDF transport/TLS reference topic；不要重新研究整個 repo或做泛化網搜。
 >
 > 已知問題與要求：
 > 1. classifier 必須先尊重 certificate verify evidence：`tls_verify_flags != 0` → `tls_identity_failure`。
@@ -118,12 +125,12 @@
 
 **Codex Prompt：**
 
-> 執行「Stage D — Maintenance contracts / project rules」。這是一個低推理、機械式 maintenance task。遵守 `AGENTS.md`、`TASKS.md` 共通規則；Git preflight 後只讀直接相關檔案，不要擴大 scope。
+> 執行「Stage D — Maintenance contracts / project rules」。這是一個低推理、機械式 maintenance task。遵守 `AGENTS.md`、`TASKS.md` 共通規則；先完成 remote-sync bootstrap，再只讀直接相關檔案，不要擴大 scope。
 >
 > 僅處理：
 > 1. portable operation-query builders 所有 early failure 統一把 non-null `encoded_size` reset 為 0，並補 targeted regression；不得改 success encoding semantics。
 > 2. 文件化 `AirconFrameView` / `AirconBlockView::segments` lifetime 與 immutability：views 指向 caller-owned raw storage；使用 returned views 期間 buffer 必須保持有效，validated bytes 不得在 cached CRC-valid state 背後被修改。
-> 3. 在 `AGENTS.md` 加永久規則：`If TASKS.md exists at the repository root, read it near the beginning of the task. Treat it as the shared temporary queue of unfinished work. After successfully completing and validating an authorized task, remove or update the corresponding entry. Do not execute unrelated TASKS.md items without explicit user authorization. Delete TASKS.md when no unfinished work remains.`
+> 3. 在 `AGENTS.md` 加永久規則：task 開始先安全同步 remote source of truth：確認 repo/status/branch/HEAD，`git fetch origin`；只有 clean、預期 branch 且可 fast-forward 時才以 fast-forward-only 同步 `origin/main`，dirty/diverged/ahead/unexpected state 則 STOP，不覆蓋 user work；同步後才讀最新 `AGENTS.md` / `TASKS.md`。若 `TASKS.md` 存在，視為 shared temporary queue；成功完成並驗證當次授權 task 後移除或更新對應 entry；不得未經授權執行其他 queue 項目；完全無 unfinished work 時刪除 `TASKS.md`。
 > 4. 在 `AGENTS.md` 加 library-extraction invariant：目前維持 monorepo；portable core `wfrac_protocol` / `wfrac_device_model` / `wfrac_api` / `wfrac_transport` / `wfrac_client` 必須保持未來可低成本抽成獨立 C++ library；platform/runtime dependency 只能 inward（platform/runtime → portable core），portable public API 不得洩漏 ESP-IDF/FreeRTOS/Wi-Fi/NVS/Matter types；不得因此提前拆 repo、packaging、semantic versioning。
 > 5. 修正 `docs/architecture.md` 把 `wfrac_transport_espidf` 說成「唯一」ESP-IDF adapter 的過時文字；目前至少有 `wfrac_transport_espidf` 與 `wfrac_time_espidf`。
 >
@@ -152,7 +159,7 @@
 
 - Reset `encoded_size` to zero consistently on early failure in portable operation-query builders. **→ Stage D**
 - Document `AirconFrameView` / segment-view lifetime and immutability expectations: views reference caller-owned raw storage, and validated bytes must not be mutated behind cached CRC-valid state. **→ Stage D**
-- Add the permanent `TASKS.md` queue rule to `AGENTS.md`. **→ Stage D**
+- Add the permanent remote-sync + `TASKS.md` queue rule to `AGENTS.md`. **→ Stage D**
 - Add the library-extraction invariant to `AGENTS.md`: keep the monorepo for now, preserve portable-core extractability, and prevent ESP-IDF/FreeRTOS/Wi-Fi/NVS/Matter types from leaking into portable public APIs. **→ Stage D**
 - Fix architecture wording that still describes `wfrac_transport_espidf` as the only ESP-IDF platform adapter now that `wfrac_time_espidf` also exists. **→ Stage D**
 
@@ -171,7 +178,7 @@
 
 **Prompt scaffold（執行前依當時 main 精簡刷新）：**
 
-> 實作 Phase 1C #4H：standalone diagnostic Wi-Fi + read-only WF-RAC bootstrap firmware skeleton。先做 Git preflight並只讀 `AGENTS.md`、`TASKS.md`、現有 API/client/transport/time public interfaces、ESP-IDF compile-smoke與必要 Wi-Fi reference topic。
+> 實作 Phase 1C #4H：standalone diagnostic Wi-Fi + read-only WF-RAC bootstrap firmware skeleton。先完成 remote-sync bootstrap，再只讀 `AGENTS.md`、`TASKS.md`、現有 API/client/transport/time public interfaces、ESP-IDF compile-smoke與必要 Wi-Fi reference topic。
 >
 > 建立獨立 diagnostic firmware consumer；預設 inert。local Kconfig 僅承載 probe enable、SSID/password、host、port、deviceId/operatorId、time seed、explicit scheme、HTTPS trust input；不得提交真實 secrets。Wi-Fi station 使用 RAM storage、單次 connect、bounded wait for `IP_EVENT_STA_GOT_IP`、無 reconnect loop；不得 app NVS/persistence。Time 明確 seed/adopt，不引入 NTP/DNS/Internet dependency。Transport 使用既有 API builder → client → `EspHttpTransport` → response parser，explicit HTTP/HTTPS，無 auto fallback。HTTPS 無 trust cert 時在 request 前 fail closed；不得 insecure TLS。
 >
@@ -192,7 +199,7 @@
 
 **Prompt scaffold（硬體資料由使用者當次提供，執行前刷新）：**
 
-> 執行第一次 real WF-RAC read-only probe。先做 Git/toolchain preflight，不修改 production source，除非 evidence 顯示 `CONFIRMED ROOT CAUSE` 且使用者當次明確授權修補。只使用 diagnostic firmware 已存在的 bounded one-shot path。
+> 執行第一次 real WF-RAC read-only probe。先完成 remote-sync / Git/toolchain preflight，不修改 production source，除非 evidence 顯示 `CONFIRMED ROOT CAUSE` 且使用者當次明確授權修補。只使用 diagnostic firmware 已存在的 bounded one-shot path。
 >
 > 先確認 explicit scheme、host/port、time seed與 HTTPS trust input；不得 auto-detect/downgrade，不得 verify-off。Flash/run 後只執行單次 Wi-Fi connect與單次 `getDeviceInfo` request，收集最小必要 serial evidence；不得 registration、setAirconStat、polling或任何控制寫入。
 >
