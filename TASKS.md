@@ -2,7 +2,19 @@
 
 此檔只追蹤尚未完成、Blocked、Deferred 或待驗證工作。完成項目應直接移除；Git history 才是完成紀錄。不得因看到本檔而自行執行未明確授權的工作。
 
-執行通則：每次 Codex 只執行當次明確授權的 stage；開始時先讀 `AGENTS.md`、本 `TASKS.md` 與該 stage 直接相關檔案，不得因本佇列存在就自行處理其他項目。成功驗證後，移除或更新本檔對應項目；若無未完成工作則刪除 `TASKS.md`。若 Luna 在已指定 root cause / patch direction 下仍無法安全完成，保留證據並升級 Terra；不得無證據直接升 Sol。
+## Codex 共通執行規則
+
+- 每次只執行使用者當次明確授權的 stage；不得因本佇列存在就自行處理其他項目。
+- 開始時先讀 `AGENTS.md`、本 `TASKS.md` 與該 stage 直接相關檔案；依 Level 0→5 漸進式擴張，禁止預設 repo-wide 掃描。
+- Git preflight：先確認 `git status --short`、目前 branch、HEAD。若不是預期 branch、存在來源不明 dirty changes、merge/rebase/cherry-pick 未完成，STOP；不得 reset --hard、force push、丟棄或改寫未知變更。
+- Debug / patch 順序：Evidence → Root Cause → Focused Patch → Targeted Validation。Root cause 只能標為 `CONFIRMED ROOT CAUSE`、`HIGH-CONFIDENCE LIKELY ROOT CAUSE`、`INSUFFICIENT OBSERVABILITY`；只有前兩者可直接 patch，第三種先加最小觀測或 STOP。
+- 同一 root cause 自動 retry 最多 1 次；第二次失敗時分類 `SOURCE` / `TOOLCHAIN` / `ENVIRONMENT` / `INFRASTRUCTURE` / `SERVICE` / `HARDWARE_REQUIRED`，不要無限重跑。
+- Validation 由小到大：static/targeted verifier → targeted test → related build → 必要 matrix → full regression。不要為小 patch 預設跑最大驗證。
+- A–D 預設 **Context：Default**、**Execution mode：Normal / single-agent**；不得使用 1M context、Fast、Ultra 或 Multi-Agent，除非該 stage 明確記載升級條件且有新 evidence 支持。
+- 若 Luna 在已指定 root cause / patch direction 下仍無法安全完成，保留 evidence 再升 Terra；不得無證據直接升 Sol。
+- 成功驗證後必須同步更新本檔：**刪除整個已完成 stage 的 prompt/metadata 與對應 inventory 項目**，不要留下 Completed 記錄。若尚有 Deferred/Blocked/TODO 則保留本檔；完全無未完成工作時刪除 `TASKS.md`。
+- Commit/push 前 `git diff --check`；只提交本 stage scope。禁止 force push/history rewrite。
+- Codex final report 保持精簡，只列：`Root cause / research gap`、`Modified files`、`Validation`、`Pending / TASKS.md state`；不要重述大量背景。
 
 ## Codex staged execution plan — 流量恢復後依序執行
 
@@ -10,89 +22,114 @@
 
 **推薦模型：** Luna  
 **推理強度：** Medium  
-**前置蒐證：** 不需要；root causes 已由 code review 定位。  
+**推薦理由：** root causes 與修改方向已由 code review 定位；屬 bounded parser correctness patch + targeted tests，不需要 Terra 做開放式探索。  
+**是否值得先用較便宜模型做前置蒐證：** 否；Luna 已是本 stage 的最低足夠模型，且 evidence 已足夠。  
+**Context 建議：** Default；只讀 API response implementation/header/tests，evidence 不足才擴張。  
+**Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
 **依賴：** 無；第一個執行。  
-**成功後：** 更新本 `TASKS.md`，移除本 stage 已完成項目，再 commit/push。
+**升級條件：** 若實際 source 與已確認 root cause 明顯不符，或安全修法必須改 public parser architecture/API，STOP 並帶 evidence 升 Terra Medium。  
+**成功後：** 刪除本 Stage A 整段與 inventory 中 Stage A 項目，再 commit/push。
 
 **Codex Prompt：**
 
-> 在目前 `main` 上執行「Stage A — Parser memory/correctness hardening」。先讀 `AGENTS.md`、`TASKS.md`、`components/wfrac_api/src/api_response.cpp`、public response header 與直接相關 host tests；不要做 repo-wide 掃描。已知 root causes 已確認，不要重新設計 parser architecture。
+> 在目前 `main` 上執行「Stage A — Parser memory/correctness hardening」。遵守 `AGENTS.md`、`TASKS.md` 共通規則。先做 Git preflight，再只讀 `components/wfrac_api/src/api_response.cpp`、public response header 與直接相關 host tests；不要做 repo-wide 掃描。已知 root causes 已確認，不要重新設計 parser architecture。
 >
 > 僅處理以下 scope：
-> 1. 修正 response string `decode()`：empty string / zero-capacity / null caller output 不得造成 null write；所有 failure path 必須安全且 deterministic。
-> 2. 將 JSON/Unicode parser 內可能超過 one-past-end 的 `p + N` bounds checks 改為 remaining-length 型式；覆蓋 truncated `\uXXXX`、high-surrogate 缺 low-surrogate、尾端 escape。
-> 3. `parse_api_response_envelope()` 與 `parse_get_device_info_contents()` 改成 failure-atomic output：只在完整成功後 commit metadata；失敗時 output 維持 reset 狀態。
-> 4. identity/C-string outputs（至少 `airconId`、`macAddress`）不得接受 decoded embedded NUL；維持 public C-string contract 無歧義。
-> 5. unknown JSON numeric values新增完整合法 JSON number skip（含 fraction/exponent），但 known `result` / `apMode` 仍必須 strict integer。
+> 1. 修正 response string `decode()`：empty string / zero-capacity / null caller output 不得造成 null write。**不要因此把原本不允許的 required empty identity/string 改成合法值**；只修 memory safety 與 deterministic error behavior。
+> 2. 將 JSON/Unicode parser 內可能超過 one-past-end 的 `p + N` bounds checks 改成 remaining-length 型式；覆蓋 truncated `\uXXXX`、high-surrogate 缺 low-surrogate、尾端 escape。
+> 3. `parse_api_response_envelope()` 與 `parse_get_device_info_contents()` 改成 failure-atomic output：使用 local temporary，只有完整成功後才 commit；任何失敗時 public output 維持 reset 狀態。
+> 4. identity/C-string outputs（至少 `airconId`、`macAddress`）不得接受 decoded embedded U+0000；不要留下 size 與 C-string 視圖互相矛盾的 representation。
+> 5. unknown JSON numeric values使用完整 JSON number grammar安全 skip；valid examples 至少涵蓋 `0`、`-0`、`0.5`、`-1.25`、`1e3`、`-2E-2`；malformed examples至少涵蓋 `01`、`1.`、`1e`、`+1`、`.5`。known `result` / `apMode` 仍必須 strict signed integer，不接受 fraction/exponent。
 >
-> 新增 targeted host tests，至少覆蓋上述每個 bug；不得改協議語意、Transport、Device Model、ESP-IDF runtime、Wi-Fi、NVS、Matter。先跑 API response targeted tests，再跑既有 host regressions；只有相關 source 變動需要的驗證才擴張。若 root cause 與實際 source 不符或修法需要改 public architecture，STOP 並回報，不要猜。
+> 新增 targeted host tests，至少覆蓋上述每個 bug；不得改協議語意、Transport、Device Model、ESP-IDF runtime、Wi-Fi、NVS、Matter，不引入 external JSON library。先跑 API response targeted tests，再跑既有 host regressions；只有 evidence 顯示必要才擴張。
 >
-> 全部 PASS 後同步更新 `TASKS.md`，移除 Stage A 對應未完成項目；若仍有其他工作保留本檔。commit/push 正常進 `main`，禁止 force/reset/history rewrite。
+> 若 root cause 與實際 source 不符或修法需要 public architecture/API change，STOP 並以 `INSUFFICIENT OBSERVABILITY` 或具體 evidence 回報，不要猜。
+>
+> 全部 PASS 後，從 `TASKS.md` **刪除整個 Stage A 區塊與所有 `→ Stage A` inventory 項目**；不得留下 completed 記錄。`git diff --check` 後 commit/push 正常進 `main`。
 
 ### Stage B — JSON string semantics / UTF-8 hardening
 
 **推薦模型：** Luna  
 **推理強度：** Medium  
-**前置蒐證：** 不需要；只依 JSON/UTF-8 標準語意與現有 parser contract。  
-**依賴：** Stage A PASS。  
-**升級條件：** 若 raw UTF-8 validation 需要明顯擴大 parser architecture，停止並升 Terra Medium。  
-**成功後：** 更新 `TASKS.md`，再 commit/push。
+**推薦理由：** 行為規格可完全預先定義，主要是 bounded JSON-string comparator / UTF-8 validation 與測試；先用 Luna 可控制成本。  
+**是否值得先用較便宜模型做前置蒐證：** 否；Luna 已足夠。  
+**Context 建議：** Default；以 Stage A 後的 `api_response.cpp`、public header、response tests 為中心。  
+**Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
+**依賴：** Stage A PASS 且 Stage A 已從 `TASKS.md` 移除。  
+**升級條件：** 若正確 raw UTF-8 validation / decoded-key comparison 必須大規模改寫 parser 或改 public API，STOP 並帶 evidence 升 Terra Medium。  
+**成功後：** 刪除本 Stage B 整段與 inventory 中 Stage B 項目，再 commit/push。
 
 **Codex Prompt：**
 
-> 執行「Stage B — JSON string semantics / UTF-8 hardening」。必須以 Stage A 已完成的 `main` 為 baseline。先讀 `AGENTS.md`、`TASKS.md`、目前 `api_response.cpp` 與其 host tests，只讀直接相關檔案。
+> 執行「Stage B — JSON string semantics / UTF-8 hardening」。必須以 Stage A 已完成的 `main` 為 baseline。遵守 `AGENTS.md`、`TASKS.md` 共通規則；Git preflight 後只讀目前 `api_response.cpp`、public response header 與直接相關 host tests。
 >
 > 僅處理：
-> 1. known JSON keys 與 top-level `command` 必須以 decoded JSON string semantics 比較，使合法 escape（例如 `\uXXXX`）與等價 raw spelling 得到相同語意；不要放寬 duplicate-key 或 strict known-field type rules。
-> 2. raw non-ASCII UTF-8 bytes不得被逐 byte 當 Unicode code point 再編碼；合法 raw UTF-8應 byte-preserving，`\uXXXX` 則正確輸出 UTF-8。
-> 3. 驗證並拒絕 malformed UTF-8，包括 bad continuation、truncated sequence、overlong encoding、UTF-8 encoded surrogate、超過 U+10FFFF；不得接受 embedded U+0000 identity（Stage A contract保持）。
-> 4. 加 targeted tests：raw `é`、中文字串 byte-identical；`\u00E9` 等價 decode；escaped key/command；malformed UTF-8 cases。
+> 1. known JSON keys 與 top-level `command` 必須依 **decoded JSON string value** 比較，使合法 escape（例如 `\uXXXX`）與等價 raw spelling語意相同。語意相同但 spelling 不同的 duplicate known key（例如 `airconId` + `aircon\u0049d`）仍必須被視為 duplicate/reject；不要放寬 duplicate-key 或 known-field type rules。
+> 2. raw non-ASCII UTF-8 bytes不得逐 byte 當 Unicode code point 再編碼；合法 raw UTF-8必須 byte-preserving，`\uXXXX` / surrogate pair 則正確輸出 UTF-8。
+> 3. JSON parser 的 string validation 必須適用於 keys、known values、unknown/skipped string values，不得因 value 被 skip 就繞過 UTF-8 validation。
+> 4. 驗證並拒絕 malformed UTF-8：bad continuation、truncated sequence、overlong encoding、UTF-8 encoded surrogate、code point > U+10FFFF。Stage A 的 embedded U+0000 identity rejection 必須保持。
+> 5. targeted tests 至少包含 raw `é`、中文字串 byte-identical、`\u00E9` 等價 decode、escaped command/key、semantic duplicate key，以及上述 malformed UTF-8 cases。
 >
-> 不得引入 heap/external JSON library，不得重寫整個 parser，不得碰 Transport/Device Model/ESP-IDF runtime。targeted API response tests PASS 後跑既有 host regressions。若為完成此 scope 必須改 public API 或大規模 parser rewrite，STOP 並保留 evidence，建議 Terra Medium。
+> 優先採 bounded/no-heap helper 或 streaming comparison；不得引入 heap/external JSON library，不得重寫整個 parser，不得碰 Transport/Device Model/ESP-IDF runtime。targeted API response tests PASS 後跑既有 host regressions。
 >
-> 成功後同步移除 `TASKS.md` 的 Stage B 對應項目，再 commit/push。
+> 若必須改 public API 或大規模 parser rewrite，STOP，保留 evidence 並建議 Terra Medium；不要自己升級 scope。
+>
+> 成功後從 `TASKS.md` 刪除整個 Stage B 區塊與所有 `→ Stage B` inventory 項目，`git diff --check` 後 commit/push。
 
 ### Stage C — ESP-IDF transport diagnostics correctness
 
 **推薦模型：** Luna  
 **推理強度：** Medium  
-**前置蒐證：** 不需要重新搜尋；以 ESP-IDF v6.0.2 官方既有 evidence 與目前 adapter source 為準。  
-**依賴：** Stage A PASS；可在 Stage B 之後執行以維持線性 history。  
-**成功後：** 更新 `TASKS.md`，再 commit/push。
+**推薦理由：** 根因與 ESP-IDF v6.0.2 contract 已定位，工作是 adapter-specific taxonomy/contract patch + compile validation；不需要 Terra 做架構決策。  
+**是否值得先用較便宜模型做前置蒐證：** 否；不要重新搜尋網路或整個 repo。若 repo 內 pinned ESP-IDF evidence 與 source 衝突才停止並升級蒐證。  
+**Context 建議：** Default；只讀 `wfrac_transport_espidf` classifier/transport、直接測試/compile smoke，以及必要的已 pinned transport/TLS reference topic。  
+**Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
+**依賴：** Stage A PASS；為保持線性 history，預設在 Stage B 後執行。  
+**升級條件：** 若 ESP-IDF v6.0.2 public error constants / cert contract 與 pinned evidence 不符，或無法以現有 classifier evidence type 正確區分，不猜；STOP 並升 Terra Medium 做 focused evidence review。  
+**成功後：** 刪除本 Stage C 整段與 inventory 中 Stage C 項目，再 commit/push。
 
 **Codex Prompt：**
 
-> 執行「Stage C — ESP-IDF transport diagnostics correctness」。先讀 `AGENTS.md`、`TASKS.md`、`wfrac_transport_espidf` classifier / `EspHttpTransport` 及直接相關 compile-smoke/tests；不要重新研究整個 repo。
+> 執行「Stage C — ESP-IDF transport diagnostics correctness」。遵守 `AGENTS.md`、`TASKS.md` 共通規則。Git preflight 後只讀 `wfrac_transport_espidf` error classifier、`EspHttpTransport`、直接相關 tests/compile-smoke，以及必要的 pinned ESP-IDF transport/TLS reference topic；不要重新研究整個 repo或做泛化網搜。
 >
 > 已知問題與要求：
-> 1. error classifier 不得把 ESP-TLS 層回報的 DNS/socket/connect/connection-timeout evidence 一律壓成 generic `tls_failure`。依 ESP-IDF v6.0.2 error semantics，把可明確辨識的 timeout → `timeout`、DNS/socket/connect/network reachability → `connection_failure`、certificate verify flags → `tls_identity_failure`、真正 TLS handshake/protocol diagnostics → `tls_failure`；local invalid/config transport → `invalid_argument`。未知證據保守落 `io_failure` 或既有最合理 taxonomy。classifier 永遠不得自行產生 `scheme_mismatch`。
-> 2. 修正 `EspHttpTransport` server PEM length contract 與 ESP-IDF v6.0.2：清楚支援/文件化 `cert_len == 0` 代表 NUL-terminated PEM；非零 length 的契約必須與 ESP-IDF 要求一致（包含 terminator）。不得加入 insecure verify-off、trust-all、skip identity verification。
-> 3. 加 compile-time / targeted classifier coverage，確保 DNS/connect/timeout/TLS/identity 不互相誤分類；更新必要的 adapter comments/docs，但不要碰 Wi-Fi/runtime。
+> 1. classifier 必須先尊重 certificate verify evidence：`tls_verify_flags != 0` → `tls_identity_failure`。
+> 2. ESP-TLS / socket / perform evidence中可明確辨識的 connection timeout → `timeout`；hostname resolution、socket creation、failed TCP connect / network reachability → `connection_failure`；local invalid argument/invalid transport/config misuse → `invalid_argument`；真正 TLS handshake/protocol/mbedTLS diagnostics → `tls_failure`。不要讓 generic `tls_error != ESP_OK` 的檢查搶在更具體 network/timeout evidence之前。
+> 3. 對無法由現有 evidence 安全判定的情況採保守分類，不得自行推導 `scheme_mismatch`；classifier 永遠不得 invent HTTP compatibility fallback evidence。
+> 4. 修正 `EspHttpTransport` PEM contract：non-null NUL-terminated PEM允許 `cert_len == 0`；若使用 nonzero length，必須符合 ESP-IDF v6.0.2 PEM contract並包含 NUL terminator。不得以 `strlen(pem)` 當 nonzero `cert_len` 而漏掉 `+1`。不得加入 insecure verify-off、trust-all 或 skip identity verification。
+> 5. tests 必須直接覆蓋 representative timeout / DNS / socket-connect / TLS-handshake / certificate-identity / invalid-local-config evidence，確保 precedence 不互相誤分類。
 >
-> 驗證：targeted classifier/static tests、既有 host regressions，以及 ESP-IDF v6.0.2 C6/C3 compile-link。不得執行 network、TLS handshake、flash、WF-RAC request。若 ESP-IDF public constants/semantics與既有 evidence不符，STOP 回報來源與 compile evidence，不要猜 mapping。
+> 驗證：targeted classifier/static tests → 既有 host regressions → ESP-IDF v6.0.2 C6 build → C3 build。不得執行 network、TLS handshake、flash、WF-RAC request。
 >
-> 成功後同步更新 `TASKS.md`，移除 Stage C 對應項目，再 commit/push。
+> 若實際 ESP-IDF constants/semantics 與 pinned evidence不符，STOP 並回報 source/compile evidence；不要猜 mapping。
+>
+> 成功後從 `TASKS.md` 刪除整個 Stage C 區塊與所有 `→ Stage C` inventory 項目，`git diff --check` 後 commit/push。
 
 ### Stage D — Maintenance contracts / project rules
 
 **推薦模型：** Luna  
 **推理強度：** Low  
-**前置蒐證：** 不需要。  
-**依賴：** Stage A–C PASS。  
-**成功後：** 更新 `TASKS.md`；若只剩 Deferred 項目則保留，若沒有任何未完成工作才刪除。
+**推薦理由：** 以 deterministic maintenance、文件與小型 regression 為主，不需要高推理。  
+**是否值得先用較便宜模型做前置蒐證：** 否；Luna Low 即為最低足夠配置。  
+**Context 建議：** Default；只讀 operation-query builders/tests、frame/view public headers、`AGENTS.md`、`docs/architecture.md`、`TASKS.md`。  
+**Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
+**依賴：** Stage A–C PASS 且已自 `TASKS.md` 移除。  
+**成功後：** 刪除本 Stage D 整段與 inventory 中 Stage D 項目；若只剩 Deferred 則保留 `TASKS.md`。
 
 **Codex Prompt：**
 
-> 執行「Stage D — Maintenance contracts / project rules」。這是一個低推理、機械式 maintenance task。先讀 `AGENTS.md`、`TASKS.md` 與直接相關檔案，不要擴大 scope。
+> 執行「Stage D — Maintenance contracts / project rules」。這是一個低推理、機械式 maintenance task。遵守 `AGENTS.md`、`TASKS.md` 共通規則；Git preflight 後只讀直接相關檔案，不要擴大 scope。
 >
 > 僅處理：
-> 1. portable operation-query builders 所有 early failure 統一把 `encoded_size` reset 為 0，並補 targeted regression。
+> 1. portable operation-query builders 所有 early failure 統一把 non-null `encoded_size` reset 為 0，並補 targeted regression；不得改 success encoding semantics。
 > 2. 文件化 `AirconFrameView` / `AirconBlockView::segments` lifetime 與 immutability：views 指向 caller-owned raw storage；使用 returned views 期間 buffer 必須保持有效，validated bytes 不得在 cached CRC-valid state 背後被修改。
 > 3. 在 `AGENTS.md` 加永久規則：`If TASKS.md exists at the repository root, read it near the beginning of the task. Treat it as the shared temporary queue of unfinished work. After successfully completing and validating an authorized task, remove or update the corresponding entry. Do not execute unrelated TASKS.md items without explicit user authorization. Delete TASKS.md when no unfinished work remains.`
 > 4. 在 `AGENTS.md` 加 library-extraction invariant：目前維持 monorepo；portable core `wfrac_protocol` / `wfrac_device_model` / `wfrac_api` / `wfrac_transport` / `wfrac_client` 必須保持未來可低成本抽成獨立 C++ library；platform/runtime dependency 只能 inward（platform/runtime → portable core），portable public API 不得洩漏 ESP-IDF/FreeRTOS/Wi-Fi/NVS/Matter types；不得因此提前拆 repo、packaging、semantic versioning。
-> 5. 修正 architecture 文件把 `wfrac_transport_espidf` 說成「唯一」ESP-IDF adapter 的過時文字；目前至少有 `wfrac_transport_espidf` 與 `wfrac_time_espidf`。
+> 5. 修正 `docs/architecture.md` 把 `wfrac_transport_espidf` 說成「唯一」ESP-IDF adapter 的過時文字；目前至少有 `wfrac_transport_espidf` 與 `wfrac_time_espidf`。
 >
-> 不新增功能、不做重構。跑必要 targeted tests、`git diff --check`；若 source 有變才跑其相關 host regression。成功後同步更新 `TASKS.md`，移除 Stage D 對應項目並 commit/push。
+> 不新增功能、不做重構。跑 operation-query targeted regression、必要 host regression、`git diff --check`。若只修改 docs/header contract且無 production source change，不為了形式預設跑 ESP-IDF full matrix。
+>
+> 成功後從 `TASKS.md` 刪除整個 Stage D 區塊與所有 `→ Stage D` inventory 項目；若只剩 Deferred 項目保留本檔。commit/push 正常進 `main`。
 
 ## Remaining task inventory
 
@@ -101,15 +138,15 @@
 - Fix `wfrac_api` response string decoding so empty strings / zero-capacity caller outputs cannot cause a null write. Add targeted malformed/empty-output tests. **→ Stage A**
 - Replace unsafe end-of-buffer pointer-addition checks in JSON/Unicode parsing with remaining-length checks; add truncated `\uXXXX` / surrogate-pair tests. **→ Stage A**
 - Refine ESP-IDF HTTP/TLS failure classification so DNS/socket/connect/connection-timeout evidence is not incorrectly collapsed into generic `tls_failure`; preserve the rule that the classifier never invents `scheme_mismatch`. **→ Stage C**
-- Align `EspHttpTransport` PEM certificate length contract with ESP-IDF v6.0.2 semantics. Explicitly document/test whether `cert_len == 0` means NUL-terminated PEM and how nonzero lengths include the terminator. **→ Stage C**
+- Align `EspHttpTransport` PEM certificate length contract with ESP-IDF v6.0.2 semantics. Explicitly document/test `cert_len == 0` NUL-terminated PEM semantics and nonzero-length terminator requirements. **→ Stage C**
 - Make response-parser outputs atomic on failure: `parse_api_response_envelope()` and `parse_get_device_info_contents()` should commit metadata only after full success, matching the `getAirconStat` parser behavior. **→ Stage A**
 
 ### P2 — Response parser / library hardening
 
-- Reject decoded embedded NUL in identity/C-string outputs such as `airconId` / `macAddress`, or otherwise make the public contract unambiguous. **→ Stage A**
+- Reject decoded embedded NUL in identity/C-string outputs such as `airconId` / `macAddress`, keeping the public contract unambiguous. **→ Stage A**
 - Allow unknown JSON numeric values to be safely skipped using full valid JSON number grammar while keeping known integer fields such as `result` / `apMode` strict integers. **→ Stage A**
-- Compare known JSON keys and `command` by decoded string value so valid escapes such as `\uXXXX` do not break semantic matching. **→ Stage B**
-- Preserve and validate raw UTF-8 string bytes correctly instead of re-encoding each non-ASCII byte as a Unicode code point; add valid and malformed UTF-8 tests. **→ Stage B**
+- Compare known JSON keys and `command` by decoded string value, including semantic duplicate detection across escaped/raw spellings. **→ Stage B**
+- Preserve and validate raw UTF-8 string bytes correctly instead of re-encoding each non-ASCII byte as a Unicode code point; validate strings even when skipped. **→ Stage B**
 
 ### P3 — Maintenance / contracts
 
@@ -125,13 +162,40 @@
 
 **推薦模型：** Terra  
 **推理強度：** Medium  
+**推薦理由：** 開始涉及 ESP-IDF Wi-Fi lifecycle、bounded event handling、API/client/transport/time wiring 與 component integration；需要一般程式開發推理，但仍不需要 Sol。  
+**是否值得先用較便宜模型做前置蒐證：** 通常否；A–D 完成後由 Terra 直接做 focused baseline read。只有 toolchain/baseline 是否仍可用不明時，才可先用 Luna Low 做純 evidence preflight，不修改 source。  
+**Context 建議：** Default；只在 direct component interfaces 不足時升 Expanded，不預設 1M。  
+**Execution mode 建議：** Normal / single-agent；不預設 Fast / Ultra / Multi-Agent。  
 **觸發條件：** Stage A–D 全部 PASS，尤其 P1 pre-hardware correctness 已清空。  
-**原因：** 開始涉及 ESP-IDF Wi-Fi lifecycle、bounded event handling、existing API/client/transport/time wiring；不適合再當純機械 patch。  
-**限制：** 先做 compile/link-ready one-shot diagnostic firmware；預設 inert；不得 flash/network/real WF-RAC。具體 Prompt 應在執行前依當時 `main` / `AGENTS.md` / `TASKS.md` 重新生成，不在本檔鎖死可能已變動的 source 細節。
+**限制：** 先做 compile/link-ready one-shot diagnostic firmware；預設 inert；不得 flash/network/real WF-RAC。執行前必須依當時 `main` / `AGENTS.md` / `TASKS.md` 重新確認 source paths與 interfaces；不得照抄過時 baseline SHA。
+
+**Prompt scaffold（執行前依當時 main 精簡刷新）：**
+
+> 實作 Phase 1C #4H：standalone diagnostic Wi-Fi + read-only WF-RAC bootstrap firmware skeleton。先做 Git preflight並只讀 `AGENTS.md`、`TASKS.md`、現有 API/client/transport/time public interfaces、ESP-IDF compile-smoke與必要 Wi-Fi reference topic。
+>
+> 建立獨立 diagnostic firmware consumer；預設 inert。local Kconfig 僅承載 probe enable、SSID/password、host、port、deviceId/operatorId、time seed、explicit scheme、HTTPS trust input；不得提交真實 secrets。Wi-Fi station 使用 RAM storage、單次 connect、bounded wait for `IP_EVENT_STA_GOT_IP`、無 reconnect loop；不得 app NVS/persistence。Time 明確 seed/adopt，不引入 NTP/DNS/Internet dependency。Transport 使用既有 API builder → client → `EspHttpTransport` → response parser，explicit HTTP/HTTPS，無 auto fallback。HTTPS 無 trust cert 時在 request 前 fail closed；不得 insecure TLS。
+>
+> 僅 wiring `getDeviceInfo` one-shot read path；不得 registration、setAirconStat、polling、mDNS、Matter、MQTT/WebUI、flash/network execution。固定 caller-owned buffers、bounded timeout、敏感 log hygiene與 cleanup。
+>
+> 驗證只做 host regressions + ESP-IDF v6.0.2 C6/C3 compile-link；`CONFIRMED_LOCAL` 不得因 compile 成功而增加。成功後更新 `TASKS.md`：刪除 #4H Deferred 項目，保留 First real probe，commit/push。
 
 ### First real WF-RAC read-only probe / hardware validation
 
 **推薦模型：** Terra  
 **推理強度：** Medium  
-**觸發條件：** #4H compile-ready，local endpoint/scheme/time seed/TLS trust inputs 明確。  
-**限制：** bounded、read-only、`getDeviceInfo` first；不得 insecure TLS、不得自動 downgrade、不得寫入控制命令。具體 hardware Prompt 在執行前依當時 source of truth 重新生成。
+**推薦理由：** 需要把實機 Wi-Fi/TLS/WF-RAC evidence與既有 classifier/parser 語意整合判讀；屬 integration/debug，不適合 Luna 自行決策，也不需 Sol。  
+**是否值得先用較便宜模型做前置蒐證：** 若只是確認 build/toolchain/dirty tree，可用 Luna Low；實際 probe evidence interpretation 仍由 Terra。  
+**Context 建議：** Default；先只讀 diagnostic firmware、transport classifier、getDeviceInfo parser、相關 reference topic；evidence不足再 Expanded。  
+**Execution mode 建議：** Normal / single-agent；硬體測試不使用 Multi-Agent。  
+**觸發條件：** #4H compile-ready，local endpoint/scheme/time seed/TLS trust inputs 明確，使用者明確授權 hardware/network execution。  
+**限制：** bounded、read-only、`getDeviceInfo` first；不得 insecure TLS、不得自動 downgrade、不得寫入控制命令。任何真實 credential/operator/cert material不得 commit或輸出。
+
+**Prompt scaffold（硬體資料由使用者當次提供，執行前刷新）：**
+
+> 執行第一次 real WF-RAC read-only probe。先做 Git/toolchain preflight，不修改 production source，除非 evidence 顯示 `CONFIRMED ROOT CAUSE` 且使用者當次明確授權修補。只使用 diagnostic firmware 已存在的 bounded one-shot path。
+>
+> 先確認 explicit scheme、host/port、time seed與 HTTPS trust input；不得 auto-detect/downgrade，不得 verify-off。Flash/run 後只執行單次 Wi-Fi connect與單次 `getDeviceInfo` request，收集最小必要 serial evidence；不得 registration、setAirconStat、polling或任何控制寫入。
+>
+> 將結果明確分成 Software/Compile/Static-Test/Bench/Hardware/Network evidence；API/transport call accepted 不等於 WF-RAC application success。若失敗，依 classifier + response evidence分類 root cause；同一 root cause 最多重試一次。需要 source patch但證據不足時 STOP，不猜。
+>
+> 成功時只把可驗證結果更新到正式 evidence/docs（依當次使用者授權）並同步更新 `TASKS.md`；不得提交 secrets。若 `getDeviceInfo` 真實成功，可將對應項目標為完成並規劃下一個 read-only `getAirconStat` task，但不得自行執行未授權下一階段。
