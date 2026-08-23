@@ -45,5 +45,6 @@
 - ESP-IDF v6.0.2 local toolchain baseline、platform-specific HTTP/TLS error classifier，以及 ESP32-C6／ESP32-C3 repository compile harness／local firmware compile gate：**完成**
 - EspHttpTransport single-attempt HTTP POST adapter、HTTPS trust-certificate configuration、caller-owned response collection 與 C6／C3 compile/link validation：**完成**
 - Portable `wfrac_client` request executor、exact SchemePolicy-driven compatibility fallback、same-body retry 與最多兩次 attempts：**完成**
+- Portable WF-RAC response envelope 與 getDeviceInfo bootstrap parser（command／result／contents、canonical airconId）：**完成**
 - Portable WF-RAC C++ library stack 維持 monorepo boundary；ESP-IDF reference implementation 與未來 Matter bridge firmware 可各自作為 consumer，packaging／versioning／external distribution：尚未開始
-- Response envelope parser、platform clock source、Operator ID persistence、persistent scheme cache／NVS、actual WF-RAC bootstrap／network validation、certificate trust acquisition、explicit scheme-mismatch evidence、mDNS、runtime retry/rate limiting、rediscovery trigger、hardware validation 與 Matter：尚未實作
+- getAirconStat typed parser、Base64 response integration、platform clock source、Operator ID persistence、persistent scheme cache／NVS、actual WF-RAC bootstrap／network validation、certificate trust acquisition、explicit scheme-mismatch evidence、mDNS、runtime retry/rate limiting、rediscovery trigger、hardware validation 與 Matter：尚未實作

@@ -3,6 +3,7 @@
 #include "wfrac_transport_espidf/error_classifier.hpp"
 #include "wfrac_transport_espidf/esp_http_transport.hpp"
 #include "wfrac_client/request_executor.hpp"
+#include "wfrac_api/api_response.hpp"
 
 using wfrac_transport::TransportError;
 using wfrac_transport_espidf::EspHttpFailureEvidence;
@@ -17,5 +18,6 @@ static_assert(classify_esp_http_failure({ESP_ERR_HTTP_CONNECT}) != TransportErro
 static_assert(classify_esp_http_failure({ESP_FAIL, 0, ESP_OK, 0, 1}) != TransportError::scheme_mismatch);
 static_assert(std::is_base_of_v<wfrac_transport::ITransport, wfrac_transport_espidf::EspHttpTransport>);
 static_assert(sizeof(wfrac_client::RequestExecutionReport) >= sizeof(std::size_t));
+static_assert(sizeof(wfrac_api::ApiResponseEnvelopeView) >= sizeof(int64_t));
 
 extern "C" void app_main(void) {}

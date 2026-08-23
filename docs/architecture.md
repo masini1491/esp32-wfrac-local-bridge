@@ -36,6 +36,8 @@ platform adapter
 
 `wfrac_client` 不 serialize JSON、不建 timestamp、不 parse response，也不實作 HTTP/TLS。它將已建立的 `ApiRequestView` 以原 body 交給首次 attempt，立即以 SchemePolicy 記錄結果；只有 policy 明確回傳 `retry_http_compatibility` 才以同一 body 作唯一 HTTP fallback。因此每次 executor 最多兩次 physical attempts，沒有 loop 或 automatic rediscovery。
 
+raw HTTP response bytes → `wfrac_api` response envelope → command/result/contents → typed `getDeviceInfo` bootstrap fields。response parser 不依賴 HTTP status、Transport 或 ESP-IDF；nonzero result 只是保留的 command-specific data，不是 generic parse failure。
+
 ```text
 WF-RAC API bytes
         ↓

@@ -76,6 +76,13 @@ jobs:
           tests/host_cpp/test_api.cpp
           -o api-tests && ./api-tests
 
+      - name: Run C++ API response tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_protocol/include -Icomponents/wfrac_api/include
+          components/wfrac_api/src/api_response.cpp tests/host_cpp/test_api_response.cpp
+          -o api-response-tests && ./api-response-tests
+
       - name: Run C++ Client tests
         run: >-
           g++ -std=c++17 -Wall -Wextra -Werror

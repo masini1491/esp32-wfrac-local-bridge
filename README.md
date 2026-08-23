@@ -20,7 +20,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable transport contract、endpoint/request/response DTO、TransportError 與 HTTP status 的明確分離、test-only FakeTransport、HTTPS-first scheme policy、portable request executor（最多兩次、僅 SchemePolicy 明確要求才 HTTP compatibility fallback、同一 body 重用）、caller-owned per-device in-memory scheme cache、sticky HTTPS／HTTP、portable TimeProvider、五個 typed WF-RAC API request builders（JSON escaping、64-bit timestamp、AirconStat CRC validation／Base64 wrapping、`accountId=operatorId` 與 compatibility `remote=0` serialization），以及 ESP-IDF v6.0.2 error classifier、single-attempt HTTP POST adapter 與 ESP32-C6／ESP32-C3 local repository compile/link gate。adapter 使用 caller-owned response buffer、要求 HTTPS trust certificate，且只將 ESP-IDF diagnostic evidence 映為 TransportError，永不產生 `scheme_mismatch` 或直接 fallback。response envelope parser、platform clock source、Operator ID persistence、persistent scheme cache／NVS、actual WF-RAC network validation、certificate trust acquisition、mDNS、runtime 與 Matter mapping仍暫緩。
+目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable request executor、typed API request builders，以及 portable response envelope／getDeviceInfo bootstrap parser（command、raw result、contents span、canonical airconId）。result semantics 保持 command-specific。ESP-IDF adapter 仍只提供 single-attempt HTTP POST source integration。getAirconStat typed parser、Base64 response integration、actual bootstrap probe、Wi-Fi、mDNS、persistent identity、certificate trust acquisition、runtime 與 Matter mapping仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -49,18 +49,18 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 ### 專案規模
 
-依目前 Git tracked files 的 physical lines 統計如下：
+依目前 repository files 的 physical lines 統計如下：
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 2381 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 3096 |
+| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 2440 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 3127 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 667 |
+| 技術文件（README、AGENTS、docs） | 670 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **6581** |
+| **合計** | **6674** |
 
-以上為 Git tracked files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
+以上為 repository files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 
 ## License
 
