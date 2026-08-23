@@ -7,6 +7,7 @@ __pycache__/
 *.py[cod]
 # ESP-IDF/build artifacts (future-proof)
 build/
+firmware/idf_compile_smoke/build-*/
 sdkconfig
 sdkconfig.*
 managed_components/

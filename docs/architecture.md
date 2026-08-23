@@ -2,6 +2,8 @@
 
 `Phase 1C — WF-RAC Transport Abstraction` 已開始；目前實作 portable WF-RAC Protocol Core #1–#6、Device Model foundations、portable transport contract、HTTPS-first scheme policy，以及 portable TimeProvider／typed API request builders。Time Source → TimeProvider → WF-RAC API Envelope → Transport；AirconStat Codec → Base64 → API Envelope。Transport 是最底層 opaque byte/text boundary，不依賴 Protocol、Device Model 或 Matter；其 request／response body 不知道 AirconStat、Base64、JSON schema、identity 或 timestamp semantics。HTTP status 是上層 application data，不等同 transport error；目前只有 pure policy、FakeTransport 與 host tests，沒有任何 network I/O。
 
+專案保持 monorepo，但 reusable portable library components 是 `wfrac_protocol`、`wfrac_device_model`、`wfrac_api` 與 `wfrac_transport`；`wfrac_transport_espidf` 是唯一 ESP-IDF platform adapter，依賴 portable transport 與 ESP-IDF HTTP diagnostics。`firmware/idf_compile_smoke` 只是 reference build consumer，不是 portable component 的隱性 dependency。library packaging、versioning 與外部 distribution 尚未開始。
+
 ```text
 WF-RAC Transport (HTTP :51443 / HTTPS :51443)
         ↓
@@ -10,7 +12,7 @@ WF-RAC API Envelope → AirconStat Codec → WF-RAC Device Model
 Matter Adapter → Matter over Wi-Fi
 ```
 
-Transport attempt 必須明確指定 HTTP 或 HTTPS；legacy firmware 可能使用 HTTP，newer WF-RAC-HTTPS firmware 可能使用 HTTPS。較新的上游行為包含 self-signed certificate、TLS 1.2、ALPN `http/1.1`、`Connection: close` 與一次只允許單一連線的限制；這些不是所有 firmware 的通用要求。Portable `SchemePolicy` 以 caller-owned per-device cache 選出明確 `TransportScheme`，再由 `ITransport` 執行一次 physical attempt；unknown 採 HTTPS-first，只有明確 `scheme_mismatch` 可回傳一次 HTTP compatibility fallback decision，TLS identity failure 與 transient failure 均禁止 downgrade，confirmed scheme 維持 sticky。Policy 不呼叫 `perform()`、不含 loop／retry／NVS；ESP-IDF error mapping、certificate policy、persistent cache、rediscovery trigger、TLS handshake 與 actual HTTP implementation仍 pending。API envelope 已用 caller-owned buffer實作五個 typed local JSON builders；它會以 64-bit TimeProvider sample 建立 timestamp、escape opaque IDs，並在 Base64 wrapping 前驗證 AirconStat 結構與兩個 CRC。registration builders 固定從 context operatorId 取得 accountId，update 使用 compatibility `remote=0`；這些仍只是 request serialization，不包含 Operator ID persistence、lifecycle、response parsing、envelope dispatch 或 runtime。
+Transport attempt 必須明確指定 HTTP 或 HTTPS；legacy firmware 可能使用 HTTP，newer WF-RAC-HTTPS firmware 可能使用 HTTPS。較新的上游行為包含 self-signed certificate、TLS 1.2、ALPN `http/1.1`、`Connection: close` 與一次只允許單一連線的限制；這些不是所有 firmware 的通用要求。Portable `SchemePolicy` 以 caller-owned per-device cache 選出明確 `TransportScheme`，再由 `ITransport` 執行一次 physical attempt；unknown 採 HTTPS-first，只有明確 `scheme_mismatch` 可回傳一次 HTTP compatibility fallback decision，TLS identity failure 與 transient failure 均禁止 downgrade，confirmed scheme 維持 sticky。ESP-IDF adapter 的 pure classifier 先將單次 HTTP/TLS diagnostic evidence 映為 `TransportError`：verify flags 為 `tls_identity_failure`、generic TLS diagnostics 為 `tls_failure`、已知 timeout 為 `timeout`，而 local invalid transport 為 `invalid_argument`；它永不輸出 `scheme_mismatch`，也不讀寫 SchemeCache 或要求 fallback。Policy 不呼叫 `perform()`、不含 loop／retry／NVS；certificate policy、persistent cache、rediscovery trigger、TLS handshake 與 actual HTTP implementation仍 pending。API envelope 已用 caller-owned buffer實作五個 typed local JSON builders；它會以 64-bit TimeProvider sample 建立 timestamp、escape opaque IDs，並在 Base64 wrapping 前驗證 AirconStat 結構與兩個 CRC。registration builders 固定從 context operatorId 取得 accountId，update 使用 compatibility `remote=0`；這些仍只是 request serialization，不包含 Operator ID persistence、lifecycle、response parsing、envelope dispatch 或 runtime。
 
 ```text
 per-device SchemeCache
@@ -18,6 +20,16 @@ per-device SchemeCache
 SchemePolicy selects explicit HTTP or HTTPS
         ↓
 ITransport::perform() executes ONE physical attempt
+```
+
+```text
+ESP-IDF HTTP diagnostic evidence
+        ↓
+ESP-IDF error classifier
+        ↓
+TransportError
+        ↓
+SchemePolicy
 ```
 
 Matter Adapter 只對 Device Model 發出高階 request，如 `setPower()`、`setMode()`、`setTargetTemperature()`、`setFanMode()`、`requestStatus()`；不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。Device Model 應與傳輸層及上層整合介面解耦，保持清楚的模組邊界與可測試性。

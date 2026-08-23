@@ -29,6 +29,12 @@ R7 software-only transport/security policy；不包含 TLS runtime、HTTP client
 - Scheme policy 只選擇單一明確 `TransportScheme` 並更新 cache，不呼叫 transport；`ITransport::perform()` 仍只代表一次 physical attempt，不執行 fallback。
 - Persistent cache／NVS、ESP-IDF error 到 `scheme_mismatch`／`tls_identity_failure` 的實際 mapping、rediscovery trigger 與 request runtime 仍 pending。
 
+## ESP-IDF classifier implementation note
+
+ESP-IDF v6.0.2 platform adapter 現已提供 pure error classifier：certificate verification flags 映為 `tls_identity_failure`；generic TLS／mbedTLS diagnostics 映為 `tls_failure`；已知 HTTP timeout family 與 socket timeout evidence 映為 `timeout`；local invalid transport/configuration 映為 `invalid_argument`。classifier 永遠不會輸出 `scheme_mismatch`，因此不會直接要求 HTTP fallback；SchemePolicy 仍是獨立的 caller-owned decision layer。
+
+這是 software／compile evidence。ESP-IDF diagnostic 與實際 WF-RAC scheme 的 hardware mapping 仍為 `HARDWARE_TEST_PENDING`。
+
 ## Known unknowns / pending validation
 
 Per-firmware scheme、exact TLS/cipher profile、certificate uniqueness/stability/lifecycle、hostname handling、degraded HTTPS user policy、header casing、certificate validity-time behavior、ESP-IDF error mapping 與 local device：`HARDWARE_TEST_PENDING`。

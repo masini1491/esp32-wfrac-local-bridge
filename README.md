@@ -18,7 +18,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable transport contract、endpoint/request/response DTO、TransportError 與 HTTP status 的明確分離、test-only FakeTransport、HTTPS-first scheme policy、caller-owned per-device in-memory scheme cache、sticky HTTPS／HTTP、explicit HTTP compatibility fallback decision、portable TimeProvider，以及五個 typed WF-RAC API request builders（JSON escaping、64-bit timestamp、AirconStat CRC validation／Base64 wrapping、`accountId=operatorId` 與 compatibility `remote=0` serialization）。platform clock source、Operator ID persistence、registration lifecycle／response parsing、persistent scheme cache／NVS、ESP-IDF error mapping、certificate policy、actual HTTP/TLS transport、mDNS、retry/rate limiting、rediscovery trigger、Matter mapping 與實機驗證仍暫緩。
+目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable transport contract、endpoint/request/response DTO、TransportError 與 HTTP status 的明確分離、test-only FakeTransport、HTTPS-first scheme policy、caller-owned per-device in-memory scheme cache、sticky HTTPS／HTTP、explicit HTTP compatibility fallback decision、portable TimeProvider、五個 typed WF-RAC API request builders（JSON escaping、64-bit timestamp、AirconStat CRC validation／Base64 wrapping、`accountId=operatorId` 與 compatibility `remote=0` serialization），以及 ESP-IDF v6.0.2 platform error classifier 與 ESP32-C6／ESP32-C3 local repository compile gate。classifier 只將 ESP-IDF diagnostic evidence 映為 TransportError，永不產生 `scheme_mismatch` 或直接 fallback。platform clock source、Operator ID persistence、registration lifecycle／response parsing、persistent scheme cache／NVS、certificate policy、actual HTTP/TLS transport、mDNS、retry/rate limiting、rediscovery trigger、Matter mapping 與實機驗證仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -28,6 +28,8 @@ python -m unittest tests.host.test_validate_contracts
 - 控制原則：Local-first；日常控制不依賴雲端、MQTT 或 Internet
 
 架構方向為 `WF-RAC Transport → WF-RAC Protocol → WF-RAC Device Model → Matter Adapter → Matter over Wi-Fi`。Matter Adapter 只使用高階 Device Model request，不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。
+
+本專案的方向是 portable WF-RAC C++ library stack、ESP-IDF reference implementation 與 future Matter bridge firmware；目前維持 monorepo，library packaging、versioning 與外部 package distribution 尚未開始。
 
 ## 範圍與證據
 
@@ -49,12 +51,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 2075 |
-| 開發／驗證工具（tools、tests、GitHub Actions） | 2927 |
+| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 1806 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 2635 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 615 |
+| 技術文件（README、AGENTS、docs） | 430 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 32 |
-| **合計** | **6053** |
+| **合計** | **5307** |
 
 以上為 Git tracked files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 
