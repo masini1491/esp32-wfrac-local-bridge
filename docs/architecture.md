@@ -39,6 +39,20 @@ platform adapter
 raw HTTP response bytes → `wfrac_api` response envelope → command/result/contents → typed `getDeviceInfo` bootstrap fields。response parser 不依賴 HTTP status、Transport 或 ESP-IDF；nonzero result 只是保留的 command-specific data，不是 generic parse failure。`getAirconStat` contents parser 以 caller-owned scratch 將 JSON-decoded Base64 text 交給 `wfrac_protocol::base64_decode`，再以 `parse_aircon_stat` 驗證結構與 COMMAND／RECEIVE CRC；只有兩個 CRC 都有效才輸出 `AirconFrameView`，供未來 Protocol semantic／Device Model integration 使用。
 
 ```text
+HTTP response bytes
+        ↓
+API envelope → getAirconStat contents → Base64 → raw AirconStat
+        ↓
+parse_aircon_stat → COMMAND + RECEIVE dual CRC
+        ↓
+validated AirconFrameView
+        ↓
+RECEIVE semantic decode → BasicHvacState → DeviceState observation/reconciliation
+```
+
+`wfrac_device_model` 的 read-path boundary 只認 `AirconFrameView`，不依賴 API、Transport 或 ESP-IDF，並在 mapping 時再次確認雙 CRC 與基本 block layout。成功 observation 不改 availability；reconciliation 的 observed-converged 只表示 state target 與 observation 相同，並非 transport confirmation 或 command causality。
+
+```text
 WF-RAC API bytes
         ↓
 TransportRequest

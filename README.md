@@ -20,7 +20,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable request executor、typed API request builders、response envelope／getDeviceInfo bootstrap parser，以及 getAirconStat contents → Base64 → AirconStat structural／dual-CRC integrity gate。response `airconId` 為 optional，unknown contents fields 可 bounded-skip，result semantics 保持 command-specific。ESP-IDF adapter 仍只提供 single-attempt HTTP POST source integration。actual bootstrap probe、Wi-Fi、mDNS、persistent identity、certificate trust acquisition、runtime 與 Matter mapping仍暫緩。
+目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable request executor、typed API request builders、response envelope／getDeviceInfo bootstrap parser，以及 getAirconStat contents → Base64 → AirconStat structural／dual-CRC integrity gate → RECEIVE semantic decode → DeviceState observation。Device Model boundary會再次檢查雙 CRC；availability 仍是 runtime-owned，observation convergence 不等於 transport confirmation。response `airconId` 為 optional，unknown contents fields 可 bounded-skip，result semantics 保持 command-specific。ESP-IDF adapter 仍只提供 single-attempt HTTP POST source integration。actual bootstrap probe、Wi-Fi、mDNS、persistent identity、certificate trust acquisition、runtime 與 Matter mapping仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -53,12 +53,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 2566 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 3271 |
+| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 2667 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 3459 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 672 |
+| 技術文件（README、AGENTS、docs） | 687 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **6946** |
+| **合計** | **7250** |
 
 以上為 repository files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 

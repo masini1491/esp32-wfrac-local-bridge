@@ -1,3 +1,4 @@
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <utility>
@@ -8,6 +9,7 @@
 #include "device_reconciliation_test_cases.hpp"
 #include "device_state_test_cases.hpp"
 #include "wfrac_device_model/protocol_mapping.hpp"
+#include "wfrac_device_model/protocol_observation.hpp"
 
 namespace {
 
@@ -30,6 +32,21 @@ void assert_hints(const wfrac_device_model::CapabilityHints& actual,
   assert(actual.cool_hot_judge == expected.cool_hot_judge);
   assert(actual.preset_temp_range_2 == expected.preset_temp_range_2);
   assert(actual.operation_data == expected.operation_data);
+}
+
+wfrac_protocol::AirconFrameView observation_frame(uint8_t receive_byte2, uint8_t receive_byte3,
+                                                   uint8_t target, uint8_t controller_temperature) {
+  wfrac_protocol::AirconFrameView frame{};
+  frame.command.encoded_size = 21U;
+  frame.command.crc_valid = true;
+  frame.receive.encoded_size = 21U;
+  frame.receive.crc_valid = true;
+  frame.receive.state[2] = receive_byte2;
+  frame.receive.state[3] = receive_byte3;
+  frame.receive.state[4] = target;
+  frame.receive.state[5] = controller_temperature;
+  frame.receive_offset = 21U;
+  return frame;
 }
 
 }  // namespace
@@ -75,6 +92,79 @@ int main() {
   assert(state.controller_room_temperature_centi_celsius == -100);
   protocol_state.target_temperature_half_degrees = 255U;
   assert(wfrac_device_model::map_basic_hvac_state(protocol_state).target_temperature_centi_celsius == 12750);
+
+  const auto valid_frame = observation_frame(0x09U, 0x02U, 47U, 154U);
+  wfrac_device_model::BasicHvacState observed{};
+  assert(wfrac_device_model::map_aircon_frame_observation(valid_frame, &observed) ==
+         wfrac_device_model::ObservationMappingError::none);
+  assert(observed.power == wfrac_device_model::PowerState::on &&
+         observed.mode == wfrac_device_model::HvacMode::cool &&
+         observed.fan == wfrac_device_model::FanSetting::speed3 &&
+         observed.target_temperature_centi_celsius == 2350 &&
+         observed.controller_room_temperature_centi_celsius == 2325);
+  for (const auto& pair : {std::pair<uint8_t, wfrac_device_model::HvacMode>{0x01U, wfrac_device_model::HvacMode::auto_mode},
+                           {0x09U, wfrac_device_model::HvacMode::cool},
+                           {0x11U, wfrac_device_model::HvacMode::heat}}) {
+    assert(wfrac_device_model::map_aircon_frame_observation(observation_frame(pair.first, 0x02U, 47U, 154U), &observed) ==
+           wfrac_device_model::ObservationMappingError::none);
+    assert(observed.mode == pair.second);
+  }
+  assert(wfrac_device_model::map_aircon_frame_observation(observation_frame(0x03U, 0x02U, 47U, 154U), &observed) ==
+         wfrac_device_model::ObservationMappingError::none);
+  assert(observed.power == wfrac_device_model::PowerState::unknown);
+  assert(wfrac_device_model::map_aircon_frame_observation(observation_frame(0x01U, 0x05U, 47U, 154U), &observed) ==
+         wfrac_device_model::ObservationMappingError::none);
+  assert(observed.fan == wfrac_device_model::FanSetting::unknown);
+  assert(wfrac_device_model::map_aircon_frame_observation(observation_frame(0x1DU, 0x02U, 47U, 154U), &observed) ==
+         wfrac_device_model::ObservationMappingError::none);
+  assert(observed.mode == wfrac_device_model::HvacMode::unknown);
+
+  auto command_crc_bad = valid_frame;
+  command_crc_bad.command.crc_valid = false;
+  observed.power = wfrac_device_model::PowerState::on;
+  assert(wfrac_device_model::map_aircon_frame_observation(command_crc_bad, &observed) ==
+         wfrac_device_model::ObservationMappingError::crc_mismatch);
+  assert(observed.power == wfrac_device_model::PowerState::unknown);
+  auto receive_crc_bad = valid_frame;
+  receive_crc_bad.receive.crc_valid = false;
+  assert(wfrac_device_model::map_aircon_frame_observation(receive_crc_bad, &observed) ==
+         wfrac_device_model::ObservationMappingError::crc_mismatch);
+  auto invalid_frame = valid_frame;
+  invalid_frame.receive.encoded_size = 0U;
+  assert(wfrac_device_model::map_aircon_frame_observation(invalid_frame, &observed) ==
+         wfrac_device_model::ObservationMappingError::invalid_frame);
+
+  wfrac_device_model::DeviceState observation_state{};
+  assert(wfrac_device_model::stage_desired_intent(wfrac_device_model::SetModeIntent{wfrac_device_model::HvacMode::heat},
+                                                  &observation_state) == wfrac_device_model::DeviceStateError::none);
+  assert(wfrac_device_model::begin_pending_command(wfrac_device_model::SetPowerIntent{wfrac_device_model::PowerState::on},
+                                                    &observation_state) == wfrac_device_model::DeviceStateError::none);
+  assert(wfrac_device_model::apply_aircon_frame_observation(valid_frame, &observation_state) ==
+         wfrac_device_model::ObservationMappingError::none);
+  assert(observation_state.observed.has_value && observation_state.observed.value.power == wfrac_device_model::PowerState::on &&
+         observation_state.desired.mode.has_value() && observation_state.pending.intent.has_value());
+  const auto before_failure = observation_state;
+  assert(wfrac_device_model::apply_aircon_frame_observation(receive_crc_bad, &observation_state) ==
+         wfrac_device_model::ObservationMappingError::crc_mismatch);
+  assert(observation_state.observed.has_value == before_failure.observed.has_value &&
+         observation_state.observed.value.power == before_failure.observed.value.power &&
+         observation_state.desired.mode == before_failure.desired.mode &&
+         observation_state.pending.intent.has_value() == before_failure.pending.intent.has_value());
+  const auto reconciled = wfrac_device_model::reconcile_aircon_frame_observation(valid_frame, &observation_state);
+  assert(reconciled.error == wfrac_device_model::ObservationMappingError::none &&
+         reconciled.reconciliation.pending == wfrac_device_model::PendingReconciliation::observed_converged &&
+         !observation_state.pending.intent.has_value());
+  assert(wfrac_device_model::stage_desired_intent(wfrac_device_model::SetModeIntent{wfrac_device_model::HvacMode::cool},
+                                                  &observation_state) == wfrac_device_model::DeviceStateError::none);
+  const auto desired_reconciled = wfrac_device_model::reconcile_aircon_frame_observation(valid_frame, &observation_state);
+  assert(desired_reconciled.reconciliation.cleared_desired_mode && !observation_state.desired.mode.has_value());
+  assert(wfrac_device_model::stage_desired_intent(wfrac_device_model::SetPowerIntent{wfrac_device_model::PowerState::off},
+                                                  &observation_state) == wfrac_device_model::DeviceStateError::none);
+  assert(wfrac_device_model::begin_pending_command(wfrac_device_model::SetPowerIntent{wfrac_device_model::PowerState::on},
+                                                    &observation_state) == wfrac_device_model::DeviceStateError::none);
+  const auto protected_reconciled = wfrac_device_model::reconcile_aircon_frame_observation(valid_frame, &observation_state);
+  assert(protected_reconciled.reconciliation.pending == wfrac_device_model::PendingReconciliation::observed_converged &&
+         observation_state.desired.power == wfrac_device_model::PowerState::off);
 
   const auto assert_profile = [](uint8_t raw, const wfrac_device_model::CapabilityHints& expected) {
     const auto profile = wfrac_protocol::decode_capabilities(raw);

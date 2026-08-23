@@ -53,6 +53,7 @@ jobs:
           components/wfrac_device_model/src/device_state.cpp
           components/wfrac_device_model/src/protocol_command_mapping.cpp
           components/wfrac_device_model/src/protocol_request_mapping.cpp
+          components/wfrac_device_model/src/protocol_observation.cpp
           tests/host_cpp/test_device_model.cpp
           -o device-model-tests && ./device-model-tests
 
@@ -85,6 +86,23 @@ jobs:
           components/wfrac_protocol/src/base64.cpp
           components/wfrac_api/src/api_response.cpp tests/host_cpp/test_api_response.cpp
           -o api-response-tests && ./api-response-tests
+
+      - name: Run C++ read path tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_protocol/include
+          -Icomponents/wfrac_api/include
+          -Icomponents/wfrac_device_model/include
+          components/wfrac_protocol/src/crc16.cpp
+          components/wfrac_protocol/src/base64.cpp
+          components/wfrac_protocol/src/aircon_frame.cpp
+          components/wfrac_protocol/src/aircon_state.cpp
+          components/wfrac_api/src/api_response.cpp
+          components/wfrac_device_model/src/protocol_mapping.cpp
+          components/wfrac_device_model/src/device_state.cpp
+          components/wfrac_device_model/src/protocol_observation.cpp
+          tests/host_cpp/test_read_path.cpp
+          -o read-path-tests && ./read-path-tests
 
       - name: Run C++ Client tests
         run: >-

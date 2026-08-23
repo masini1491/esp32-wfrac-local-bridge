@@ -4,6 +4,7 @@
 #include "wfrac_transport_espidf/esp_http_transport.hpp"
 #include "wfrac_client/request_executor.hpp"
 #include "wfrac_api/api_response.hpp"
+#include "wfrac_device_model/protocol_observation.hpp"
 
 using wfrac_transport::TransportError;
 using wfrac_transport_espidf::EspHttpFailureEvidence;
@@ -20,5 +21,6 @@ static_assert(std::is_base_of_v<wfrac_transport::ITransport, wfrac_transport_esp
 static_assert(sizeof(wfrac_client::RequestExecutionReport) >= sizeof(std::size_t));
 static_assert(sizeof(wfrac_api::ApiResponseEnvelopeView) >= sizeof(int64_t));
 static_assert(sizeof(wfrac_api::GetAirconStatContents) >= sizeof(std::size_t));
+static_assert(sizeof(wfrac_device_model::ObservationReconciliationResult) >= sizeof(std::size_t));
 
 extern "C" void app_main(void) {}
