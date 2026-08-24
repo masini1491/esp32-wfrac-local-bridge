@@ -158,5 +158,45 @@ int main() {
   assert(wfrac_api::parse_get_aircon_stat_contents(envelope.contents_json, {}, {scratch.data(), scratch.size()},
                                                     {raw.data(), raw.size()}, &parsed) ==
          wfrac_api::ApiResponseError::none);
+
+  for (const char* number : {"0", "-0", "0.5", "-1.25", "1e3", "-2E-2"}) {
+    const std::string unknown_number = std::string("{\"unknown\":") + number +
+                                       ",\"command\":\"getDeviceInfo\",\"result\":0}";
+    assert(wfrac_api::parse_api_response_envelope(view(unknown_number.c_str()), "getDeviceInfo", &envelope) ==
+           wfrac_api::ApiResponseError::none);
+  }
+  for (const char* malformed_number : {"01", "1.", "1e", "+1", ".5"}) {
+    const std::string unknown_number = std::string("{\"unknown\":") + malformed_number +
+                                       ",\"command\":\"getDeviceInfo\",\"result\":0}";
+    assert(wfrac_api::parse_api_response_envelope(view(unknown_number.c_str()), "getDeviceInfo", &envelope) !=
+           wfrac_api::ApiResponseError::none);
+  }
+
+  for (const char* malformed_string : {"{\"command\":\"getDeviceInfo\\u12\",\"result\":0}",
+                                       "{\"command\":\"getDeviceInfo\\uD800\",\"result\":0}",
+                                       "{\"command\":\"getDeviceInfo\\"}) {
+    assert(wfrac_api::parse_api_response_envelope(view(malformed_string), "getDeviceInfo", &envelope) !=
+           wfrac_api::ApiResponseError::none);
+  }
+  std::array<uint8_t, 4> zero_capacity_storage{};
+  const char* identity = "{\"airconId\":\"ac1\"}";
+  wfrac_api::GetDeviceInfoContents identity_output{1U, false, 0U, false, 0};
+  assert(wfrac_api::parse_get_device_info_contents(
+             view(identity), {zero_capacity_storage.data(), 0U}, {}, &identity_output) ==
+         wfrac_api::ApiResponseError::output_too_small);
+  assert(identity_output.aircon_id_size == 0U && !identity_output.has_mac_address && !identity_output.has_ap_mode);
+
+  const char* embedded_nul = "{\"airconId\":\"a\\u0000b\"}";
+  assert(wfrac_api::parse_get_device_info_contents(view(embedded_nul), {id.data(), id.size()}, {}, &info) !=
+         wfrac_api::ApiResponseError::none);
+  assert(info.aircon_id_size == 0U && !info.has_mac_address && !info.has_ap_mode);
+
+  envelope.result = 123;
+  envelope.has_contents = true;
+  envelope.contents_json = view("stale");
+  assert(wfrac_api::parse_api_response_envelope(view("{\"command\":\"getDeviceInfo\",\"result\":1."),
+                                                "getDeviceInfo", &envelope) !=
+         wfrac_api::ApiResponseError::none);
+  assert(envelope.result == 0 && !envelope.has_contents && envelope.contents_json.data == nullptr);
   return 0;
 }

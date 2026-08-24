@@ -27,35 +27,6 @@
 
 ## Codex staged execution plan — 流量恢復後依序執行
 
-### Stage A — Parser memory/correctness hardening
-
-**推薦模型：** Luna  
-**推理強度：** Medium  
-**推薦理由：** root causes 與修改方向已由 code review 定位；屬 bounded parser correctness patch + targeted tests，不需要 Terra 做開放式探索。  
-**是否值得先用較便宜模型做前置蒐證：** 否；Luna 已是本 stage 的最低足夠模型，且 evidence 已足夠。  
-**Context 建議：** Default；只讀 API response implementation/header/tests，evidence 不足才擴張。  
-**Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
-**依賴：** 無；第一個執行。  
-**升級條件：** 若實際 source 與已確認 root cause 明顯不符，或安全修法必須改 public parser architecture/API，STOP 並帶 evidence 升 Terra Medium。  
-**成功後：** 刪除本 Stage A 整段與 inventory 中 Stage A 項目，再 commit/push。
-
-**Codex Prompt：**
-
-> 在目前 `main` 上執行「Stage A — Parser memory/correctness hardening」。遵守 `AGENTS.md`、`TASKS.md` 共通規則。先完成 remote-sync bootstrap，再只讀 `components/wfrac_api/src/api_response.cpp`、public response header 與直接相關 host tests；不要做 repo-wide 掃描。已知 root causes 已確認，不要重新設計 parser architecture。
->
-> 僅處理以下 scope：
-> 1. 修正 response string `decode()`：empty string / zero-capacity / null caller output 不得造成 null write。**不要因此把原本不允許的 required empty identity/string 改成合法值**；只修 memory safety 與 deterministic error behavior。
-> 2. 將 JSON/Unicode parser 內可能超過 one-past-end 的 `p + N` bounds checks 改成 remaining-length 型式；覆蓋 truncated `\uXXXX`、high-surrogate 缺 low-surrogate、尾端 escape。
-> 3. `parse_api_response_envelope()` 與 `parse_get_device_info_contents()` 改成 failure-atomic output：使用 local temporary，只有完整成功後才 commit；任何失敗時 public output 維持 reset 狀態。
-> 4. identity/C-string outputs（至少 `airconId`、`macAddress`）不得接受 decoded embedded U+0000；不要留下 size 與 C-string 視圖互相矛盾的 representation。
-> 5. unknown JSON numeric values使用完整 JSON number grammar安全 skip；valid examples 至少涵蓋 `0`、`-0`、`0.5`、`-1.25`、`1e3`、`-2E-2`；malformed examples至少涵蓋 `01`、`1.`、`1e`、`+1`、`.5`。known `result` / `apMode` 仍必須 strict signed integer，不接受 fraction/exponent。
->
-> 新增 targeted host tests，至少覆蓋上述每個 bug；不得改協議語意、Transport、Device Model、ESP-IDF runtime、Wi-Fi、NVS、Matter，不引入 external JSON library。先跑 API response targeted tests，再跑既有 host regressions；只有 evidence 顯示必要才擴張。
->
-> 若 root cause 與實際 source 不符或修法需要 public architecture/API change，STOP 並以 `INSUFFICIENT OBSERVABILITY` 或具體 evidence 回報，不要猜。
->
-> 全部 PASS 後，從 `TASKS.md` **刪除整個 Stage A 區塊與所有 `→ Stage A` inventory 項目**；不得留下 completed 記錄。`git diff --check` 後 commit/push 正常進 `main`。
-
 ### Stage B — JSON string semantics / UTF-8 hardening
 
 **推薦模型：** Luna  
@@ -142,16 +113,11 @@
 
 ### P1 — Pre-hardware correctness
 
-- Fix `wfrac_api` response string decoding so empty strings / zero-capacity caller outputs cannot cause a null write. Add targeted malformed/empty-output tests. **→ Stage A**
-- Replace unsafe end-of-buffer pointer-addition checks in JSON/Unicode parsing with remaining-length checks; add truncated `\uXXXX` / surrogate-pair tests. **→ Stage A**
 - Refine ESP-IDF HTTP/TLS failure classification so DNS/socket/connect/connection-timeout evidence is not incorrectly collapsed into generic `tls_failure`; preserve the rule that the classifier never invents `scheme_mismatch`. **→ Stage C**
 - Align `EspHttpTransport` PEM certificate length contract with ESP-IDF v6.0.2 semantics. Explicitly document/test `cert_len == 0` NUL-terminated PEM semantics and nonzero-length terminator requirements. **→ Stage C**
-- Make response-parser outputs atomic on failure: `parse_api_response_envelope()` and `parse_get_device_info_contents()` should commit metadata only after full success, matching the `getAirconStat` parser behavior. **→ Stage A**
 
 ### P2 — Response parser / library hardening
 
-- Reject decoded embedded NUL in identity/C-string outputs such as `airconId` / `macAddress`, keeping the public contract unambiguous. **→ Stage A**
-- Allow unknown JSON numeric values to be safely skipped using full valid JSON number grammar while keeping known integer fields such as `result` / `apMode` strict integers. **→ Stage A**
 - Compare known JSON keys and `command` by decoded string value, including semantic duplicate detection across escaped/raw spellings. **→ Stage B**
 - Preserve and validate raw UTF-8 string bytes correctly instead of re-encoding each non-ASCII byte as a Unicode code point; validate strings even when skipped. **→ Stage B**
 
