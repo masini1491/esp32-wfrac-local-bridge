@@ -5,6 +5,8 @@
 ## Codex 共通執行規則
 
 - 每次只執行使用者當次明確授權的 stage；不得因本佇列存在就自行處理其他項目。
+- **TASKS.md 使用判準：** `TASKS.md` 是「未完成、需要追蹤、需要未來再次執行」的 queue，不是所有微小修改都必須先建立 task。若只是一次性、已知位置、已知修改內容、風險低，而且完成後沒有後續追蹤價值的小型 maintenance，不必特地寫入 `TASKS.md`；可由 ChatGPT 直接產生一次性的短 Codex Prompt。典型例子包括：單行或少量文件 wording 修正、已知位置的 typo / 過期術語修正、單純排序/格式/標題/註解整理、不影響 project behavior / architecture / protocol / security / hardware / validation state 的小型 documentation maintenance，以及已知 root cause、scope 極小且完成後不需保留為 unfinished queue 的工作。這類 direct maintenance 預設建議 **Luna / Low / Context Level 0→1 / Focused patch / Agent 1**；Codex 仍必須遵守 `AGENTS.md` 的 remote-sync、scope、Git、validation、commit/push 規則。
+- **應寫入 TASKS.md 的情況：** 需要後續追蹤；目前 Blocked / Deferred / Pending-validation；工作分成多個 Stage；有 dependency / trigger；root cause 尚未完全確認；可能需要之後接續 implementation；會實質影響 project behavior、architecture、protocol、security、hardware、persistence、runtime state 或重要 validation state；或若現在不記錄，之後容易遺漏。
 - **Remote-sync bootstrap：** Codex 本機 repository 可能落後 GitHub。每次 task 開始，在依賴 local `AGENTS.md` / `TASKS.md` 內容前，先確認 repository identity、`git status --short`、branch、HEAD，然後 `git fetch origin`。若目前為預期 `main`、working tree clean，且 local `main` 可由 `origin/main` fast-forward，使用 fast-forward-only 方式同步（例如 `git pull --ff-only origin main`）；若已與 `origin/main` 相同則直接繼續。若 dirty、unexpected branch、local ahead/diverged、無法 fast-forward，或 merge/rebase/cherry-pick 未完成，STOP 並回報，不得覆蓋、reset、stash/丟棄未知變更或自行 merge/rebase。**只有完成這個同步判斷後，才以最新 local `AGENTS.md` / `TASKS.md` 為 task source。**
 - 同步後讀 `AGENTS.md`、本 `TASKS.md` 與該 stage 直接相關檔案；依 Level 0→5 漸進式擴張，禁止預設 repo-wide 掃描。若同步後根目錄沒有 `TASKS.md`，不得憑舊記憶執行已移除的 stage；依使用者當次明確指令處理或 STOP 詢問。
 - Git safety：不得 reset --hard、force push、丟棄或改寫未知變更；不得為了讓工作樹變乾淨而自行 stash/delete user work。
