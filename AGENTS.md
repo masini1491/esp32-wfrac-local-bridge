@@ -21,6 +21,14 @@ Reference reading must be topic-scoped。Future task 先讀 `docs/references/REA
 
 不得使用 `reset`、force push、自行 merge/rebase、stash，或刪除／丟棄未知 user work。同步完成後才讀最新 `AGENTS.md`／`TASKS.md`。根目錄若存在 `TASKS.md`，它是 ChatGPT／Codex 共用的 temporary unfinished-work queue；Codex 每次只執行使用者當次明確授權的 task/stage，不得因 queue 存在而自行完成其他項目。成功完成並驗證授權 task 後，必須移除或更新對應 entry；不得保留 Completed/changelog，若已無 unfinished work 則刪除 `TASKS.md`。`TASKS.md` 不得凌駕 architecture、spec、security 或 protocol evidence 等正式 source of truth；同步後若 `TASKS.md` 不存在，不得依賴舊 local copy、舊 prompt 或記憶執行已移除的 task。
 
+## Permission-Gated Operation
+
+對目前已授權 task/stage 所必需的 Git、build、test、toolchain 或 file operation，若因 sandbox、filesystem 或 execution permission 被拒絕，先視為可由使用者授權解除的 permission gate，不立即判定 repository、toolchain 或 environment 故障。若執行環境支援 escalation，向使用者要求完成原必要操作所需的最小權限，並說明 command/operation、必要性與權限類型；批准後只重試原本被阻擋的操作，不擴大 scope。
+
+單純 permission denial 不消耗 operational retry 額度。若使用者拒絕、環境無法要求權限，或取得權限後同一操作仍失敗，才依實際 evidence 分類 `ENVIRONMENT`／`INFRASTRUCTURE`／`TOOLCHAIN`／`SERVICE` 等 operational failure，再套用既有 retry／STOP 規則。`git fetch origin` 遇到 `.git/FETCH_HEAD: Permission denied`、Git lock/ref metadata filesystem denial 或 sandbox repository-metadata write denial 時，先依本規則要求安全 fetch 的最小權限；授權後原 fetch 仍失敗才分類並 STOP。
+
+不得以 permission workaround 取代授權：禁止 `sudo`、`chmod -R 777`、`reset --hard`、force push、自行刪除 `.git/FETCH_HEAD`、未確認 root cause 就刪除 `.git/index.lock` 或其他 lock、重新 clone 覆蓋 working tree、stash/delete/discard unknown user work、自行 merge/rebase/cherry-pick，或使用另一個 repository 規避問題。Permission-gate handshake 不代表可開始其他 stage、修改未授權檔案或執行高風險 Git 操作。
+
 ## Portable library extraction invariant
 
 Repository 現階段維持 monorepo，不因未來 library 化而提前拆 repo、做 package distribution 或 semantic versioning。`wfrac_protocol`、`wfrac_device_model`、`wfrac_api`、`wfrac_transport`、`wfrac_client` 必須持續保持可抽離；platform/runtime concern 留在 adapter、runtime 或 firmware boundary，dependency direction 維持 `platform/runtime → portable core`。
