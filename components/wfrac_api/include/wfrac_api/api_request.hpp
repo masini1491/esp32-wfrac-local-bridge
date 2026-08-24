@@ -32,6 +32,7 @@ enum class ApiRequestError {
   base64_failure,
 };
 
+// Caller-supplied strings are required to be valid UTF-8; valid non-ASCII bytes are preserved in JSON output.
 ApiRequestError build_get_device_info_request(const ApiClientContext& context, ITimeProvider* time_provider,
                                               wfrac_protocol::MutableByteView output, ApiRequestView* request);
 ApiRequestError build_get_aircon_stat_request(const ApiClientContext& context, const char* aircon_id,

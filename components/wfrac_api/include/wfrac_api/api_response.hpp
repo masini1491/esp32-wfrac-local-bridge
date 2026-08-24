@@ -35,10 +35,13 @@ struct GetAirconStatContents {
 };
 
 ApiResponseError parse_api_response_envelope(wfrac_protocol::ByteView input, const char* expected_command, ApiResponseEnvelopeView* response);
+// On failure, identity output buffers are reset to an empty C string when writable; contents is reset atomically.
 ApiResponseError parse_get_device_info_contents(wfrac_protocol::ByteView contents_json, wfrac_protocol::MutableByteView aircon_id_output, wfrac_protocol::MutableByteView mac_address_output, GetDeviceInfoContents* contents);
 
 // On success, frame segment views refer to raw_aircon_stat_output. Keep that
-// caller-owned buffer valid while using the returned GetAirconStatContents.
+// caller-owned buffer valid while using the returned GetAirconStatContents. On
+// failure, contents and the optional airconId output are reset; scratch/raw
+// work-buffer contents are unspecified and must not be used.
 ApiResponseError parse_get_aircon_stat_contents(
     wfrac_protocol::ByteView contents_json,
     wfrac_protocol::MutableByteView aircon_id_output,

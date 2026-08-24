@@ -28,32 +28,6 @@
 
 ## Codex staged execution plan — 流量恢復後依序執行
 
-### Stage B2 — JSON API contract hardening
-
-**推薦模型：** Luna  
-**推理強度：** Medium  
-**推薦理由：** Stage B 完成後 UTF-8 行為已明確，本 stage 是 focused request-builder validation 與 failure-output contract 收斂；大多為 deterministic bounded patch/test。  
-**是否值得先用較便宜模型做前置蒐證：** 否；Luna Medium 已是本 stage 的最低足夠配置。  
-**Context 建議：** Default；只讀 `api_request.cpp/.hpp`、`api_response.cpp/.hpp`、直接 API tests，以及 Stage B 已建立的 UTF-8 helper/behavior。  
-**Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
-**依賴：** Stage B PASS 且已自 `TASKS.md` 移除。  
-**停止／重規劃條件：** 若要安全實作必須抽出跨 request/response 的大型 JSON subsystem、造成 public API breaking change，或現有 bounded buffers 無法在不新增 heap 的前提下提供明確 failure contract，STOP 並帶 evidence 由使用者決定是否改用 Terra Medium。  
-**成功後：** 刪除本 Stage B2 整段與 inventory 中 Stage B2 項目，再 commit/push。
-
-**Codex Prompt：**
-
-> 執行「Stage B2 — JSON API contract hardening」。遵守 `AGENTS.md`、`TASKS.md` 共通規則；先完成 remote-sync bootstrap，確認 Stage B 已完成，再只讀 API request/response public boundaries、直接 tests 與 Stage B 的最小 UTF-8 helper/behavior。
->
-> 僅處理：
-> 1. `wfrac_api` request builders 對會進入 JSON string 的 caller-supplied C strings（至少 `api_version`、`device_id`、`operator_id`、`aircon_id`、`timezone`）建立明確 UTF-8 contract：合法 raw UTF-8 byte-preserving；malformed continuation、truncated、overlong、encoded surrogate、> U+10FFFF 必須 reject，不得讓 builder 產出 malformed UTF-8 JSON。既有 JSON escaping/control-character semantics 不變。
-> 2. `parse_get_device_info_contents()` 的 caller identity outputs 必須具有明確 failure semantics：任一 parse/decode failure 時 non-null/nonzero output buffers 不得留下看似成功的 partial `airconId` / `macAddress`；public result struct 仍 failure-atomic/reset。可採先完整 parse/validate 再 commit outputs等 bounded/no-heap方式，不指定大型重構。
-> 3. `parse_get_aircon_stat_contents()` public contract 補清楚：result struct failure-atomic；`aircon_id_output` 若被視為 identity output，failure 時同樣不得留下成功樣 partial identity；`base64_scratch` 與 `raw_aircon_stat_output` 是工作緩衝區，failure 時內容可 unspecified，但 caller 不得使用。若現有實作可低成本把 identity output reset，應補 targeted regression。
-> 4. targeted tests：request builder 至少含合法 raw `é`/中文字串與 malformed UTF-8；response 至少含「前段 identity decode 成功、後段 JSON/field 失敗」並確認 identity output/result 不留下 stale/partial success data。
->
-> 不變更 WF-RAC protocol semantics、command/result meanings、Transport/Device Model/ESP-IDF runtime；不引入 external JSON library或 heap。跑 targeted API request/response tests後再跑相關 host regressions。
->
-> 成功後從 `TASKS.md` 刪除整個 Stage B2 區塊與所有 `→ Stage B2` inventory 項目，`git diff --check` 後 commit/push。
-
 ### Stage C — ESP-IDF transport diagnostics correctness
 
 **推薦模型：** Terra  
@@ -62,7 +36,7 @@
 **是否值得先用較便宜模型做前置蒐證：** 否；不要重新搜尋網路或整個 repo。若 repo 內 pinned ESP-IDF evidence 與 source 衝突才停止並回報。  
 **Context 建議：** Default；只讀 `wfrac_transport_espidf` classifier/transport、直接測試/compile smoke，以及必要的已 pinned transport/TLS reference topic。  
 **Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
-**依賴：** Stage B/B2 PASS；為保持線性 history，預設在 Stage B2 後執行。  
+**依賴：** Stage B PASS；為保持線性 history，預設在 Stage B 後執行。
 **停止／重規劃條件：** 若 ESP-IDF v6.0.2 public error constants / cert contract 與 pinned evidence 不符，或無法以現有 classifier evidence type 正確區分，不猜；STOP 並保留 focused evidence，由使用者決定下一步。  
 **成功後：** 刪除本 Stage C 整段與 inventory 中 Stage C 項目，再 commit/push。
 
@@ -119,8 +93,6 @@
 
 ### P2 — JSON / response parser / library hardening
 
-- Reject malformed UTF-8 caller strings before API request builders serialize them into JSON; legal raw UTF-8 remains byte-preserving. **→ Stage B2**
-- Define and enforce failure semantics for response identity output buffers so a later parse failure cannot leave partial/stale `airconId` / `macAddress` looking successful; document scratch/raw work-buffer semantics. **→ Stage B2**
 
 ### P3 — Maintenance / contracts
 

@@ -519,9 +519,15 @@ ApiResponseError parse_get_device_info_contents(wfrac_protocol::ByteView input,
   if (output == nullptr || (input.size != 0U && input.data == nullptr)) return ApiResponseError::invalid_argument;
   if (aircon_id_output.size != 0U && aircon_id_output.data != nullptr) aircon_id_output.data[0] = 0U;
   if (mac_address_output.size != 0U && mac_address_output.data != nullptr) mac_address_output.data[0] = 0U;
+  const auto fail = [&](ApiResponseError error) {
+    if (aircon_id_output.size != 0U && aircon_id_output.data != nullptr) aircon_id_output.data[0] = 0U;
+    if (mac_address_output.size != 0U && mac_address_output.data != nullptr) mac_address_output.data[0] = 0U;
+    *output = {};
+    return error;
+  };
   GetDeviceInfoContents parsed{};
   Reader reader(input);
-  if (!reader.take('{')) return ApiResponseError::invalid_field_type;
+  if (!reader.take('{')) return fail(ApiResponseError::invalid_field_type);
   bool has_aircon_id = false;
   bool has_mac_address = false;
   bool has_ap_mode = false;
@@ -530,39 +536,39 @@ ApiResponseError parse_get_device_info_contents(wfrac_protocol::ByteView input,
       Span key{};
       Span value{};
       ApiResponseError error = reader.string(&key);
-      if (error != ApiResponseError::none) return error;
-      if (!reader.take(':')) return ApiResponseError::malformed_json;
+      if (error != ApiResponseError::none) return fail(error);
+      if (!reader.take(':')) return fail(ApiResponseError::malformed_json);
       if (decoded_equal(key, "airconId")) {
-        if (has_aircon_id) return ApiResponseError::malformed_json;
+        if (has_aircon_id) return fail(ApiResponseError::malformed_json);
         error = reader.string(&value);
-        if (error != ApiResponseError::none) return error;
+        if (error != ApiResponseError::none) return fail(error);
         error = decode(value, aircon_id_output, &parsed.aircon_id_size);
-        if (error != ApiResponseError::none) return error;
+        if (error != ApiResponseError::none) return fail(error);
         has_aircon_id = true;
       } else if (decoded_equal(key, "macAddress")) {
-        if (has_mac_address) return ApiResponseError::malformed_json;
+        if (has_mac_address) return fail(ApiResponseError::malformed_json);
         error = reader.string(&value);
-        if (error != ApiResponseError::none) return error;
+        if (error != ApiResponseError::none) return fail(error);
         error = decode(value, mac_address_output, &parsed.mac_address_size);
-        if (error != ApiResponseError::none) return error;
+        if (error != ApiResponseError::none) return fail(error);
         parsed.has_mac_address = true;
         has_mac_address = true;
       } else if (decoded_equal(key, "apMode")) {
-        if (has_ap_mode) return ApiResponseError::malformed_json;
+        if (has_ap_mode) return fail(ApiResponseError::malformed_json);
         error = reader.integer(&parsed.ap_mode);
-        if (error != ApiResponseError::none) return error;
+        if (error != ApiResponseError::none) return fail(error);
         parsed.has_ap_mode = true;
         has_ap_mode = true;
       } else {
         error = reader.value(0);
-        if (error != ApiResponseError::none) return error;
+        if (error != ApiResponseError::none) return fail(error);
       }
       if (reader.take('}')) break;
-      if (!reader.take(',')) return ApiResponseError::malformed_json;
+      if (!reader.take(',')) return fail(ApiResponseError::malformed_json);
     }
   }
-  if (!reader.done()) return ApiResponseError::malformed_json;
-  if (!has_aircon_id) return ApiResponseError::missing_required_field;
+  if (!reader.done()) return fail(ApiResponseError::malformed_json);
+  if (!has_aircon_id) return fail(ApiResponseError::missing_required_field);
   *output = parsed;
   return ApiResponseError::none;
 }
@@ -575,8 +581,13 @@ ApiResponseError parse_get_aircon_stat_contents(
   if (output == nullptr || (input.size != 0U && input.data == nullptr)) return ApiResponseError::invalid_argument;
   if (aircon_id_output.size != 0U && aircon_id_output.data != nullptr) aircon_id_output.data[0] = 0U;
   if (base64_scratch.size != 0U && base64_scratch.data != nullptr) base64_scratch.data[0] = 0U;
+  const auto fail = [&](ApiResponseError error) {
+    if (aircon_id_output.size != 0U && aircon_id_output.data != nullptr) aircon_id_output.data[0] = 0U;
+    *output = {};
+    return error;
+  };
   Reader reader(input);
-  if (!reader.take('{')) return ApiResponseError::invalid_field_type;
+  if (!reader.take('{')) return fail(ApiResponseError::invalid_field_type);
   bool has_aircon_stat = false;
   bool has_aircon_id = false;
   Span aircon_stat{};
@@ -585,50 +596,50 @@ ApiResponseError parse_get_aircon_stat_contents(
     for (;;) {
       Span key{};
       ApiResponseError error = reader.string(&key);
-      if (error != ApiResponseError::none) return error;
-      if (!reader.take(':')) return ApiResponseError::malformed_json;
+      if (error != ApiResponseError::none) return fail(error);
+      if (!reader.take(':')) return fail(ApiResponseError::malformed_json);
       if (decoded_equal(key, "airconStat")) {
-        if (has_aircon_stat) return ApiResponseError::malformed_json;
+        if (has_aircon_stat) return fail(ApiResponseError::malformed_json);
         error = reader.string(&aircon_stat);
-        if (error != ApiResponseError::none) return error;
+        if (error != ApiResponseError::none) return fail(error);
         has_aircon_stat = true;
       } else if (decoded_equal(key, "airconId")) {
-        if (has_aircon_id) return ApiResponseError::malformed_json;
+        if (has_aircon_id) return fail(ApiResponseError::malformed_json);
         error = reader.string(&aircon_id);
-        if (error != ApiResponseError::none) return error;
+        if (error != ApiResponseError::none) return fail(error);
         has_aircon_id = true;
       } else {
         error = reader.value(0);
-        if (error != ApiResponseError::none) return error;
+        if (error != ApiResponseError::none) return fail(error);
       }
       if (reader.take('}')) break;
-      if (!reader.take(',')) return ApiResponseError::malformed_json;
+      if (!reader.take(',')) return fail(ApiResponseError::malformed_json);
     }
   }
-  if (!reader.done()) return ApiResponseError::malformed_json;
-  if (!has_aircon_stat) return ApiResponseError::missing_required_field;
+  if (!reader.done()) return fail(ApiResponseError::malformed_json);
+  if (!has_aircon_stat) return fail(ApiResponseError::missing_required_field);
   GetAirconStatContents parsed{};
   if (has_aircon_id) {
     const ApiResponseError error = decode(aircon_id, aircon_id_output, &parsed.aircon_id_size);
-    if (error != ApiResponseError::none) return error;
+    if (error != ApiResponseError::none) return fail(error);
     parsed.has_aircon_id = true;
   }
   const ApiResponseError decoded = decode(aircon_stat, base64_scratch, &parsed.encoded_aircon_stat_size);
-  if (decoded != ApiResponseError::none) return decoded;
+  if (decoded != ApiResponseError::none) return fail(decoded);
   std::size_t raw_size = 0U;
   ApiResponseError error = base64_error(wfrac_protocol::base64_decoded_size(
       {base64_scratch.data, parsed.encoded_aircon_stat_size}, &raw_size));
-  if (error != ApiResponseError::none) return error;
-  if (raw_aircon_stat_output.size < raw_size) return ApiResponseError::output_too_small;
+  if (error != ApiResponseError::none) return fail(error);
+  if (raw_aircon_stat_output.size < raw_size) return fail(ApiResponseError::output_too_small);
   error = base64_error(wfrac_protocol::base64_decode(
       {base64_scratch.data, parsed.encoded_aircon_stat_size}, raw_aircon_stat_output, &raw_size));
-  if (error != ApiResponseError::none) return error;
+  if (error != ApiResponseError::none) return fail(error);
   wfrac_protocol::AirconFrameView frame{};
   if (wfrac_protocol::parse_aircon_stat({raw_aircon_stat_output.data, raw_size}, &frame) !=
       wfrac_protocol::FrameError::none) {
-    return ApiResponseError::invalid_aircon_stat;
+    return fail(ApiResponseError::invalid_aircon_stat);
   }
-  if (!frame.command.crc_valid || !frame.receive.crc_valid) return ApiResponseError::crc_mismatch;
+  if (!frame.command.crc_valid || !frame.receive.crc_valid) return fail(ApiResponseError::crc_mismatch);
   parsed.raw_aircon_stat_size = raw_size;
   parsed.frame = frame;
   *output = parsed;

@@ -42,6 +42,43 @@ const char* request_path(RequestKind kind) {
 
 bool non_empty(const char* value) { return value != nullptr && value[0] != '\0'; }
 
+bool valid_utf8(const char* value) {
+  if (value == nullptr) return false;
+  const auto* cursor = reinterpret_cast<const uint8_t*>(value);
+  while (*cursor != 0U) {
+    const uint8_t first = *cursor;
+    std::size_t length = 0U;
+    uint32_t code_point = 0U;
+    if (first <= 0x7FU) {
+      ++cursor;
+      continue;
+    } else if (first >= 0xC2U && first <= 0xDFU) {
+      length = 2U;
+      code_point = first & 0x1FU;
+    } else if (first >= 0xE0U && first <= 0xEFU) {
+      length = 3U;
+      code_point = first & 0x0FU;
+    } else if (first >= 0xF0U && first <= 0xF4U) {
+      length = 4U;
+      code_point = first & 0x07U;
+    } else {
+      return false;
+    }
+    for (std::size_t index = 1U; index < length; ++index) {
+      const uint8_t continuation = cursor[index];
+      if (continuation == 0U || (continuation & 0xC0U) != 0x80U) return false;
+      code_point = (code_point << 6U) | (continuation & 0x3FU);
+    }
+    if ((length == 2U && code_point < 0x80U) || (length == 3U && code_point < 0x800U) ||
+        (length == 4U && code_point < 0x10000U) || (code_point >= 0xD800U && code_point <= 0xDFFFU) ||
+        code_point > 0x10FFFFU) {
+      return false;
+    }
+    cursor += length;
+  }
+  return true;
+}
+
 void reset_request(ApiRequestView* request) {
   if (request != nullptr) *request = {};
 }
@@ -203,6 +240,10 @@ ApiRequestError build_request(RequestKind kind, const ApiClientContext& context,
   if (context_error != ApiRequestError::none) return context_error;
   if (kind != RequestKind::get_device_info && !non_empty(aircon_id)) return ApiRequestError::invalid_argument;
   if (kind == RequestKind::update_account_info && !non_empty(timezone)) return ApiRequestError::invalid_argument;
+  if (!valid_utf8(context.api_version) || !valid_utf8(context.device_id) || !valid_utf8(context.operator_id) ||
+      (aircon_id != nullptr && !valid_utf8(aircon_id)) || (timezone != nullptr && !valid_utf8(timezone))) {
+    return ApiRequestError::invalid_argument;
+  }
 
   std::size_t base64_size = 0;
   if (kind == RequestKind::set_aircon_stat) {

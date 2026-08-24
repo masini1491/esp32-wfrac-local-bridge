@@ -130,6 +130,65 @@ int main() {
   }
 
   {
+    const std::string api_version = "1.0-\xC3\xA9";
+    const std::string device_id = "dev-\xE4\xB8\xAD\xE6\x96\x87";
+    const std::string operator_id = "op-\xC3\xA9";
+    const std::string aircon_id = "ac-\xE5\x8F\xb0";
+    const std::string timezone = "Asia/\xE5\x8F\xb0pei";
+    const wfrac_api::ApiClientContext context{api_version.c_str(), device_id.c_str(), operator_id.c_str()};
+    FakeTimeProvider time;
+    time.sample = {123, wfrac_api::TimeQuality::trusted};
+    std::array<uint8_t, 512> output{};
+    wfrac_api::ApiRequestView request{};
+    assert(wfrac_api::build_update_account_info_request(context, aircon_id.c_str(), timezone.c_str(), &time,
+                                                        {output.data(), output.size()}, &request) ==
+           wfrac_api::ApiRequestError::none);
+    const std::string body = body_text(request);
+    assert(body.find(api_version) != std::string::npos && body.find(device_id) != std::string::npos &&
+           body.find(operator_id) != std::string::npos && body.find(aircon_id) != std::string::npos &&
+           body.find(timezone) != std::string::npos);
+  }
+
+  {
+    const std::array<std::string, 5> malformed = {
+        std::string("\xC3\x28", 2), std::string("\xE2\x82", 2), std::string("\xC0\xAF", 2),
+        std::string("\xED\xA0\x80", 3), std::string("\xF4\x90\x80\x80", 4)};
+    for (const std::string& value : malformed) {
+      const wfrac_api::ApiClientContext context{value.c_str(), "device", "operator"};
+      FakeTimeProvider time;
+      time.sample = {123, wfrac_api::TimeQuality::trusted};
+      std::array<uint8_t, 256> output{};
+      wfrac_api::ApiRequestView request{"stale", {output.data(), 1U}, 1, wfrac_api::TimeQuality::trusted};
+      assert(wfrac_api::build_get_device_info_request(context, &time, {output.data(), output.size()}, &request) ==
+             wfrac_api::ApiRequestError::invalid_argument);
+      assert(time.calls == 0U);
+      assert_reset(request);
+    }
+    for (const std::string& value : malformed) {
+      const wfrac_api::ApiClientContext context{"1.0", "device", "operator"};
+      FakeTimeProvider time;
+      time.sample = {123, wfrac_api::TimeQuality::trusted};
+      std::array<uint8_t, 256> output{};
+      wfrac_api::ApiRequestView request{};
+      assert(wfrac_api::build_get_aircon_stat_request(context, value.c_str(), &time,
+                                                      {output.data(), output.size()}, &request) ==
+             wfrac_api::ApiRequestError::invalid_argument);
+      assert(time.calls == 0U);
+    }
+    for (const std::string& value : malformed) {
+      const wfrac_api::ApiClientContext context{"1.0", "device", "operator"};
+      FakeTimeProvider time;
+      time.sample = {123, wfrac_api::TimeQuality::trusted};
+      std::array<uint8_t, 256> output{};
+      wfrac_api::ApiRequestView request{};
+      assert(wfrac_api::build_update_account_info_request(context, "ac", value.c_str(), &time,
+                                                          {output.data(), output.size()}, &request) ==
+             wfrac_api::ApiRequestError::invalid_argument);
+      assert(time.calls == 0U);
+    }
+  }
+
+  {
     const auto raw = valid_aircon_stat();
     FakeTimeProvider time;
     time.sample = {200, wfrac_api::TimeQuality::trusted};

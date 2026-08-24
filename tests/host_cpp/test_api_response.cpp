@@ -251,5 +251,34 @@ int main() {
     assert(wfrac_api::parse_api_response_envelope(view(unknown), "getDeviceInfo", &envelope) ==
            wfrac_api::ApiResponseError::malformed_json);
   }
+
+  {
+    std::array<uint8_t, 8> failure_id{};
+    std::array<uint8_t, 8> failure_mac{};
+    failure_id.fill(0xCCU);
+    failure_mac.fill(0xCCU);
+    wfrac_api::GetDeviceInfoContents failure_output{3U, true, 3U, true, 7};
+    const char* malformed_after_identity = "{\"airconId\":\"ac1\",\"apMode\":1.5}";
+    assert(wfrac_api::parse_get_device_info_contents(
+               view(malformed_after_identity), {failure_id.data(), failure_id.size()},
+               {failure_mac.data(), failure_mac.size()}, &failure_output) ==
+           wfrac_api::ApiResponseError::invalid_field_type);
+    assert(failure_id[0] == 0U && failure_mac[0] == 0U && failure_output.aircon_id_size == 0U &&
+           !failure_output.has_mac_address && !failure_output.has_ap_mode);
+  }
+
+  {
+    std::array<uint8_t, 8> failure_id{};
+    failure_id.fill(0xCCU);
+    std::array<uint8_t, 8> failure_scratch{};
+    wfrac_api::GetAirconStatContents failure_output{3U, 3U, 42U, 42U, {}};
+    const char* malformed_after_identity = "{\"airconId\":\"ac1\",\"airconStat\":null}";
+    assert(wfrac_api::parse_get_aircon_stat_contents(
+               view(malformed_after_identity), {failure_id.data(), failure_id.size()},
+               {failure_scratch.data(), failure_scratch.size()}, {}, &failure_output) ==
+           wfrac_api::ApiResponseError::invalid_field_type);
+    assert(failure_id[0] == 0U && !failure_output.has_aircon_id && failure_output.aircon_id_size == 0U &&
+           failure_output.raw_aircon_stat_size == 0U && failure_output.frame.receive_offset == 0U);
+  }
   return 0;
 }
