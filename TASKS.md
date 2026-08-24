@@ -28,35 +28,6 @@
 
 ## Codex staged execution plan — 流量恢復後依序執行
 
-### Stage B — JSON string semantics / UTF-8 hardening
-
-**推薦模型：** Terra  
-**推理強度：** Medium  
-**推薦理由：** 同時涉及 JSON escape semantics、decoded-key equality、UTF-8 scalar validation、surrogate pair、duplicate detection 與 bounded/no-heap parser correctness；scope 已明確但交互邊界多，Terra Medium 是較安全的最低配置。  
-**是否值得先用較便宜模型做前置蒐證：** 否；root cause、目標行為與直接檔案已定位，先用 Luna 做重複蒐證不划算。  
-**Context 建議：** Default；以 Stage A/A1 後的 `api_response.cpp`、public header、response tests 為中心。  
-**Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
-**依賴：** Stage A1 PASS 且 Stage A1 已從 `TASKS.md` 移除。  
-**停止／重規劃條件：** 若正確 raw UTF-8 validation / decoded-key comparison 必須大規模改寫 parser、改 public API，或目前 source 與已定位 root cause 明顯衝突，STOP 並保留 evidence；不得自行升級模型或擴 scope。  
-**成功後：** 刪除本 Stage B 整段與 inventory 中 Stage B 項目，再 commit/push。
-
-**Codex Prompt：**
-
-> 執行「Stage B — JSON string semantics / UTF-8 hardening」。必須以 Stage A/A1 已完成的 `main` 為 baseline。遵守 `AGENTS.md`、`TASKS.md` 共通規則；先完成 remote-sync bootstrap，再只讀目前 `api_response.cpp`、public response header 與直接相關 host tests。
->
-> 僅處理：
-> 1. known JSON keys 與 top-level `command` 必須依 **decoded JSON string value** 比較，使合法 escape（例如 `\uXXXX`）與等價 raw spelling 語意相同。語意相同但 spelling 不同的 duplicate known key（例如 `airconId` + `aircon\u0049d`）仍必須被視為 duplicate/reject；不要放寬 duplicate-key 或 known-field type rules。
-> 2. raw non-ASCII UTF-8 bytes 不得逐 byte 當 Unicode code point 再編碼；合法 raw UTF-8 必須 byte-preserving，`\uXXXX` / surrogate pair 則正確輸出 UTF-8。
-> 3. JSON parser 的 string validation 必須適用於 keys、known values、unknown/skipped string values，不得因 value 被 skip 就繞過 UTF-8 validation。
-> 4. 驗證並拒絕 malformed UTF-8：bad continuation、truncated sequence、overlong encoding、UTF-8 encoded surrogate、code point > U+10FFFF。Stage A 的 embedded U+0000 identity rejection 必須保持。
-> 5. targeted tests 至少包含 raw `é`、中文字串 byte-identical、`\u00E9` 等價 decode、escaped command/key、semantic duplicate key，以及上述 malformed UTF-8 cases。
->
-> 優先採 bounded/no-heap helper 或 streaming comparison；不得引入 heap/external JSON library，不得重寫整個 parser，不得碰 Transport/Device Model/ESP-IDF runtime。先跑 targeted API response tests，再跑既有 host regressions；另以支援 sanitizer 的 host toolchain 對 targeted API-response executable 跑一次 ASan/UBSan。若 sanitizer 本身不可用，分類為 `TOOLCHAIN` 並回報，不得因此擴大 source patch 或反覆重裝工具鏈。
->
-> 若必須改 public API 或大規模 parser rewrite，STOP，保留 evidence；不要自己升級模型或 scope。
->
-> 成功後從 `TASKS.md` 刪除整個 Stage B 區塊與所有 `→ Stage B` inventory 項目，`git diff --check` 後 commit/push。
-
 ### Stage B2 — JSON API contract hardening
 
 **推薦模型：** Luna  
@@ -148,8 +119,6 @@
 
 ### P2 — JSON / response parser / library hardening
 
-- Compare known JSON keys and `command` by decoded string value, including semantic duplicate detection across escaped/raw spellings. **→ Stage B**
-- Preserve and validate raw UTF-8 string bytes correctly instead of re-encoding each non-ASCII byte as a Unicode code point; validate strings even when skipped. **→ Stage B**
 - Reject malformed UTF-8 caller strings before API request builders serialize them into JSON; legal raw UTF-8 remains byte-preserving. **→ Stage B2**
 - Define and enforce failure semantics for response identity output buffers so a later parse failure cannot leave partial/stale `airconId` / `macAddress` looking successful; document scratch/raw work-buffer semantics. **→ Stage B2**
 

@@ -13,6 +13,10 @@ wfrac_protocol::ByteView view(const char* text) {
   return {reinterpret_cast<const uint8_t*>(text), std::strlen(text)};
 }
 
+wfrac_protocol::ByteView view(const std::string& text) {
+  return {reinterpret_cast<const uint8_t*>(text.data()), text.size()};
+}
+
 std::array<uint8_t, 42> valid_frame() {
   std::array<uint8_t, 42> raw{};
   for (std::size_t index = 0; index < 18; ++index) raw[index] = 0xFFU;
@@ -210,5 +214,42 @@ int main() {
                                                 "getDeviceInfo", &envelope) !=
          wfrac_api::ApiResponseError::none);
   assert(envelope.result == 0 && !envelope.has_contents && envelope.contents_json.data == nullptr);
+
+  const std::string raw_e_acute = "\xC3\xA9";
+  const std::string raw_chinese = "\xE4\xB8\xAD\xE6\x96\x87";
+  std::array<uint8_t, 8> utf8_id{};
+  assert(wfrac_api::parse_get_device_info_contents(
+             view(std::string("{\"airconId\":\"") + raw_e_acute + "\"}"),
+             {utf8_id.data(), utf8_id.size()}, {}, &info) == wfrac_api::ApiResponseError::none);
+  assert(info.aircon_id_size == raw_e_acute.size() &&
+         std::memcmp(utf8_id.data(), raw_e_acute.data(), raw_e_acute.size()) == 0);
+  assert(wfrac_api::parse_get_device_info_contents(
+             view(std::string("{\"airconId\":\"") + raw_chinese + "\"}"),
+             {utf8_id.data(), utf8_id.size()}, {}, &info) == wfrac_api::ApiResponseError::none);
+  assert(info.aircon_id_size == raw_chinese.size() &&
+         std::memcmp(utf8_id.data(), raw_chinese.data(), raw_chinese.size()) == 0);
+  assert(wfrac_api::parse_get_device_info_contents(
+             view("{\"airconId\":\"\\u00E9\"}"), {utf8_id.data(), utf8_id.size()}, {}, &info) ==
+         wfrac_api::ApiResponseError::none);
+  assert(info.aircon_id_size == raw_e_acute.size() &&
+         std::memcmp(utf8_id.data(), raw_e_acute.data(), raw_e_acute.size()) == 0);
+  assert(wfrac_api::parse_api_response_envelope(
+             view("{\"command\":\"getDevice\\u0049nfo\",\"result\":0}"), "getDeviceInfo", &envelope) ==
+         wfrac_api::ApiResponseError::none);
+  assert(wfrac_api::parse_get_device_info_contents(
+             view("{\"aircon\\u0049d\":\"ac1\"}"), {id.data(), id.size()}, {}, &info) ==
+         wfrac_api::ApiResponseError::none);
+  assert(wfrac_api::parse_get_device_info_contents(
+             view("{\"airconId\":\"a\",\"aircon\\u0049d\":\"b\"}"),
+             {id.data(), id.size()}, {}, &info) == wfrac_api::ApiResponseError::malformed_json);
+
+  for (const std::string& malformed_utf8 : {
+           std::string("\xC3\x28", 2), std::string("\xE2\x82", 2), std::string("\xC0\xAF", 2),
+           std::string("\xED\xA0\x80", 3), std::string("\xF4\x90\x80\x80", 4)}) {
+    const std::string unknown = std::string("{\"unknown\":\"") + malformed_utf8 +
+                                "\",\"command\":\"getDeviceInfo\",\"result\":0}";
+    assert(wfrac_api::parse_api_response_envelope(view(unknown), "getDeviceInfo", &envelope) ==
+           wfrac_api::ApiResponseError::malformed_json);
+  }
   return 0;
 }
