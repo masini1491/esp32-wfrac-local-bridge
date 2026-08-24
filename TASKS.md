@@ -27,21 +27,46 @@
 
 ## Codex staged execution plan — 流量恢復後依序執行
 
+### Stage A1 — Parser regression follow-up
+
+**推薦模型：** Luna  
+**推理強度：** Medium  
+**推薦理由：** Stage A 後 code review 已定位兩個 bounded regression；root cause 明確，屬小型 parser correctness / memory-safety patch + targeted tests，不需要 Terra。  
+**是否值得先用較便宜模型做前置蒐證：** 否；直接以目前 source 與新增 regression tests 修正。  
+**Context 建議：** Default / Level 0→1；只讀 `components/wfrac_api/src/api_response.cpp` 與 `tests/host_cpp/test_api_response.cpp`，evidence 不足才擴張。  
+**Execution mode 建議：** Normal / single-agent。  
+**依賴：** 原 Stage A commit `17a46cdddcd9ea2519959a5b68e0ea88aeebd96c` 已完成；本 follow-up 必須先於 Stage B。  
+**成功後：** 刪除本 Stage A1 整段與 inventory 中 `→ Stage A1` 項目，再 commit/push。
+
+**Codex Prompt：**
+
+> 執行「Stage A1 — Parser regression follow-up」。先依 `AGENTS.md` 做 remote-sync bootstrap，再只讀目前 `api_response.cpp` 與 API response host tests；不要執行 Stage B/C/D 或 Deferred。
+>
+> 已確認兩個 regression：
+> 1. `decode()` 的 output-capacity 判斷目前使用類似 `n > out.size - w - 1U`。當 `out.size == 0` 且 `out.data != nullptr`，或 `w == out.size` 時，減法可發生 unsigned underflow，使 logical zero-capacity / exhausted-capacity view 在回傳 `output_too_small` 前仍可能寫入 caller storage。改成不會 underflow 的 remaining-capacity 判斷；在任何 write 前先證明至少有 `n` bytes payload + 1 byte NUL capacity。新增 sentinel regression：zero-capacity non-null storage 與 exact/exhausted capacity failure 時 caller bytes不得被修改超出 API contract。
+> 2. `Reader::integer()` 目前在 `number()` 內部 `ws()` 之前先保存 `start` / `start_remaining`；因此合法 JSON value whitespace（例如 `{"command":"getDeviceInfo","result": 1}` 或 contents 的 `"apMode": 2`）會被算進 consumed span，造成 strict integer解析誤判。修正 cursor snapshot 順序或等價邏輯，使 JSON whitespace在 integer token 前合法，同時維持 strict integer規則：fraction/exponent仍對 known integer field回 `invalid_field_type` / 既有適當錯誤，不放寬 `+1`、leading zero等 malformed grammar。
+>
+> Targeted tests至少新增：known `result` 前有一個/多個 JSON whitespace、`apMode` 前有 whitespace；zero-capacity non-null storage sentinel unchanged；exact insufficient capacity sentinel unchanged；原 Stage A unknown-number grammar、embedded NUL、truncated Unicode、failure-atomic metadata tests不得退步。
+>
+> 只做 focused patch，不改 public API、不碰 UTF-8 semantic work（留給 Stage B）、Transport/Device Model/ESP-IDF runtime。先跑 API response targeted test，再跑既有 host regressions與 `git diff --check`；不需要 ESP-IDF build。
+>
+> 全部 PASS 後從 `TASKS.md` 刪除整個 Stage A1 與所有 `→ Stage A1` inventory 項目；Stage B保留並成為下一個可執行 stage。commit/push `main`。
+
 ### Stage B — JSON string semantics / UTF-8 hardening
 
 **推薦模型：** Luna  
 **推理強度：** Medium  
 **推薦理由：** 行為規格可完全預先定義，主要是 bounded JSON-string comparator / UTF-8 validation 與測試；先用 Luna 可控制成本。  
 **是否值得先用較便宜模型做前置蒐證：** 否；Luna 已足夠。  
-**Context 建議：** Default；以 Stage A 後的 `api_response.cpp`、public header、response tests 為中心。  
+**Context 建議：** Default；以 Stage A/A1 後的 `api_response.cpp`、public header、response tests 為中心。  
 **Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
-**依賴：** Stage A PASS 且 Stage A 已從 `TASKS.md` 移除。  
+**依賴：** Stage A1 PASS 且 Stage A1 已從 `TASKS.md` 移除。  
 **升級條件：** 若正確 raw UTF-8 validation / decoded-key comparison 必須大規模改寫 parser 或改 public API，STOP 並帶 evidence 升 Terra Medium。  
 **成功後：** 刪除本 Stage B 整段與 inventory 中 Stage B 項目，再 commit/push。
 
 **Codex Prompt：**
 
-> 執行「Stage B — JSON string semantics / UTF-8 hardening」。必須以 Stage A 已完成的 `main` 為 baseline。遵守 `AGENTS.md`、`TASKS.md` 共通規則；先完成 remote-sync bootstrap，再只讀目前 `api_response.cpp`、public response header 與直接相關 host tests。
+> 執行「Stage B — JSON string semantics / UTF-8 hardening」。必須以 Stage A/A1 已完成的 `main` 為 baseline。遵守 `AGENTS.md`、`TASKS.md` 共通規則；先完成 remote-sync bootstrap，再只讀目前 `api_response.cpp`、public response header 與直接相關 host tests。
 >
 > 僅處理：
 > 1. known JSON keys 與 top-level `command` 必須依 **decoded JSON string value** 比較，使合法 escape（例如 `\uXXXX`）與等價 raw spelling語意相同。語意相同但 spelling 不同的 duplicate known key（例如 `airconId` + `aircon\u0049d`）仍必須被視為 duplicate/reject；不要放寬 duplicate-key 或 known-field type rules。
@@ -64,7 +89,7 @@
 **是否值得先用較便宜模型做前置蒐證：** 否；不要重新搜尋網路或整個 repo。若 repo 內 pinned ESP-IDF evidence 與 source 衝突才停止並升級蒐證。  
 **Context 建議：** Default；只讀 `wfrac_transport_espidf` classifier/transport、直接測試/compile smoke，以及必要的已 pinned transport/TLS reference topic。  
 **Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
-**依賴：** Stage A PASS；為保持線性 history，預設在 Stage B 後執行。  
+**依賴：** Stage A1 PASS；為保持線性 history，預設在 Stage B 後執行。  
 **升級條件：** 若 ESP-IDF v6.0.2 public error constants / cert contract 與 pinned evidence 不符，或無法以現有 classifier evidence type 正確區分，不猜；STOP 並升 Terra Medium 做 focused evidence review。  
 **成功後：** 刪除本 Stage C 整段與 inventory 中 Stage C 項目，再 commit/push。
 
@@ -93,7 +118,7 @@
 **是否值得先用較便宜模型做前置蒐證：** 否；Luna Low 即為最低足夠配置。  
 **Context 建議：** Default；只讀 operation-query builders/tests、frame/view public headers、`AGENTS.md`、`docs/architecture.md`、`TASKS.md`。  
 **Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
-**依賴：** Stage A–C PASS 且已自 `TASKS.md` 移除。  
+**依賴：** Stage A1–C PASS 且已自 `TASKS.md` 移除。  
 **成功後：** 刪除本 Stage D 整段與 inventory 中 Stage D 項目；若只剩 Deferred 則保留 `TASKS.md`。
 
 **Codex Prompt：**
@@ -113,6 +138,8 @@
 
 ### P1 — Pre-hardware correctness
 
+- Fix `decode()` remaining-capacity check so zero/exhausted logical output capacity cannot underflow and write before returning `output_too_small`; add sentinel tests. **→ Stage A1**
+- Fix strict known-integer parsing so JSON whitespace before `result` / `apMode` remains legal after Stage A number refactor. **→ Stage A1**
 - Refine ESP-IDF HTTP/TLS failure classification so DNS/socket/connect/connection-timeout evidence is not incorrectly collapsed into generic `tls_failure`; preserve the rule that the classifier never invents `scheme_mismatch`. **→ Stage C**
 - Align `EspHttpTransport` PEM certificate length contract with ESP-IDF v6.0.2 semantics. Explicitly document/test `cert_len == 0` NUL-terminated PEM semantics and nonzero-length terminator requirements. **→ Stage C**
 
@@ -137,7 +164,7 @@
 **是否值得先用較便宜模型做前置蒐證：** 通常否；A–D 完成後由 Terra 直接做 focused baseline read。只有 toolchain/baseline 是否仍可用不明時，才可先用 Luna Low 做純 evidence preflight，不修改 source。  
 **Context 建議：** Default；只在 direct component interfaces 不足時升 Expanded，不預設 1M。  
 **Execution mode 建議：** Normal / single-agent；不預設 Fast / Ultra / Multi-Agent。  
-**觸發條件：** Stage A–D 全部 PASS，尤其 P1 pre-hardware correctness 已清空。  
+**觸發條件：** Stage A1–D 全部 PASS，尤其 P1 pre-hardware correctness 已清空。  
 **來源註記：** 本 task 合併先前因 Codex 流量耗盡而未執行的完整 #4H Prompt；該舊 Prompt 的固定 baseline `f86d935...` 已過時，執行時一律以 remote-sync 後最新 `main` / `AGENTS.md` / `TASKS.md` 為 source of truth。  
 **限制：** 只 IMPLEMENT / COMPILE / LINK。不得 flash、monitor、實際 connect Wi-Fi、HTTP/HTTPS、TLS handshake 或 WF-RAC；真正 hardware execution 留給下一個 read-only probe task。
 
