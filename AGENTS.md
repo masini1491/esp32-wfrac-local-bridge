@@ -14,3 +14,15 @@ Matter Adapter 不得直接建 request、parse raw JSON、管理 Operator ID、r
 ## Reference reading discipline
 
 Reference reading must be topic-scoped。Future task 先讀 `docs/references/README.md`，再只讀直接相關的 `topics/*.md`；只有 provenance、source conflict 或 evidence audit 才讀 `sources/*.md`。不得預設完整讀 `docs/protocol-research.md` 或全部 reference files；evidence 不足時才逐層擴大 context。
+
+## Remote sync and shared task queue
+
+每次 task 開始時，local repository 可能落後 GitHub；在依賴 local `AGENTS.md` 或 `TASKS.md` 前，先確認 repository identity、`git status --short`、current branch、HEAD，以及 merge/rebase/cherry-pick 是否進行中，再執行 `git fetch origin`。只有 working tree clean、branch 正確、local `main` 沒有 ahead/diverged 且可由 `origin/main` fast-forward 時，才使用 fast-forward-only 同步 remote source of truth；dirty、unexpected branch、local ahead/diverged、無法 fast-forward 或未完成的 merge/rebase/cherry-pick 都必須 STOP。
+
+不得使用 `reset`、force push、自行 merge/rebase、stash，或刪除／丟棄未知 user work。同步完成後才讀最新 `AGENTS.md`／`TASKS.md`。根目錄若存在 `TASKS.md`，它是 ChatGPT／Codex 共用的 temporary unfinished-work queue；Codex 每次只執行使用者當次明確授權的 task/stage，不得因 queue 存在而自行完成其他項目。成功完成並驗證授權 task 後，必須移除或更新對應 entry；不得保留 Completed/changelog，若已無 unfinished work 則刪除 `TASKS.md`。`TASKS.md` 不得凌駕 architecture、spec、security 或 protocol evidence 等正式 source of truth；同步後若 `TASKS.md` 不存在，不得依賴舊 local copy、舊 prompt 或記憶執行已移除的 task。
+
+## Portable library extraction invariant
+
+Repository 現階段維持 monorepo，不因未來 library 化而提前拆 repo、做 package distribution 或 semantic versioning。`wfrac_protocol`、`wfrac_device_model`、`wfrac_api`、`wfrac_transport`、`wfrac_client` 必須持續保持可抽離；platform/runtime concern 留在 adapter、runtime 或 firmware boundary，dependency direction 維持 `platform/runtime → portable core`。
+
+Portable core 不得依賴 ESP-IDF、FreeRTOS、Wi-Fi、NVS、Matter 或 firmware runtime；portable public headers/API 不得洩漏 `esp_err_t`、ESP-IDF handles、FreeRTOS types、Wi-Fi/NVS/Matter types 或其他 platform-specific API。`wfrac_transport_espidf`、`wfrac_time_espidf` 及未來 Wi-Fi/NVS/Matter/firmware runtime 均屬 platform-specific，不屬 portable core。每次跨 component 修改都要確認 library readiness 為 `PRESERVED` 或 `ISSUE`。

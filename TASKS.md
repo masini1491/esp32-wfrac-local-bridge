@@ -130,9 +130,7 @@
 > 僅處理：
 > 1. portable operation-query builders 所有 early failure 統一把 non-null `encoded_size` reset 為 0，並補 targeted regression；不得改 success encoding semantics。
 > 2. 文件化 `AirconFrameView` / `AirconBlockView::segments` lifetime 與 immutability：views 指向 caller-owned raw storage；使用 returned views 期間 buffer 必須保持有效，validated bytes 不得在 cached CRC-valid state 背後被修改。
-> 3. 在 `AGENTS.md` 加永久規則：task 開始先安全同步 remote source of truth：確認 repo/status/branch/HEAD，`git fetch origin`；只有 clean、預期 branch 且可 fast-forward 時才以 fast-forward-only 同步 `origin/main`，dirty/diverged/ahead/unexpected state 則 STOP，不覆蓋 user work；同步後才讀最新 `AGENTS.md` / `TASKS.md`。若 `TASKS.md` 存在，視為 shared temporary queue；成功完成並驗證當次授權 task 後移除或更新對應 entry；不得未經授權執行其他 queue 項目；完全無 unfinished work 時刪除 `TASKS.md`。
-> 4. 在 `AGENTS.md` 加 library-extraction invariant：目前維持 monorepo；portable core `wfrac_protocol` / `wfrac_device_model` / `wfrac_api` / `wfrac_transport` / `wfrac_client` 必須保持未來可低成本抽成獨立 C++ library；platform/runtime dependency 只能 inward（platform/runtime → portable core），portable public API 不得洩漏 ESP-IDF/FreeRTOS/Wi-Fi/NVS/Matter types；不得因此提前拆 repo、packaging、semantic versioning。
-> 5. 修正 `docs/architecture.md` 把 `wfrac_transport_espidf` 說成「唯一」ESP-IDF adapter 的過時文字；目前至少有 `wfrac_transport_espidf` 與 `wfrac_time_espidf`。
+> 3. 修正 `docs/architecture.md` 把 `wfrac_transport_espidf` 說成「唯一」ESP-IDF adapter 的過時文字；目前至少有 `wfrac_transport_espidf` 與 `wfrac_time_espidf`。
 >
 > 不新增功能、不做重構。跑 operation-query targeted regression、必要 host regression、`git diff --check`。若只修改 docs/header contract且無 production source change，不為了形式預設跑 ESP-IDF full matrix。
 >
@@ -159,8 +157,6 @@
 
 - Reset `encoded_size` to zero consistently on early failure in portable operation-query builders. **→ Stage D**
 - Document `AirconFrameView` / segment-view lifetime and immutability expectations: views reference caller-owned raw storage, and validated bytes must not be mutated behind cached CRC-valid state. **→ Stage D**
-- Add the permanent remote-sync + `TASKS.md` queue rule to `AGENTS.md`. **→ Stage D**
-- Add the library-extraction invariant to `AGENTS.md`: keep the monorepo for now, preserve portable-core extractability, and prevent ESP-IDF/FreeRTOS/Wi-Fi/NVS/Matter types from leaking into portable public APIs. **→ Stage D**
 - Fix architecture wording that still describes `wfrac_transport_espidf` as the only ESP-IDF platform adapter now that `wfrac_time_espidf` also exists. **→ Stage D**
 
 ## Deferred
