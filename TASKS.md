@@ -27,31 +27,6 @@
 
 ## Codex staged execution plan — 流量恢復後依序執行
 
-### Stage A1 — Parser regression follow-up
-
-**推薦模型：** Luna  
-**推理強度：** Medium  
-**推薦理由：** Stage A 後 code review 已定位兩個 bounded regression；root cause 明確，屬小型 parser correctness / memory-safety patch + targeted tests，不需要 Terra。  
-**是否值得先用較便宜模型做前置蒐證：** 否；直接以目前 source 與新增 regression tests 修正。  
-**Context 建議：** Default / Level 0→1；只讀 `components/wfrac_api/src/api_response.cpp` 與 `tests/host_cpp/test_api_response.cpp`，evidence 不足才擴張。  
-**Execution mode 建議：** Normal / single-agent。  
-**依賴：** 原 Stage A commit `17a46cdddcd9ea2519959a5b68e0ea88aeebd96c` 已完成；本 follow-up 必須先於 Stage B。  
-**成功後：** 刪除本 Stage A1 整段與 inventory 中 `→ Stage A1` 項目，再 commit/push。
-
-**Codex Prompt：**
-
-> 執行「Stage A1 — Parser regression follow-up」。先依 `AGENTS.md` 做 remote-sync bootstrap，再只讀目前 `api_response.cpp` 與 API response host tests；不要執行 Stage B/C/D 或 Deferred。
->
-> 已確認兩個 regression：
-> 1. `decode()` 的 output-capacity 判斷目前使用類似 `n > out.size - w - 1U`。當 `out.size == 0` 且 `out.data != nullptr`，或 `w == out.size` 時，減法可發生 unsigned underflow，使 logical zero-capacity / exhausted-capacity view 在回傳 `output_too_small` 前仍可能寫入 caller storage。改成不會 underflow 的 remaining-capacity 判斷；在任何 write 前先證明至少有 `n` bytes payload + 1 byte NUL capacity。新增 sentinel regression：zero-capacity non-null storage 與 exact/exhausted capacity failure 時 caller bytes不得被修改超出 API contract。
-> 2. `Reader::integer()` 目前在 `number()` 內部 `ws()` 之前先保存 `start` / `start_remaining`；因此合法 JSON value whitespace（例如 `{"command":"getDeviceInfo","result": 1}` 或 contents 的 `"apMode": 2`）會被算進 consumed span，造成 strict integer解析誤判。修正 cursor snapshot 順序或等價邏輯，使 JSON whitespace在 integer token 前合法，同時維持 strict integer規則：fraction/exponent仍對 known integer field回 `invalid_field_type` / 既有適當錯誤，不放寬 `+1`、leading zero等 malformed grammar。
->
-> Targeted tests至少新增：known `result` 前有一個/多個 JSON whitespace、`apMode` 前有 whitespace；zero-capacity non-null storage sentinel unchanged；exact insufficient capacity sentinel unchanged；原 Stage A unknown-number grammar、embedded NUL、truncated Unicode、failure-atomic metadata tests不得退步。
->
-> 只做 focused patch，不改 public API、不碰 UTF-8 semantic work（留給 Stage B）、Transport/Device Model/ESP-IDF runtime。先跑 API response targeted test，再跑既有 host regressions與 `git diff --check`；不需要 ESP-IDF build。
->
-> 全部 PASS 後從 `TASKS.md` 刪除整個 Stage A1 與所有 `→ Stage A1` inventory 項目；Stage B保留並成為下一個可執行 stage。commit/push `main`。
-
 ### Stage B — JSON string semantics / UTF-8 hardening
 
 **推薦模型：** Luna  
@@ -138,8 +113,6 @@
 
 ### P1 — Pre-hardware correctness
 
-- Fix `decode()` remaining-capacity check so zero/exhausted logical output capacity cannot underflow and write before returning `output_too_small`; add sentinel tests. **→ Stage A1**
-- Fix strict known-integer parsing so JSON whitespace before `result` / `apMode` remains legal after Stage A number refactor. **→ Stage A1**
 - Refine ESP-IDF HTTP/TLS failure classification so DNS/socket/connect/connection-timeout evidence is not incorrectly collapsed into generic `tls_failure`; preserve the rule that the classifier never invents `scheme_mismatch`. **→ Stage C**
 - Align `EspHttpTransport` PEM certificate length contract with ESP-IDF v6.0.2 semantics. Explicitly document/test `cert_len == 0` NUL-terminated PEM semantics and nonzero-length terminator requirements. **→ Stage C**
 

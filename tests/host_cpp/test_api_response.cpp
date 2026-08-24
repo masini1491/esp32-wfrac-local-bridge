@@ -159,6 +159,16 @@ int main() {
                                                     {raw.data(), raw.size()}, &parsed) ==
          wfrac_api::ApiResponseError::none);
 
+  assert(wfrac_api::parse_api_response_envelope(
+             view("{\"command\":\"getDeviceInfo\",\"result\":   0}"), "getDeviceInfo", &envelope) ==
+         wfrac_api::ApiResponseError::none);
+  assert(envelope.result == 0);
+  wfrac_api::GetDeviceInfoContents spaced_info{};
+  assert(wfrac_api::parse_get_device_info_contents(
+             view("{\"airconId\":\"ac1\",\"apMode\":   2}"), {id.data(), id.size()}, {}, &spaced_info) ==
+         wfrac_api::ApiResponseError::none);
+  assert(spaced_info.has_ap_mode && spaced_info.ap_mode == 2);
+
   for (const char* number : {"0", "-0", "0.5", "-1.25", "1e3", "-2E-2"}) {
     const std::string unknown_number = std::string("{\"unknown\":") + number +
                                        ",\"command\":\"getDeviceInfo\",\"result\":0}";
@@ -179,11 +189,13 @@ int main() {
            wfrac_api::ApiResponseError::none);
   }
   std::array<uint8_t, 4> zero_capacity_storage{};
+  zero_capacity_storage.fill(0xA5U);
   const char* identity = "{\"airconId\":\"ac1\"}";
   wfrac_api::GetDeviceInfoContents identity_output{1U, false, 0U, false, 0};
   assert(wfrac_api::parse_get_device_info_contents(
              view(identity), {zero_capacity_storage.data(), 0U}, {}, &identity_output) ==
          wfrac_api::ApiResponseError::output_too_small);
+  for (const uint8_t byte : zero_capacity_storage) assert(byte == 0xA5U);
   assert(identity_output.aircon_id_size == 0U && !identity_output.has_mac_address && !identity_output.has_ap_mode);
 
   const char* embedded_nul = "{\"airconId\":\"a\\u0000b\"}";
