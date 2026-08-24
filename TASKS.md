@@ -29,27 +29,6 @@
 
 ## Codex staged execution plan — 流量恢復後依序執行
 
-### Governance maintenance — Permission Gate / operational taxonomy precedence
-
-**推薦模型：** Luna  
-**推理強度：** Low  
-**推薦理由：** 已確認只是 `AGENTS.md` 前段一處 wording precedence ambiguity；屬已知位置、單句 documentation maintenance，不需要程式或架構推理。  
-**是否值得先用較便宜模型做前置蒐證：** 否；Luna Low 已是最低足夠配置。  
-**Context 建議：** L0→1；只讀最新 `AGENTS.md`、`TASKS.md` 與目標 taxonomy 句。  
-**Execution mode 建議：** Focused documentation patch / single-agent。  
-**依賴：** 無；應先於下一個 functional Stage C 完成，避免後續 Codex 在閱讀順序上先套 operational taxonomy。  
-**成功後：** 刪除本 maintenance task，保留 Stage C/D/Deferred 完全不動；focused commit/push。
-
-**Codex Prompt：**
-
-> 執行「Governance maintenance — Permission Gate / operational taxonomy precedence」。先依 `AGENTS.md` 做安全 remote-sync；若 fetch 或其他必要操作遭 permission gate，依 `AGENTS.md` Permission-Gated Operation 要求最小必要權限。只讀根目錄 `AGENTS.md`、`TASKS.md` 與目標 wording；不得執行 Stage C/D/#4H 或其他工作。
->
-> 已確認 ambiguity：`AGENTS.md` 較前段目前直接寫「失敗分類：`SOURCE`、`TOOLCHAIN`、`ENVIRONMENT`、`INFRASTRUCTURE`、`SERVICE`、`HARDWARE_REQUIRED`。」，而較後面的 Permission-Gated Operation 才說明可由使用者授權解除的 permission gate 尚不算 operational failure。做**最小單句 wording 修正**，讓 precedence 在第一次看到 taxonomy 時就清楚，例如改成等價語意：「排除仍可由使用者授權解除的 Permission Gate 後，真正的 operational failure 才分類為 `SOURCE`、`TOOLCHAIN`、`ENVIRONMENT`、`INFRASTRUCTURE`、`SERVICE` 或 `HARDWARE_REQUIRED`。」其後既有 retry-cap / STOP / source-patch policy wording保持不變。
->
-> 不得修改既有 `## Permission-Gated Operation` section 的實質內容，不得改 retry cap、Git safety、WF-RAC architecture、ESP-IDF/TLS/transport、portable-library invariant 或 production behavior。不要讀 source，不跑 build/test，不重新研究 ESP-IDF/upstream。
->
-> Validation 只需確認 diff 僅含 `AGENTS.md` 該最小 wording 與 `TASKS.md` queue bookkeeping，並跑 `git diff --check`。全部 PASS 後從 `TASKS.md` 移除本 maintenance task；Stage C/D/#4H 等既有內容不得改動。commit `docs: clarify permission failure precedence`，normal push `origin/main`，完成後 STOP。
-
 ### Stage C — ESP-IDF transport diagnostics correctness
 
 **推薦模型：** Terra  
