@@ -29,6 +29,14 @@ Reference reading must be topic-scoped。Future task 先讀 `docs/references/REA
 
 不得以 permission workaround 取代授權：禁止 `sudo`、`chmod -R 777`、`reset --hard`、force push、自行刪除 `.git/FETCH_HEAD`、未確認 root cause 就刪除 `.git/index.lock` 或其他 lock、重新 clone 覆蓋 working tree、stash/delete/discard unknown user work、自行 merge/rebase/cherry-pick，或使用另一個 repository 規避問題。Permission-gate handshake 不代表可開始其他 stage、修改未授權檔案或執行高風險 Git 操作。
 
+## Windows / PowerShell toolchain contract
+
+Windows interactive/local development，以及未來 repository-owned PowerShell tooling 的正式 runtime 是 PowerShell 7（使用 `pwsh`／`pwsh.exe`，`PSEdition` 必須為 `Core`，major version >= 7）。正式使用前以 `pwsh --version` 與必要的 `pwsh -NoProfile -Command '$PSVersionTable.PSEdition'` 做最小 preflight；不得硬編碼使用者機器的絕對 pwsh 路徑。這是 Windows local/interactive toolchain contract，不要求 GitHub Actions 或所有 host validation 改用 Windows。
+
+`powershell.exe`／Windows PowerShell 5.1 不屬正式 PowerShell validation runtime；pwsh 不存在時不得 silent fallback，也不得為迎合 5.1 降級或改寫 PowerShell 7 tooling。5.1 compatibility 目前不是 project requirement，未來若需要須由使用者另行授權獨立 task。排除 Permission Gate 後，pwsh 不存在、major version < 7 或 `PSEdition` 非 Core 才分類為 `TOOLCHAIN` prerequisite/version mismatch；不得因此修改 production source、安裝/升級/降級 PowerShell，遇 host runtime change需求應 STOP。
+
+若 pwsh invocation、script/file access 或必要 filesystem operation 遭 permission denial，先依 Permission-Gated Operation，不先分類 `TOOLCHAIN`／`SOURCE`。正式 validation 使用 PowerShell tooling 時，在需要可重現性時記錄實際 PowerShell 7 version、`pwsh` command 與 tested commit SHA；不得把單一 host version 宣稱為 repository 永久最低版本。repository-owned `.ps1` 為 0 時不建立 dummy script。
+
 ## Portable library extraction invariant
 
 Repository 現階段維持 monorepo，不因未來 library 化而提前拆 repo、做 package distribution 或 semantic versioning。`wfrac_protocol`、`wfrac_device_model`、`wfrac_api`、`wfrac_transport`、`wfrac_client` 必須持續保持可抽離；platform/runtime concern 留在 adapter、runtime 或 firmware boundary，dependency direction 維持 `platform/runtime → portable core`。

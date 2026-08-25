@@ -16,7 +16,7 @@ python tools/validate_contracts.py
 python -m unittest tests.host.test_validate_contracts
 ```
 
-本地開發驗證需要 Python 3、支援 C++17 的 MSYS2 UCRT64 GCC/G++ 與 ESP-IDF v6.0.2；ESP32-C6 為 primary target，ESP32-C3 為 compatibility target。
+本地開發驗證需要 Python 3、支援 C++17 的 MSYS2 UCRT64 GCC/G++ 與 ESP-IDF v6.0.2；ESP32-C6 為 primary target，ESP32-C3 為 compatibility target。Windows interactive/local development 使用 PowerShell 7（`pwsh`、`PSEdition Core`）；Windows PowerShell 5.1（`powershell.exe`）不屬正式 PowerShell validation runtime。這不取代既有 Python/C++/ESP-IDF tooling，也不要求 GitHub Actions 改用 Windows。
 
 ## 專案狀態
 
