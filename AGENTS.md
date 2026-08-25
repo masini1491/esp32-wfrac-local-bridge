@@ -10,7 +10,7 @@ Matter Adapter 不得直接建 request、parse raw JSON、管理 Operator ID、r
 
 日常控制不得依賴雲端、MQTT、Internet、DNS 或 NTP。不得提交或輸出 Wi-Fi credentials、Operator ID、fabric/commissioning secrets、OTA signing key 或 WebUI secrets。加密 NVS、Secure Boot、Flash Encryption 目前只列 roadmap。
 
-排除仍可由使用者授權解除的 Permission Gate 後，真正的 operational failure 才分類為 `SOURCE`、`TOOLCHAIN`、`ENVIRONMENT`、`INFRASTRUCTURE`、`SERVICE` 或 `HARDWARE_REQUIRED`。同一 infrastructure/auth/toolchain/service root cause 最多自動 retry 1 次；第二次停止，不重掃、不重複 download、不因 toolchain 問題修改 production source。沒有明確要求不得自動實作；保留 hardware truth，避免宣稱未驗證能力。
+排除仍可由使用者授權解除的 Permission Gate 後，真正的 operational failure 才分類為 `SOURCE`、`TOOLCHAIN`、`ENVIRONMENT`、`INFRASTRUCTURE`、`SERVICE`、`AUTHENTICATION`、`AUTHORIZATION` 或 `HARDWARE_REQUIRED`。同一 infrastructure/authentication/authorization/toolchain/service root cause 最多自動 retry 1 次；第二次停止，不重掃、不重複 download、不因 toolchain 問題修改 production source。沒有明確要求不得自動實作；保留 hardware truth，避免宣稱未驗證能力。
 ## Reference reading discipline
 
 Reference reading must be topic-scoped。Future task 先讀 `docs/references/README.md`，再只讀直接相關的 `topics/*.md`；只有 provenance、source conflict 或 evidence audit 才讀 `sources/*.md`。不得預設完整讀 `docs/protocol-research.md` 或全部 reference files；evidence 不足時才逐層擴大 context。
@@ -23,11 +23,15 @@ Reference reading must be topic-scoped。Future task 先讀 `docs/references/REA
 
 ## Permission-Gated Operation
 
-對目前已授權 task/stage 所必需的 Git、build、test、toolchain 或 file operation，若因 sandbox、filesystem 或 execution permission 被拒絕，先視為可由使用者授權解除的 permission gate，不立即判定 repository、toolchain 或 environment 故障。若執行環境支援 escalation，向使用者要求完成原必要操作所需的最小權限，並說明 command/operation、必要性與權限類型；批准後只重試原本被阻擋的操作，不擴大 scope。
+對目前已授權 task/stage 所必需的 Git、build、test、toolchain、file operation，或 remote network、external API、CLI、HTTPS、package/dependency retrieval 等 external operation，若因 sandbox、filesystem 或 execution permission 被拒絕，先視為可由使用者授權解除的 permission gate，不立即判定 repository、toolchain、environment 或 service 故障。若事前已知必要 operation 需要 external network permission，先要求最低必要 network approval，不故意先執行已知會被 sandbox 拒絕的 command；若事前無法知道，才正常嘗試一次。若執行環境支援 escalation，向使用者要求完成原必要 operation 所需的最小權限，並說明 exact command/operation、必要性、已知 service host/port（若有意義）與權限類型；批准後只重試原本被阻擋的操作，不擴大 scope。
 
-單純 permission denial 不消耗 operational retry 額度。若使用者拒絕、環境無法要求權限，或取得權限後同一操作仍失敗，才依實際 evidence 分類 `ENVIRONMENT`／`INFRASTRUCTURE`／`TOOLCHAIN`／`SERVICE` 等 operational failure，再套用既有 retry／STOP 規則。`git fetch origin` 遇到 `.git/FETCH_HEAD: Permission denied`、Git lock/ref metadata filesystem denial 或 sandbox repository-metadata write denial 時，先依本規則要求安全 fetch 的最小權限；授權後原 fetch 仍失敗才分類並 STOP。
+單純 permission denial 不消耗 operational retry 額度。若使用者拒絕、環境無法要求權限，或取得權限後同一操作仍失敗，才依實際 evidence 分類 `ENVIRONMENT`／`INFRASTRUCTURE`／`TOOLCHAIN`／`SERVICE` 等 operational failure，再套用既有 retry／STOP 規則。`git fetch origin` 可能分別需要 remote network access，以及 local `.git/FETCH_HEAD`／lock/ref／repository metadata write capability；兩者是獨立 capability，只要求實際缺少的最低權限。fetch 遇到 network denial 或 metadata filesystem denial 時，先依本規則要求對應的最小權限；fetch approval 只授權原 fetch execution gate，不得推導為 pull、merge、rebase、cherry-pick、branch switch、push 或 force push authorization；授權後原 fetch 仍失敗才分類並 STOP。
 
 不得以 permission workaround 取代授權：禁止 `sudo`、`chmod -R 777`、`reset --hard`、force push、自行刪除 `.git/FETCH_HEAD`、未確認 root cause 就刪除 `.git/index.lock` 或其他 lock、重新 clone 覆蓋 working tree、stash/delete/discard unknown user work、自行 merge/rebase/cherry-pick，或使用另一個 repository 規避問題。Permission-gate handshake 不代表可開始其他 stage、修改未授權檔案或執行高風險 Git 操作。
+
+## Credential and mutation authorization boundary
+
+Git、WF-RAC、Wi-Fi、Matter 或 external-service credential 即使技術上具有 write/admin/delete 能力，也不得超過目前 task/stage authorization。Network/sandbox approval 不代表 source modification、deploy/publish、configuration mutation、resource create/delete、credential/ACL/auth mutation 或下一 stage 授權。Password、token、Authorization header、private key、shared secret、Wi-Fi credential、Operator ID 與其他 credential material 不得出現在 Git、log、error report 或 final summary；WF-RAC provisioning／firmware 等敏感 mutation 仍遵守 `docs/security.md` 的獨立安全與明確授權邊界。
 
 ## Windows / PowerShell toolchain contract
 
