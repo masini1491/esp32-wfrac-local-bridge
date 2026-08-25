@@ -10,36 +10,34 @@ Matter Adapter 不得直接建 request、parse raw JSON、管理 Operator ID、r
 
 日常控制不得依賴雲端、MQTT、Internet、DNS 或 NTP。不得提交或輸出 Wi-Fi credentials、Operator ID、fabric/commissioning secrets、OTA signing key 或 WebUI secrets。加密 NVS、Secure Boot、Flash Encryption 目前只列 roadmap。
 
-排除仍可由使用者授權解除的 Permission Gate 後，真正的 operational failure 才分類為 `SOURCE`、`TOOLCHAIN`、`ENVIRONMENT`、`INFRASTRUCTURE`、`SERVICE`、`AUTHENTICATION`、`AUTHORIZATION` 或 `HARDWARE_REQUIRED`。同一 infrastructure/authentication/authorization/toolchain/service root cause 最多自動 retry 1 次；第二次停止，不重掃、不重複 download、不因 toolchain 問題修改 production source。沒有明確要求不得自動實作；保留 hardware truth，避免宣稱未驗證能力。
 ## Reference reading discipline
 
 Reference reading must be topic-scoped。Future task 先讀 `docs/references/README.md`，再只讀直接相關的 `topics/*.md`；只有 provenance、source conflict 或 evidence audit 才讀 `sources/*.md`。不得預設完整讀 `docs/protocol-research.md` 或全部 reference files；evidence 不足時才逐層擴大 context。
 
-## Remote sync and shared task queue
+## Common playbook routing
 
-每次 task 開始時，local repository 可能落後 GitHub；在依賴 local `AGENTS.md` 或 `TASKS.md` 前，先確認 repository identity、`git status --short`、current branch、HEAD，以及 merge/rebase/cherry-pick 是否進行中，再執行 `git fetch origin`。只有 working tree clean、branch 正確、local `main` 沒有 ahead/diverged 且可由 `origin/main` fast-forward 時，才使用 fast-forward-only 同步 remote source of truth；dirty、unexpected branch、local ahead/diverged、無法 fast-forward 或未完成的 merge/rebase/cherry-pick 都必須 STOP。
+本專案使用 `masini1491/ai-development-playbook` 作為 common development baseline；本 `AGENTS.md` 與 repository architecture、security、protocol、hardware 及其他 formal technical contracts 保留 project-specific authority 與 exceptions。common playbook 不覆蓋 project-specific formal authority；衝突依使用者當次指示、repository formal source、playbook 與 queue 的既定 authority hierarchy 處理。Routing 只要求依目前 task 讀最低必要 topic，不代表完整掃描 playbook。
 
-不得使用 `reset`、force push、自行 merge/rebase、stash，或刪除／丟棄未知 user work。同步完成後才讀最新 `AGENTS.md`／`TASKS.md`。根目錄若存在 `TASKS.md`，它是 ChatGPT／Codex 共用的 temporary unfinished-work queue；Codex 每次只執行使用者當次明確授權的 task/stage，不得因 queue 存在而自行完成其他項目。成功完成並驗證授權 task 後，必須移除或更新對應 entry；不得保留 Completed/changelog，若已無 unfinished work 則刪除 `TASKS.md`。`TASKS.md` 不得凌駕 architecture、spec、security 或 protocol evidence 等正式 source of truth；同步後若 `TASKS.md` 不存在，不得依賴舊 local copy、舊 prompt 或記憶執行已移除的 task。
+- Git / repository / permission / external-service operation → `REPOSITORY_EXECUTION.md`
+- Debug / root cause / retry / validation → `DEBUG_VALIDATION.md`
+- Architecture / research / upstream/external authority → `RESEARCH_ARCHITECTURE.md`
+- ESP32 / embedded / hardware → `EMBEDDED_PROJECTS.md`
+- Codex model / reasoning / context / agent / prompt discipline → `CODEX_PROMPT_RULES.md`
+- Windows / PowerShell / local toolchain（需要時） → `TOOLCHAIN.md`
 
-## Permission-Gated Operation
+External playbook reference 只表示應讀哪個 authority，不表示 execution environment 自動具有 network、filesystem 或 credential capability；需要額外 access 時仍依 routed permission/execution governance 處理。
 
-對目前已授權 task/stage 所必需的 Git、build、test、toolchain、file operation，或 remote network、external API、CLI、HTTPS、package/dependency retrieval 等 external operation，若因 sandbox、filesystem 或 execution permission 被拒絕，先視為可由使用者授權解除的 permission gate，不立即判定 repository、toolchain、environment 或 service 故障。若事前已知必要 operation 需要 external network permission，先要求最低必要 network approval，不故意先執行已知會被 sandbox 拒絕的 command；若事前無法知道，才正常嘗試一次。若執行環境支援 escalation，向使用者要求完成原必要 operation 所需的最小權限，並說明 exact command/operation、必要性、已知 service host/port（若有意義）與權限類型；批准後只重試原本被阻擋的操作，不擴大 scope。
+## Project execution exceptions
 
-單純 permission denial 不消耗 operational retry 額度。若使用者拒絕、環境無法要求權限，或取得權限後同一操作仍失敗，才依實際 evidence 分類 `ENVIRONMENT`／`INFRASTRUCTURE`／`TOOLCHAIN`／`SERVICE` 等 operational failure，再套用既有 retry／STOP 規則。`git fetch origin` 可能分別需要 remote network access，以及 local `.git/FETCH_HEAD`／lock/ref／repository metadata write capability；兩者是獨立 capability，只要求實際缺少的最低權限。fetch 遇到 network denial 或 metadata filesystem denial 時，先依本規則要求對應的最小權限；fetch approval 只授權原 fetch execution gate，不得推導為 pull、merge、rebase、cherry-pick、branch switch、push 或 force push authorization；授權後原 fetch 仍失敗才分類並 STOP。
-
-不得以 permission workaround 取代授權：禁止 `sudo`、`chmod -R 777`、`reset --hard`、force push、自行刪除 `.git/FETCH_HEAD`、未確認 root cause 就刪除 `.git/index.lock` 或其他 lock、重新 clone 覆蓋 working tree、stash/delete/discard unknown user work、自行 merge/rebase/cherry-pick，或使用另一個 repository 規避問題。Permission-gate handshake 不代表可開始其他 stage、修改未授權檔案或執行高風險 Git 操作。
+依 `REPOSITORY_EXECUTION.md` 執行 identity、workspace、remote-sync、permission、Git safety 與 queue lifecycle；本專案額外要求每次先確認 `main`、working tree clean、無 local ahead/diverged，且只可 fast-forward-only 同步 `origin/main`。只有使用者當次明確授權的 task/stage 可執行；不要因 queue 存在自行開始其他項目。依 `DEBUG_VALIDATION.md` 處理 operational taxonomy、retry 與 validation，依 `TOOLCHAIN.md` 處理 Windows/PowerShell baseline。
 
 ## Credential and mutation authorization boundary
 
-Git、WF-RAC、Wi-Fi、Matter 或 external-service credential 即使技術上具有 write/admin/delete 能力，也不得超過目前 task/stage authorization。Network/sandbox approval 不代表 source modification、deploy/publish、configuration mutation、resource create/delete、credential/ACL/auth mutation 或下一 stage 授權。Password、token、Authorization header、private key、shared secret、Wi-Fi credential、Operator ID 與其他 credential material 不得出現在 Git、log、error report 或 final summary；WF-RAC provisioning／firmware 等敏感 mutation 仍遵守 `docs/security.md` 的獨立安全與明確授權邊界。
+WFRAC、Wi-Fi、Matter credential 不得成為 scope expansion來源；真實 password、token、Authorization header、private key、shared secret、Wi-Fi credential、Operator ID 或其他 credential material 不得出現在 Git、log、error report 或 final summary。WF-RAC provisioning／firmware 等敏感 mutation 仍遵守本 repository `docs/security.md` 的獨立安全與明確授權邊界；通用 permission、authorization 與 credential capability 方法論依 routing 取得。
 
 ## Windows / PowerShell toolchain contract
 
-Windows interactive/local development，以及未來 repository-owned PowerShell tooling 的正式 runtime 是 PowerShell 7（使用 `pwsh`／`pwsh.exe`，`PSEdition` 必須為 `Core`，major version >= 7）。正式使用前以 `pwsh --version` 與必要的 `pwsh -NoProfile -Command '$PSVersionTable.PSEdition'` 做最小 preflight；不得硬編碼使用者機器的絕對 pwsh 路徑。這是 Windows local/interactive toolchain contract，不要求 GitHub Actions 或所有 host validation 改用 Windows。
-
-`powershell.exe`／Windows PowerShell 5.1 不屬正式 PowerShell validation runtime；pwsh 不存在時不得 silent fallback，也不得為迎合 5.1 降級或改寫 PowerShell 7 tooling。5.1 compatibility 目前不是 project requirement，未來若需要須由使用者另行授權獨立 task。排除 Permission Gate 後，pwsh 不存在、major version < 7 或 `PSEdition` 非 Core 才分類為 `TOOLCHAIN` prerequisite/version mismatch；不得因此修改 production source、安裝/升級/降級 PowerShell，遇 host runtime change需求應 STOP。
-
-若 pwsh invocation、script/file access 或必要 filesystem operation 遭 permission denial，先依 Permission-Gated Operation，不先分類 `TOOLCHAIN`／`SOURCE`。正式 validation 使用 PowerShell tooling 時，在需要可重現性時記錄實際 PowerShell 7 version、`pwsh` command 與 tested commit SHA；不得把單一 host version 宣稱為 repository 永久最低版本。repository-owned `.ps1` 為 0 時不建立 dummy script。
+本 repository 的 Windows interactive/local development 正式 shell baseline 為 PowerShell 7／`pwsh`／`PSEdition Core`；不因此要求 GitHub Actions 或其他 cross-platform validation 改用 Windows。其餘 runtime/preflight/failure semantics 依 `TOOLCHAIN.md` routing 處理。
 
 ## Portable library extraction invariant
 
