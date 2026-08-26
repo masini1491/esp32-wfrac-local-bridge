@@ -52,7 +52,7 @@ bool is_valid_request(const wfrac_transport::TransportRequest& request,
   }
 
   return request.endpoint.scheme != wfrac_transport::TransportScheme::https ||
-         (config.tls.server_cert_pem != nullptr && config.tls.server_cert_len != 0);
+         config.tls.has_valid_pem_certificate();
 }
 
 }  // namespace
@@ -86,7 +86,7 @@ wfrac_transport::TransportError EspHttpTransport::perform(
   client_config.keep_alive_enable = false;
   if (request.endpoint.scheme == wfrac_transport::TransportScheme::https) {
     client_config.cert_pem = config_.tls.server_cert_pem;
-    client_config.cert_len = config_.tls.server_cert_len;
+    client_config.cert_len = config_.tls.esp_idf_cert_len();
     if (is_nonempty(config_.tls.common_name)) {
       client_config.common_name = config_.tls.common_name;
     }
