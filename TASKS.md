@@ -33,28 +33,35 @@
 
 **推薦模型：** Terra  
 **推理強度：** Medium  
-**推薦理由：** 雖然根因已定位，但此 stage 同時處理 ESP-IDF v6.0.2 error taxonomy precedence、TLS identity/security boundary、PEM contract 與 C6/C3 compile evidence；Terra Medium 是較安全的最低配置。  
-**是否值得先用較便宜模型做前置蒐證：** 否；不要重新搜尋網路或整個 repo。若 repo 內 pinned ESP-IDF evidence 與 source 衝突才停止並回報。  
-**Context 建議：** Default；只讀 `wfrac_transport_espidf` classifier/transport、直接測試/compile smoke，以及必要的已 pinned transport/TLS reference topic。  
+**推薦理由：** 此 stage 同時處理 ESP-IDF v6.0.2 error taxonomy precedence、TLS identity/security boundary、PEM-only adapter contract 與 C6/C3 compile evidence。已確認 v6.0.2 public header 與 `esp_http_client_init()` 對 nonzero `cert_len` 的行為互相矛盾，因此本 project 採更窄、可由實作證明的 PEM-only contract；Terra Medium 仍是安全的最低配置。  
+**是否值得先用較便宜模型做前置蒐證：** 否；官方 v6.0.2 source conflict 已確認，不要重新泛搜 upstream 或整個 repo。只有 local pinned v6.0.2 source 與此 evidence 不一致時才 STOP 回報。  
+**Context 建議：** Default；只讀 `wfrac_transport_espidf` classifier/transport/header、直接測試/compile smoke、必要的 pinned transport/TLS reference topic，以及 ESP-IDF v6.0.2 `esp_http_client.h` / `esp_http_client.c` 對 `cert_pem` / `cert_len` 的直接實作證據。  
 **Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
-**依賴：** Stage B PASS；為保持線性 history，預設在 Stage B 後執行。
-**停止／重規劃條件：** 若 ESP-IDF v6.0.2 public error constants / cert contract 與 pinned evidence 不符，或無法以現有 classifier evidence type 正確區分，不猜；STOP 並保留 focused evidence，由使用者決定下一步。  
+**依賴：** Stage B PASS；為保持線性 history，預設在 Stage B 後執行。  
+**已確認 evidence：** ESP-IDF v6.0.2 `esp_http_client_config_t::cert_len` header 註解允許 PEM length 包含 NUL 或 0，但同版本 `esp_http_client_init()` 實作對 `cert_len == 0` 使用 PEM setter，對任何 `cert_len != 0` 直接使用 DER setter。對本 project 的 `server_cert_pem` API，實作行為優先約束 adapter wiring；不得把 nonzero PEM length 原樣傳給 ESP-IDF。  
+**停止／重規劃條件：** 若 local 實際使用的 ESP-IDF v6.0.2 source 與上述已確認 implementation behavior 不一致，或 classifier 無法以現有 evidence type 安全區分 timeout/network/TLS identity，STOP 並保留 focused evidence；不要猜。  
 **成功後：** 刪除本 Stage C 整段與 inventory 中 Stage C 項目，再 commit/push。
 
 **Codex Prompt：**
 
-> 執行「Stage C — ESP-IDF transport diagnostics correctness」。遵守 `AGENTS.md`、`TASKS.md` 共通規則。先完成 remote-sync bootstrap，再只讀 `wfrac_transport_espidf` error classifier、`EspHttpTransport`、直接相關 tests/compile-smoke，以及必要的 pinned ESP-IDF transport/TLS reference topic；不要重新研究整個 repo或做泛化網搜。
+> 執行「Stage C — ESP-IDF transport diagnostics correctness」。遵守 `AGENTS.md`、`TASKS.md` 與其 routed common playbook。先完成 remote-sync bootstrap，再只讀 `wfrac_transport_espidf` error classifier、`EspHttpTransport` header/source、直接相關 tests/compile-smoke、必要的 pinned ESP-IDF transport/TLS reference topic，以及 v6.0.2 `esp_http_client.h` / `esp_http_client.c` 對 certificate wiring 的直接證據；不要重新研究整個 repo或做泛化網搜。
 >
 > 已知問題與要求：
 > 1. classifier 必須先尊重 certificate verify evidence：`tls_verify_flags != 0` → `tls_identity_failure`。
 > 2. ESP-TLS / socket / perform evidence中可明確辨識的 connection timeout → `timeout`；hostname resolution、socket creation、failed TCP connect / network reachability → `connection_failure`；local invalid argument/invalid transport/config misuse → `invalid_argument`；真正 TLS handshake/protocol/mbedTLS diagnostics → `tls_failure`。不要讓 generic `tls_error != ESP_OK` 的檢查搶在更具體 network/timeout evidence之前。
 > 3. 對無法由現有 evidence 安全判定的情況採保守分類，不得自行推導 `scheme_mismatch`；classifier 永遠不得 invent HTTP compatibility fallback evidence。
-> 4. 修正 `EspHttpTransport` PEM contract：non-null NUL-terminated PEM允許 `cert_len == 0`；若使用 nonzero length，必須符合 ESP-IDF v6.0.2 PEM contract並包含 NUL terminator。不得以 `strlen(pem)` 當 nonzero `cert_len` 而漏掉 `+1`。不得加入 insecure verify-off、trust-all 或 skip identity verification。
-> 5. tests 必須直接覆蓋 representative timeout / DNS / socket-connect / TLS-handshake / certificate-identity / invalid-local-config evidence，確保 precedence 不互相誤分類。
+> 4. 修正 `EspHttpTransport` PEM contract，採 **PEM-only / force-PEM-path** 策略：
+>    - `EspTlsVerificationConfig::server_cert_pem` 只代表 PEM，不得在此 field 隱含支援 DER。
+>    - ESP-IDF v6.0.2 已確認：`esp_http_client_config_t.cert_len == 0` 才走 PEM setter；任何 nonzero `cert_len` 會走 DER setter。因此對 HTTPS PEM，adapter 填入 `client_config.cert_pem = server_cert_pem` 後，**必須固定 `client_config.cert_len = 0`**；不得把 project 的 nonzero `server_cert_len` 原樣 forward 給 ESP-IDF。
+>    - `server_cert_len == 0`：允許 non-null、non-empty、caller 保證 NUL-terminated 的 PEM；IDF 以其 PEM path 處理。
+>    - `server_cert_len > 0`：此值只作 project-local bounded validation metadata。把 contract 定義為「實際 PEM bytes + terminal NUL 的精確長度」；用 bounded 檢查確認第一個 NUL 正好位於 `server_cert_len - 1`。缺 terminal NUL、embedded NUL 提前出現、null/empty PEM都回 `invalid_argument`。不得用 unbounded `strlen()` 產生或 forward nonzero IDF `cert_len`。
+>    - 不得加入 DER auto-detect、PEM→DER reinterpretation、insecure verify-off、trust-all、skip identity verification 或 fallback。若未來需要 DER，必須另建明確 API/task。
+>    - 在 public header 最小文件化 `server_cert_len` 的上述 project-local semantics，避免未來 #4H 誤把它視為可直接 forward 的 ESP-IDF `cert_len`。
+> 5. tests 必須直接覆蓋 representative timeout / DNS / socket-connect / TLS-handshake / certificate-identity / invalid-local-config evidence，以及 PEM contract：`server_cert_len==0` 的 NUL-terminated PEM、合法 nonzero local length但 IDF wiring仍為 `cert_len=0`、缺 terminal NUL、embedded NUL、null/empty PEM。確保 precedence 與 certificate wiring不互相誤分類。
 >
 > 驗證：targeted classifier/static tests → 既有 host regressions → ESP-IDF v6.0.2 C6 build → C3 build。不得執行 network、TLS handshake、flash、WF-RAC request。
 >
-> 若實際 ESP-IDF constants/semantics 與 pinned evidence不符，STOP 並回報 source/compile evidence；不要猜 mapping。
+> 若 local v6.0.2 source 對 `cert_len` 的實際 routing 與本 Stage 已確認 evidence 不一致，或 classifier evidence仍不足以安全分類，STOP 並回報精確 source/compile evidence；不要自行改成另一套 certificate contract。
 >
 > 成功後從 `TASKS.md` 刪除整個 Stage C 區塊與所有 `→ Stage C` inventory 項目，`git diff --check` 後 commit/push。
 
@@ -90,7 +97,7 @@
 ### P1 — Pre-hardware correctness
 
 - Refine ESP-IDF HTTP/TLS failure classification so DNS/socket/connect/connection-timeout evidence is not incorrectly collapsed into generic `tls_failure`; preserve the rule that the classifier never invents `scheme_mismatch`. **→ Stage C**
-- Align `EspHttpTransport` PEM certificate length contract with ESP-IDF v6.0.2 semantics. Explicitly document/test `cert_len == 0` NUL-terminated PEM semantics and nonzero-length terminator requirements. **→ Stage C**
+- Align `EspHttpTransport` PEM certificate contract with the confirmed ESP-IDF v6.0.2 implementation conflict: keep `server_cert_pem` PEM-only, treat nonzero `server_cert_len` as project-local bounded validation metadata, and always force the ESP-IDF PEM path with `esp_http_client_config_t.cert_len = 0`. **→ Stage C**
 
 ### P2 — JSON / response parser / library hardening
 
