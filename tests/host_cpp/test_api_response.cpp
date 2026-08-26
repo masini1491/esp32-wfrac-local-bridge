@@ -271,7 +271,11 @@ int main() {
     std::array<uint8_t, 8> failure_id{};
     failure_id.fill(0xCCU);
     std::array<uint8_t, 8> failure_scratch{};
-    wfrac_api::GetAirconStatContents failure_output{3U, 3U, 42U, 42U, {}};
+    wfrac_api::GetAirconStatContents failure_output{};
+    failure_output.has_aircon_id = true;
+    failure_output.aircon_id_size = 3U;
+    failure_output.encoded_aircon_stat_size = 42U;
+    failure_output.raw_aircon_stat_size = 42U;
     const char* malformed_after_identity = "{\"airconId\":\"ac1\",\"airconStat\":null}";
     assert(wfrac_api::parse_get_aircon_stat_contents(
                view(malformed_after_identity), {failure_id.data(), failure_id.size()},
