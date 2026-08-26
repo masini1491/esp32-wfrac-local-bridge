@@ -62,6 +62,8 @@ EspSystemTimeProvider → ITimeProvider → WF-RAC API builder
 
 `wfrac_time_espidf` 是 platform adapter，只依賴 portable `wfrac_api`。它不取得時間：無 SNTP、DNS、Internet、Wi-Fi、RTC 或 NVS；quality 在每個 provider instance 初始 unavailable。seed 的 `settimeofday()` 具 process/device-wide global clock effect，adopt 不改 clock，兩者都必須由 future runtime 明確呼叫。
 
+`firmware/wfrac_bootstrap_probe` 是獨立的 diagnostic firmware consumer，不是 portable component、production Wi-Fi owner 或未來 Matter provisioning architecture。它的預設組態為 inert；source 只建立 RAM-only、bounded one-shot STA 與 read-only `getDeviceInfo` wiring。其 compile/link evidence 只能標示 `COMPILE-READY`，實際 Wi-Fi、TLS、WF-RAC 與 hardware validation 仍為 `HARDWARE_TEST_PENDING`。
+
 ```text
 WF-RAC API bytes
         ↓

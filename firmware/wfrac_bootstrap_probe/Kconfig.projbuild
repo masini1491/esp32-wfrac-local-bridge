@@ -1,0 +1,66 @@
+menu "WF-RAC diagnostic bootstrap probe"
+
+config WFRAC_PROBE_ENABLED
+    bool "Enable the one-shot diagnostic bootstrap probe"
+    default n
+    help
+        Disabled by default. When disabled, the firmware does not seed time,
+        initialize Wi-Fi, or make a WF-RAC request.
+
+config WFRAC_PROBE_WIFI_SSID
+    string "Wi-Fi station SSID"
+    default ""
+    depends on WFRAC_PROBE_ENABLED
+
+config WFRAC_PROBE_WIFI_PASSWORD
+    string "Wi-Fi station password"
+    default ""
+    depends on WFRAC_PROBE_ENABLED
+
+config WFRAC_PROBE_HOST
+    string "WF-RAC host"
+    default ""
+    depends on WFRAC_PROBE_ENABLED
+
+config WFRAC_PROBE_PORT
+    int "WF-RAC port"
+    range 1 65535
+    default 51443
+    depends on WFRAC_PROBE_ENABLED
+
+config WFRAC_PROBE_DEVICE_ID
+    string "WF-RAC device ID"
+    default ""
+    depends on WFRAC_PROBE_ENABLED
+
+config WFRAC_PROBE_OPERATOR_ID
+    string "WF-RAC operator ID"
+    default ""
+    depends on WFRAC_PROBE_ENABLED
+
+config WFRAC_PROBE_TIME_SEED
+    string "Estimated Unix-seconds time seed"
+    default ""
+    depends on WFRAC_PROBE_ENABLED
+
+choice WFRAC_PROBE_SCHEME
+    prompt "Explicit diagnostic WF-RAC scheme"
+    default WFRAC_PROBE_SCHEME_HTTPS
+    depends on WFRAC_PROBE_ENABLED
+
+config WFRAC_PROBE_SCHEME_HTTP
+    bool "HTTP"
+
+config WFRAC_PROBE_SCHEME_HTTPS
+    bool "HTTPS"
+
+endchoice
+
+config WFRAC_PROBE_SERVER_CERT_PEM
+    string "HTTPS server trust certificate PEM"
+    default ""
+    depends on WFRAC_PROBE_ENABLED && WFRAC_PROBE_SCHEME_HTTPS
+    help
+        Caller-supplied PEM trust material. Keep local configuration out of Git.
+
+endmenu

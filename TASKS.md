@@ -27,58 +27,7 @@
 
 > 先安全同步最新 `origin/main`（僅允許 clean、fast-forward-only；異常即 STOP；若必要操作因權限不足被拒絕，依共通規則向我要求最小必要權限，不得自行繞過）。同步後讀根目錄 `AGENTS.md` 與 `TASKS.md`，完整執行 `TASKS.md` 的「<Stage 名稱>」，只執行該 stage。成功驗證後依 `TASKS.md` 規則更新 queue、commit 並 push。
 
-## Codex staged execution plan — 流量恢復後依序執行
-
-## Remaining task inventory
-
-### P1 — Pre-hardware correctness
-
-### P2 — JSON / response parser / library hardening
-
-
-### P3 — Maintenance / contracts
-
 ## Deferred
-
-### Phase 1C #4H — Diagnostic Wi-Fi + read-only WF-RAC bootstrap firmware skeleton
-
-**推薦模型：** Terra  
-**推理強度：** Medium  
-**推薦理由：** 開始涉及 ESP-IDF Wi-Fi lifecycle、bounded event handling、API/client/transport/time wiring 與 component integration；需要一般程式開發推理，但仍不需要 Sol。  
-**是否值得先用較便宜模型做前置蒐證：** 通常否；B/B2/C/D 完成後由 Terra 直接做 focused baseline read。只有 toolchain/baseline 是否仍可用不明時，才可先用 Luna Low 做純 evidence preflight，不修改 source。  
-**Context 建議：** Default；只在 direct component interfaces 不足時升 Expanded，不預設 1M。  
-**Execution mode 建議：** Normal / single-agent；不預設 Fast / Ultra / Multi-Agent。  
-**觸發條件：** Stage B/B2/C/D 全部 PASS 且已自 `TASKS.md` 移除，尤其 P1/P2/P3 pre-hardware correctness/contract inventory 已清空。  
-**來源註記：** 本 task 合併先前因 Codex 流量耗盡而未執行的完整 #4H Prompt；該舊 Prompt 的固定 baseline `f86d935...` 已過時，執行時一律以 remote-sync 後最新 `main` / `AGENTS.md` / `TASKS.md` 為 source of truth。  
-**限制：** 只 IMPLEMENT / COMPILE / LINK。不得 flash、monitor、實際 connect Wi-Fi、HTTP/HTTPS、TLS handshake 或 WF-RAC；真正 hardware execution 留給下一個 read-only probe task。
-
-**Codex Prompt：**
-
-> 實作 Phase 1C #4H：standalone diagnostic Wi-Fi + read-only WF-RAC bootstrap firmware skeleton。先完成 remote-sync bootstrap，再讀 `AGENTS.md`、`TASKS.md`、`docs/references/README.md`，以及 topic-scoped 的 `api-envelope-discovery.md`、`timestamp-time.md`、`tls-transport.md`；只讀現有 API/client/transport/time public boundaries、`wfrac_transport_espidf`、`wfrac_time_espidf` 與 `firmware/idf_compile_smoke/` 的必要 CMake pattern。不要重新搜尋 upstream，不要讀 Device Model/Protocol/Matter internals，除非 compile dependency 真的要求。
->
-> **Firmware positioning / tree：** 新增獨立 `firmware/wfrac_bootstrap_probe/` diagnostic harness，不是 production firmware、不是 future Matter Wi-Fi owner，也不是 reusable Wi-Fi library；不要建立 `components/wfrac_wifi_espidf`。合理拆分 project CMake、`Kconfig.projbuild`、`sdkconfig.defaults`、`main/CMakeLists.txt` 與 app/probe source，避免巨大單檔。沿既有 compile harness pattern，盡量讓 generated `sdkconfig` 留在 build directory，不在 repo root 產生可提交 sdkconfig。
->
-> **Default inert / local config：** `CONFIG_WFRAC_PROBE_ENABLED=n` mandatory。disabled 時只記錄 `bootstrap probe disabled` 並停止，不能啟動 time seed、Wi-Fi 或 HTTP。Kconfig 只定義 fields、不放真值：probe enable、SSID、password、host、port（default 51443）、deviceId/operatorId、strict positive decimal int64 time seed、explicit HTTP/HTTPS scheme，以及 caller-supplied HTTPS trust-certificate boundary。不得提交或 log real SSID/password/operatorId/endpoint/cert/private data；不要完整 dump request JSON。Wi-Fi password可 empty 以支援 open AP，但不得推定實際網路為 open。
->
-> **Enabled config gate / bounded copies：** 在任何 Wi-Fi operation 前驗證 SSID/host/deviceId/operatorId non-empty、time seed strict positive int64，以及 port 必須先以寬型別驗證 `1..65535` 後才能 narrowing 到 `uint16_t`。SSID/password 必須依 ESP-IDF v6.0.2 destination capacity 做 byte-length validation（SSID 最多 32 bytes、password storage 最多 64 bytes），zero-init destination後以 explicit bounded copy處理；不得依賴 `strcpy`/無聲 truncation，也不得假設 maximum-length value 一定還有額外 NUL 空間。host/deviceId/operatorId 若進固定 local buffer，同樣必須先驗證 compile-time capacity並在 overflow 時 FAIL/STOP，不得 truncate。invalid config → generic FAIL/STOP，不得 connect。使用 `EspSystemTimeProvider` 以 `TimeQuality::estimated` seed；不得 SNTP/NTP/DNS time/build timestamp，seed failure → STOP。
->
-> **Wi-Fi lifecycle：** 採 ESP-IDF v6.0.2 normal STA flow：`esp_netif_init()` → default event loop → default STA netif → `esp_wifi_init()` → `esp_wifi_set_storage(WIFI_STORAGE_RAM)` → STA mode/config → start → **每 boot 最多呼叫 `esp_wifi_connect()` 一次**。註冊 `WIFI_EVENT_STA_DISCONNECTED` 與 `IP_EVENT_STA_GOT_IP`；handler 只記錄 bit/result/disconnect reason，不得在 disconnected handler reconnect。使用 EventGroup 或等價最小同步，bounded wait 以 **20 秒**為預設合理值；disconnected 或 timeout 都停止，不進 HTTP。只有 `IP_EVENT_STA_GOT_IP` 可進 request path，STA_CONNECTED 不足。禁止 AP scan、SmartConfig、SoftAP、BLE provisioning、自動 reconnect/retry loop。
->
-> **Persistence / PHY：** Wi-Fi config RAM-only，禁止 `WIFI_STORAGE_FLASH`。`sdkconfig.defaults` 設 `CONFIG_ESP_PHY_CALIBRATION_AND_DATA_STORAGE=n` 並維持 `CONFIG_ESP_PHY_INIT_DATA_IN_PARTITION=n`；若 C6/C3 的 v6.0.2 option實際不同，只依 compile evidence做最小調整。Project code不得 `nvs_flash_init()` / `nvs_open()` / `nvs_set_*()` / `nvs_commit()`，不得新增 Operator ID、scheme、credential persistence。若實際 build/runtime證明底層 NVS init不可避免，STOP 回報 evidence，不自行擴 scope。
->
-> **Scheme / TLS：** scheme 必須由 config explicit。HTTP 用 `SchemeKnowledge::http_confirmed`，HTTPS 用 `https_confirmed`；這只是 explicit diagnostic config，不是 discovered/persisted evidence。不得建立 unknown cache觸發 fallback；每 boot WF-RAC request **maximum = 1**，TLS/timeout/connect failure也不得改試另一 scheme。HTTPS 僅在 caller-supplied verified trust cert存在時才允許 request；缺 cert時可在 Wi-Fi GOT_IP 後、HTTP 前明確記錄 `HTTPS trust certificate missing` 並 STOP。保留 `server_cert_pem` + size boundary，遵守 Stage C 完成後的最新 cert-length contract；禁止 verify-off、trust-all、skip-CN/insecure escape hatch。
->
-> **Read-only request wiring：** 只 wiring `EspSystemTimeProvider` → `build_get_device_info_request()` → `execute_api_request()` → `EspHttpTransport` → `parse_api_response_envelope(..., "getDeviceInfo")` → `parse_get_device_info_contents()`。`ApiClientContext.api_version = "1.0"`，使用 caller-owned bounded fixed buffers（request約 512–1024、HTTP response約 2048、identity buffers合理固定大小）；project source不得 explicit `new`/`malloc`/`std::string`/`std::vector`。`ClientEndpoint.timeout_ms` 固定使用 **5000 ms diagnostic local-policy constant**（不是 WF-RAC protocol requirement），不得為 0 或 unbounded。唯一 WF-RAC command 是 `getDeviceInfo`；不得 call/build/send `getAirconStat`、`setAirconStat`、`updateAccountInfo`、`deleteAccountInfo`、registration/polling/second command。
->
-> **Response semantics：** transport若提供完整 body，即使 HTTP status非 2xx也允許嘗試 parse API envelope，以保留 error-body evidence。Envelope成功可記 command parse PASS 與 raw result integer；不得替 `result=2` 或任何非零值發明 global meaning。若 contents存在才 parse getDeviceInfo；可 bounded log `airconId`、optional MAC/apMode，但不要持久化 identity，也不要洩漏 request secrets。
->
-> **Stages / cleanup：** diagnostic logs 至少能區分 `BOOT / CONFIG / TIME / WIFI_INIT / WIFI_CONNECT / GOT_IP / TRANSPORT / HTTP_STATUS / API_ENVELOPE / DEVICE_INFO / CLEANUP` 的 PASS/FAIL，不把既有 Transport/API errors flatten成單一 bool。one-shot完成或失敗後合理 unregister handlers、connected時才 disconnect、stop/deinit Wi-Fi、destroy default STA netif、delete EventGroup；benign already-stopped cleanup不得掩蓋 primary result，不得 restart probe。
->
-> **Compile-only hard gate：** 本 #4H 的 actual Wi-Fi executions = 0、HTTP/TLS = 0、WF-RAC = 0、flash = 0、monitor = 0。新 firmware使用獨立 build dirs，ESP32-C6 compile/link PASS + ESP32-C3 compile/link PASS，不共用 build cache。跑既有 Python validator/tests與 host Protocol/Device Model/Transport/API request/API response/Client/Read Path regressions；若沒有修改既有 `idf_compile_smoke`/shared platform component，不為了重複證明再跑額外同內容 matrix。不得新增需要 Wi-Fi secrets的 GitHub CI。
->
-> **Docs / AGENTS / evidence：** 最小更新 README/architecture/roadmap與 `AGENTS.md`，只讓規則反映「允許 diagnostic ESP-IDF Wi-Fi source、RAM-only one-shot bounded connect、read-only getDeviceInfo wiring、compile/link validation」，但仍禁止本 task 實際 network/flash/monitor、mDNS、app NVS persistence、registration、writes、polling、Matter。文件明確標記 `COMPILE-READY`，不是 `HARDWARE-VALIDATED`；application persistence = not implemented、probe Wi-Fi config = RAM-only、PHY calibration persistence = disabled for probe。Evidence最高只能 Software/Compile，`CONFIRMED_LOCAL` 維持 0，library readiness 必須 `PRESERVED`。
->
-> **Cleanup / validation / commit：** 移除 build-probe-c6/build-probe-c3、ELF/BIN/MAP/CMake cache/temp artifacts，確認無 sdkconfig secrets進 working tree；`git diff --check` PASS。所有 gates PASS 後 commit `feat: add diagnostic WF-RAC bootstrap firmware`，normal push `origin/main`。成功後從 `TASKS.md` 刪除整個 #4H Deferred task，但保留下一個 `First real WF-RAC read-only probe / hardware validation`；不要自行執行它。Final report沿共通精簡格式，另外只補：probe default enabled/disabled、C6/C3 build、actual network/flash execution counts、library readiness、`CONFIRMED_LOCAL`。
 
 ### First real WF-RAC read-only probe / hardware validation
 
