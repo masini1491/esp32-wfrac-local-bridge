@@ -149,6 +149,7 @@ OperationQueryError map_block_error(BlockEncodeError error) {
 }  // namespace
 
 OperationQueryError build_safe_operation_query(uint8_t code, MutableByteView output, std::size_t* encoded_size) {
+  if (encoded_size != nullptr) *encoded_size = 0U;
   if (!is_known_safe_operation_query_code(code)) return OperationQueryError::invalid_code;
   const OperationSegment segment = make_operation_query_segment(code);
   const CommandState command = make_safe_command_state();
@@ -157,6 +158,7 @@ OperationQueryError build_safe_operation_query(uint8_t code, MutableByteView out
 
 OperationQueryError build_safe_operation_query_batch(const uint8_t* codes, std::size_t count, MutableByteView output,
                                                      std::size_t* encoded_size) {
+  if (encoded_size != nullptr) *encoded_size = 0U;
   if (count == 0U || count > 3U) return OperationQueryError::batch_size_out_of_range;
   if (codes == nullptr) return OperationQueryError::invalid_argument;
   OperationSegment segments[3]{};

@@ -38,9 +38,11 @@ FrameError parse_block(ByteView raw, AirconBlockView* output) {
 }  // namespace
 
 FrameError parse_aircon_stat(ByteView raw, AirconFrameView* output) {
-  if (output == nullptr || raw.data == nullptr) {
+  if (output == nullptr) {
     return FrameError::invalid_layout;
   }
+  *output = {};
+  if (raw.data == nullptr) return FrameError::invalid_layout;
 
   AirconFrameView frame{};
   FrameError error = parse_block(raw, &frame.command);

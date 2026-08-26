@@ -31,6 +31,8 @@ struct MutableByteView {
 struct AirconBlockView {
   std::array<uint8_t, kAirconStateBytes> state{};
   uint8_t segment_count = 0;
+  // Non-owning view into caller-owned raw AirconStat storage. Keep the
+  // backing buffer alive and unchanged while this view or cached CRC state is used.
   ByteView segments{};
   uint16_t stored_crc = 0;
   uint16_t calculated_crc = 0;
@@ -44,6 +46,8 @@ struct AirconFrameView {
   std::size_t receive_offset = 0;
 };
 
+// Returned views reference caller-owned raw storage. Keep raw alive and unchanged
+// for the lifetime of the returned frame view.
 FrameError parse_aircon_stat(ByteView raw, AirconFrameView* output);
 
 }  // namespace wfrac_protocol

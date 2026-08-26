@@ -15,10 +15,10 @@ std::size_t encoded_aircon_stat_size(std::size_t command_segment_count, std::siz
 
 AirconStatEncodeError serialize_aircon_stat(const AirconBlockInput& command, const AirconBlockInput& receive,
                                             MutableByteView output, std::size_t* encoded_size) {
+  if (encoded_size != nullptr) *encoded_size = 0U;
   if (encoded_size == nullptr || command.state == nullptr || receive.state == nullptr) {
     return AirconStatEncodeError::invalid_argument;
   }
-  *encoded_size = 0U;
   if ((command.segment_count > 0U && command.segments == nullptr) ||
       (receive.segment_count > 0U && receive.segments == nullptr)) {
     return AirconStatEncodeError::invalid_argument;

@@ -2,7 +2,7 @@
 
 `Phase 1C — WF-RAC Transport Abstraction` 已開始；目前實作 portable WF-RAC Protocol Core #1–#6、Device Model foundations、portable transport contract、HTTPS-first scheme policy，以及 portable TimeProvider／typed API request builders。Time Source → TimeProvider → WF-RAC API Envelope → Transport；AirconStat Codec → Base64 → API Envelope。Transport 是最底層 opaque byte/text boundary，不依賴 Protocol、Device Model 或 Matter；其 request／response body 不知道 AirconStat、Base64、JSON schema、identity 或 timestamp semantics。HTTP status 是上層 application data，不等同 transport error。ESP-IDF adapter 已實作 bounded synchronous single-attempt POST 與 caller-owned response collection，但本 task 沒有執行任何 network I/O。
 
-專案保持 monorepo，但 reusable portable library components 是 `wfrac_protocol`、`wfrac_device_model`、`wfrac_api`、`wfrac_transport` 與 `wfrac_client`；`wfrac_transport_espidf` 是唯一 ESP-IDF platform adapter，依賴 portable transport 與 ESP-IDF HTTP diagnostics。`firmware/idf_compile_smoke` 只是 reference build consumer，不是 portable component 的隱性 dependency。library packaging、versioning 與外部 distribution 尚未開始。
+專案保持 monorepo，但 reusable portable library components 是 `wfrac_protocol`、`wfrac_device_model`、`wfrac_api`、`wfrac_transport` 與 `wfrac_client`；ESP-IDF platform adapters 包含 `wfrac_transport_espidf` 與 `wfrac_time_espidf`，分別依賴 portable transport／HTTP diagnostics 與 portable API。`firmware/idf_compile_smoke` 只是 reference build consumer，不是 portable component 的隱性 dependency。library packaging、versioning 與外部 distribution 尚未開始。
 
 ```text
 WF-RAC Transport (HTTP :51443 / HTTPS :51443)

@@ -29,33 +29,6 @@
 
 ## Codex staged execution plan — 流量恢復後依序執行
 
-### Stage D — Maintenance contracts / project rules
-
-**推薦模型：** Luna  
-**推理強度：** Low  
-**推薦理由：** 以 deterministic failure-output maintenance、public contract 文件與小型 regression 為主；root cause與修補方向都已明確，不需要高推理。  
-**是否值得先用較便宜模型做前置蒐證：** 否；Luna Low 即為最低足夠配置。  
-**Context 建議：** Default；只讀 operation-query builders/tests、AirconStat serializer/parser、frame/view public headers、`AGENTS.md`、`docs/architecture.md`、`TASKS.md`。  
-**Execution mode 建議：** Normal / single-agent；不使用 Fast / Ultra / Multi-Agent。  
-**依賴：** Stage B/B2/C PASS 且已自 `TASKS.md` 移除。  
-**停止／重規劃條件：** 若任何項目需要改變 success wire format、公開結構 ownership model 或進行跨 module refactor，STOP；不得自行擴 scope。  
-**成功後：** 刪除本 Stage D 整段與 inventory 中 Stage D 項目；若只剩 Deferred 則保留 `TASKS.md`。
-
-**Codex Prompt：**
-
-> 執行「Stage D — Maintenance contracts / project rules」。這是一個低推理、focused maintenance task。遵守 `AGENTS.md`、`TASKS.md` 共通規則；先完成 remote-sync bootstrap，再只讀直接相關檔案，不要擴大 scope。
->
-> 僅處理：
-> 1. portable operation-query builders 所有 early failure 統一把 non-null `encoded_size` reset 為 0，並補 targeted regression；不得改 success encoding semantics。
-> 2. audit 相同 contract 的 public bounded encoder：至少修正 `serialize_aircon_stat()`，只要 `encoded_size != nullptr`，任何後續 invalid argument / early failure 都不得保留 caller 舊值；failure 時維持 0。補 stale-size targeted regression；不得改 success wire bytes。
-> 3. `parse_aircon_stat()` 對 non-null output 建立 failure-atomic/stale-output contract：entry 先 reset `AirconFrameView`，任何 parse failure 不得讓 caller 繼續看到前一次成功留下的 segment pointers / CRC metadata。補 stale-output regression；success semantics 不變。
-> 4. 文件化 `AirconFrameView` / `AirconBlockView::segments` lifetime 與 immutability：views 指向 caller-owned raw storage；使用 returned views 期間 buffer 必須保持有效，validated bytes 不得在 cached CRC-valid state 背後被修改。
-> 5. 修正 `docs/architecture.md` 把 `wfrac_transport_espidf` 說成「唯一」ESP-IDF adapter 的過時文字；目前至少有 `wfrac_transport_espidf` 與 `wfrac_time_espidf`。
->
-> 不新增功能、不做重構。跑 operation-query / AirconStat targeted regressions、必要 host regression、`git diff --check`。若只修改 docs/header contract且無 platform production source change，不為了形式預設跑 ESP-IDF full matrix。
->
-> 成功後從 `TASKS.md` 刪除整個 Stage D 區塊與所有 `→ Stage D` inventory 項目；若只剩 Deferred 項目保留本檔。commit/push 正常進 `main`。
-
 ## Remaining task inventory
 
 ### P1 — Pre-hardware correctness
@@ -64,12 +37,6 @@
 
 
 ### P3 — Maintenance / contracts
-
-- Reset `encoded_size` to zero consistently on early failure in portable operation-query builders. **→ Stage D**
-- Extend the same stale-size contract to `serialize_aircon_stat()` when `encoded_size` is non-null. **→ Stage D**
-- Reset non-null `AirconFrameView` output on `parse_aircon_stat()` failure so stale pointers/CRC metadata cannot survive a failed reparse. **→ Stage D**
-- Document `AirconFrameView` / segment-view lifetime and immutability expectations: views reference caller-owned raw storage, and validated bytes must not be mutated behind cached CRC-valid state. **→ Stage D**
-- Fix architecture wording that still describes `wfrac_transport_espidf` as the only ESP-IDF platform adapter now that `wfrac_time_espidf` also exists. **→ Stage D**
 
 ## Deferred
 

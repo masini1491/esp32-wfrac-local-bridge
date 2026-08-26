@@ -372,8 +372,10 @@ int main() {
   for (const uint8_t code : safe_query_codes) assert(wfrac_protocol::is_known_safe_operation_query_code(code));
   for (const uint8_t code : {0x05U, 0x0CU, 0xF8U, 0xFEU, 0x80U, 0x94U}) {
     assert(!wfrac_protocol::is_known_safe_operation_query_code(code));
+    encoded_size = 99U;
     assert(wfrac_protocol::build_safe_operation_query(code, {serialized.data(), serialized.size()}, &encoded_size) ==
            wfrac_protocol::OperationQueryError::invalid_code);
+    assert(encoded_size == 0U);
   }
   assert(wfrac_protocol::build_safe_operation_query(0x11U, {serialized.data(), serialized.size()}, &encoded_size) ==
          wfrac_protocol::OperationQueryError::none);
@@ -399,15 +401,19 @@ int main() {
   assert(wfrac_protocol::build_safe_operation_query_batch(nullptr, 0U,
                                                            {serialized.data(), serialized.size()}, &encoded_size) ==
          wfrac_protocol::OperationQueryError::batch_size_out_of_range);
+  assert(encoded_size == 0U);
   const std::array<uint8_t, 4> too_many{{0x11U, 0x90U, 0x85U, 0x13U}};
   assert(wfrac_protocol::build_safe_operation_query_batch(too_many.data(), too_many.size(),
                                                            {serialized.data(), serialized.size()}, &encoded_size) ==
          wfrac_protocol::OperationQueryError::batch_size_out_of_range);
+  assert(encoded_size == 0U);
   assert(wfrac_protocol::build_safe_operation_query_batch(nullptr, 1U,
                                                            {serialized.data(), serialized.size()}, &encoded_size) ==
          wfrac_protocol::OperationQueryError::invalid_argument);
+  assert(encoded_size == 0U);
   assert(wfrac_protocol::build_safe_operation_query(0x11U, {serialized.data(), 24U}, &encoded_size) ==
          wfrac_protocol::OperationQueryError::output_too_small);
+  assert(encoded_size == 0U);
 
   const auto assert_base64_vector = [](const char* plain, const char* expected) {
     const std::size_t plain_size = std::strlen(plain);
@@ -539,6 +545,13 @@ int main() {
   assert_composition(&command_segment, 1U, nullptr, 0U);
   assert(wfrac_protocol::serialize_aircon_stat(command_input, receive_input, {aircon_raw.data(), 53U}, &aircon_raw_size) ==
          wfrac_protocol::AirconStatEncodeError::output_too_small);
+  assert(aircon_raw_size == 0U);
+  aircon_raw_size = 99U;
+  assert(wfrac_protocol::serialize_aircon_stat(command_input,
+                                               {&composed_receive_state, nullptr, 1U},
+                                               {aircon_raw.data(), aircon_raw.size()}, &aircon_raw_size) ==
+         wfrac_protocol::AirconStatEncodeError::invalid_argument);
+  assert(aircon_raw_size == 0U);
   assert(wfrac_protocol::serialize_aircon_stat(command_input,
                                                {&composed_receive_state, nullptr, 0U},
                                                {aircon_raw.data(), aircon_raw.size()}, &aircon_raw_size) ==
@@ -555,5 +568,12 @@ int main() {
          wfrac_protocol::AirconStatEncodeError::none);
   assert(aircon_raw_size == maximum_raw_size);
   assert(wfrac_protocol::base64_encoded_size(maximum_raw_size) == 2776U);
+  wfrac_protocol::AirconFrameView stale_frame = round_trip_frame;
+  stale_frame.receive_offset = 123U;
+  assert(wfrac_protocol::parse_aircon_stat({aircon_raw.data(), 18U}, &stale_frame) ==
+         wfrac_protocol::FrameError::too_short);
+  assert(stale_frame.command.encoded_size == 0U && stale_frame.receive.encoded_size == 0U &&
+         stale_frame.receive_offset == 0U && !stale_frame.command.crc_valid && !stale_frame.receive.crc_valid &&
+         stale_frame.command.segments.data == nullptr && stale_frame.receive.segments.data == nullptr);
   return 0;
 }
