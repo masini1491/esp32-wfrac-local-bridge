@@ -10,6 +10,8 @@
 namespace wfrac_client {
 
 struct ClientEndpoint {
+  // Caller-owned, non-owning host string. It must remain valid until
+  // execute_api_request() and all synchronous transport attempts complete.
   const char* host = nullptr;
   uint16_t port = 51443;
   uint32_t timeout_ms = 0;

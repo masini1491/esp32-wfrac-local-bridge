@@ -22,6 +22,9 @@ enum class ApiResponseError {
   crc_mismatch,
 };
 
+// contents_json is a non-owning view into the input storage supplied to
+// parse_api_response_envelope(). Keep that storage valid and unchanged while
+// using the view or passing it to a contents parser.
 struct ApiResponseEnvelopeView { int64_t result = 0; bool has_contents = false; wfrac_protocol::ByteView contents_json{}; };
 
 struct GetDeviceInfoContents { std::size_t aircon_id_size = 0; bool has_mac_address = false; std::size_t mac_address_size = 0; bool has_ap_mode = false; int64_t ap_mode = 0; };

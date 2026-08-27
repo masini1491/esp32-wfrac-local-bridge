@@ -8,6 +8,8 @@
 
 namespace wfrac_api {
 
+// These strings are caller-owned, non-owning inputs. They must remain valid for
+// the duration of the builder call; the builder does not retain ownership.
 struct ApiClientContext {
   const char* api_version = nullptr;
   const char* device_id = nullptr;
@@ -16,6 +18,8 @@ struct ApiClientContext {
 
 struct ApiRequestView {
   const char* path = nullptr;
+  // The body refers to the caller-provided output buffer used by the builder.
+  // Keep that backing storage valid and view-compatible while the body is used.
   wfrac_protocol::ByteView body{};
   int64_t timestamp = 0;
   TimeQuality time_quality = TimeQuality::unavailable;

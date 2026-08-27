@@ -19,12 +19,16 @@ enum class TransportScheme { http, https };
 
 struct TransportEndpoint {
   TransportScheme scheme = TransportScheme::https;
+  // Non-owning reference; the host storage must remain valid for the
+  // synchronous ITransport::perform() call.
   const char* host = nullptr;
   uint16_t port = 0;
 };
 
 struct TransportRequest {
   TransportEndpoint endpoint{};
+  // Non-owning path and body views; their backing storage must remain valid for
+  // the synchronous ITransport::perform() call.
   const char* path = nullptr;
   ByteView body{};
   uint32_t timeout_ms = 0;
