@@ -26,19 +26,21 @@
 
 **推薦模型：** Terra  
 **推理強度：** Medium  
-**推薦理由：** 需要把實機 Wi-Fi/TLS/WF-RAC evidence與既有 classifier/parser 語意整合判讀；屬 integration/debug，不適合 Luna 自行決策，也不需 Sol。  
-**是否值得先用較便宜模型做前置蒐證：** 若只是確認 build/toolchain/dirty tree，可用 Luna Low；實際 probe evidence interpretation 仍由 Terra。  
-**Context 建議：** Default；先只讀 diagnostic firmware、transport classifier、getDeviceInfo parser、相關 reference topic；evidence不足再 Expanded。  
-**Execution mode 建議：** Normal / single-agent；硬體測試不使用 Multi-Agent。  
-**觸發條件：** #4H compile-ready，local endpoint/scheme/time seed/TLS trust inputs 明確，使用者明確授權 hardware/network execution。  
-**限制：** bounded、read-only、`getDeviceInfo` first；不得 insecure TLS、不得自動 downgrade、不得寫入控制命令。任何真實 credential/operator/cert material不得 commit或輸出。
+**推薦理由：** 需要把實機 Wi-Fi/TLS/WF-RAC evidence 與既有 classifier/parser 語意整合判讀；屬 hardware-facing integration/debug，不適合 Luna 自行決策，也不需 Sol。  
+**是否值得先用較便宜模型做前置蒐證：** 若只是確認 build/toolchain/Git state，可用 Luna Low；實際 probe evidence interpretation 仍由 Terra。  
+**Context 建議：** L0 → L2；先讀 Git/AGENTS/TASKS/current evidence，再讀 diagnostic firmware、transport classifier、getDeviceInfo parser 與直接 caller/dependency；只有能明確說出缺少哪個答案時才升 L3，禁止預設 L4/L5。  
+**Execution mode 建議：** Hardware evidence / Agent 1；不使用 Multi-Agent。  
+**觸發條件：** #4H diagnostic harness compile-ready；當次測試 target/board/FQBN/device identity 明確；local endpoint/scheme/time seed/TLS trust inputs 明確；使用者明確授權本次 hardware/network execution。  
+**限制：** bounded、read-only、`getDeviceInfo` first；不得 insecure TLS、不得自動 downgrade、不得寫入控制命令。任何真實 credential/operator/cert material不得 commit、log、serial output 或 final report。Hardware/network execution authorization 不自動包含 repository mutation、commit 或 push authorization。
 
 **Prompt scaffold（硬體資料由使用者當次提供，執行前刷新）：**
 
-> 執行第一次 real WF-RAC read-only probe。先完成 remote-sync / Git/toolchain preflight，不修改 production source，除非 evidence 顯示 `CONFIRMED ROOT CAUSE` 且使用者當次明確授權修補。只使用 diagnostic firmware 已存在的 bounded one-shot path。
+> 執行第一次 real WF-RAC read-only probe。先完成 remote-sync / Git/toolchain preflight，確認 exact target/board/FQBN/device identity 與本次必要 execution permission。只使用 diagnostic firmware 已存在的 bounded one-shot path。本 Stage 不修改 production source；若 evidence 指向 `SOURCE` 且 root cause 達 `CONFIRMED ROOT CAUSE` 或 `HIGH-CONFIDENCE LIKELY ROOT CAUSE`，保存最低充分 evidence 後 STOP，另開 Focused Patch Stage，不得在 hardware probe 中順手修補。
 >
-> 先確認 explicit scheme、host/port、time seed與 HTTPS trust input；不得 auto-detect/downgrade，不得 verify-off。Flash/run 後只執行單次 Wi-Fi connect與單次 `getDeviceInfo` request，收集最小必要 serial evidence；不得 registration、setAirconStat、polling或任何控制寫入。
+> 先確認 explicit scheme、host/port、time seed 與 HTTPS trust input；不得 auto-detect/downgrade，不得 verify-off。Flash/run 後只執行單次 Wi-Fi connect 與單次 `getDeviceInfo` request，收集最小必要 serial evidence；serial/network observation 使用 bounded monitor window，若無新增 progress evidence則保存目前狀態並 STOP。不得 registration、setAirconStat、polling或任何控制寫入。
 >
-> 將結果明確分成 Software/Compile/Static-Test/Bench/Hardware/Network evidence；API/transport call accepted 不等於 WF-RAC application success。若失敗，依 classifier + response evidence分類 root cause；同一 root cause 最多重試一次。需要 source patch但證據不足時 STOP，不猜。
+> 將結果明確分成 Software/Compile/Static-Test/Bench/Hardware/Network evidence；API/transport call accepted 不等於 WF-RAC application success。Hardware/Network evidence只對本次實際 target/board/device/WF-RAC/network environment與已執行的 read-only `getDeviceInfo` path成立，不得外推到另一 board/FQBN、write path、polling、Matter、persistence或 production readiness。若失敗，依 classifier + response evidence分類 operational failure / root cause；同一 non-compile operational root cause 最多自動重試一次。非 `SOURCE` 分類不得合理化 production source patch；evidence不足時 STOP，不猜。
 >
-> 成功時只把可驗證結果更新到正式 evidence/docs（依當次使用者授權）並同步更新 `TASKS.md`；不得提交 secrets。若 `getDeviceInfo` 真實成功，可將對應項目標為完成並規劃下一個 read-only `getAirconStat` task，但不得自行執行未授權下一階段。
+> 若 `getDeviceInfo` 真實成功且 Completion Evidence Guard 成立，本 Stage 可判定完成；完成 queue lifecycle 應移除本 Deferred item，而不是保留 Completed 標記。若後續 `getAirconStat` 確實需要追蹤，另建立新的 read-only Deferred/Pending-validation item，但不得自行執行下一階段。
+>
+> Hardware/network 授權與 repository mutation / commit / push 授權分開判斷。只有本次 launch 另外明確授權 docs/TASKS mutation 與 Git mutation 時，才可把可驗證結果更新到正式 evidence/docs、依 queue lifecycle 更新 `TASKS.md` 並 commit/push；否則只回報 canonical hardware/network evidence，repository 保持不變。不得提交或輸出 secrets。
