@@ -2,30 +2,23 @@
 
 此檔只追蹤尚未完成、Blocked、Deferred 或待驗證工作。完成項目應直接移除；Git history 才是完成紀錄。不得因看到本檔而自行執行未明確授權的工作。
 
-## Codex 共通執行規則
+## Codex queue / launch rules
 
-- 每次只執行使用者當次明確授權的 stage；不得因本佇列存在就自行處理其他項目。
-- **TASKS.md 使用判準：** `TASKS.md` 是「未完成、需要追蹤、需要未來再次執行」的 queue，不是所有微小修改都必須先建立 task。若只是一次性、已知位置、已知修改內容、風險低，而且完成後沒有後續追蹤價值的小型 maintenance，不必特地寫入 `TASKS.md`；可由 ChatGPT 直接產生一次性的短 Codex Prompt。典型例子包括：單行或少量文件 wording 修正、已知位置的 typo / 過期術語修正、單純排序/格式/標題/註解整理、不影響 project behavior / architecture / protocol / security / hardware / validation state 的小型 documentation maintenance，以及已知 root cause、scope 極小且完成後不需保留為 unfinished queue 的工作。這類 direct maintenance 預設建議 **Luna / Low / Context Level 0→1 / Focused patch / Agent 1**；Codex 仍必須遵守 `AGENTS.md` 的 remote-sync、scope、Git、validation、commit/push 規則。
-- **應寫入 TASKS.md 的情況：** 需要後續追蹤；目前 Blocked / Deferred / Pending-validation；工作分成多個 Stage；有 dependency / trigger；root cause 尚未完全確認；可能需要之後接續 implementation；會實質影響 project behavior、architecture、protocol、security、hardware、persistence、runtime state 或重要 validation state；或若現在不記錄，之後容易遺漏。
-- **模型／推理／執行設定控制權：** `TASKS.md` 內的推薦模型、推理強度、Context、Execution mode 是 ChatGPT 規劃給使用者的建議，不是 Codex 自行切換或升級設定的授權。使用者在 Codex UI 手動選擇模型與推理強度；Codex 不得自行 `Luna → Terra → Sol`，也不得自行 `Low → Medium → High`，不得把 escalation condition 解讀為可自行擴大 Context、切換 Fast/Ultra 或啟用 Multi-Agent。若目前 stage 達到 escalation condition，Codex 必須 STOP、保留既有 evidence 並回報，由使用者決定是否更換模型／推理強度／Context／Execution mode 後重新 launch。`TOOLCHAIN` / `ENVIRONMENT` / `INFRASTRUCTURE` / `SERVICE` / `HARDWARE_REQUIRED` failure 本身不得作為升模型或提高推理強度的理由。
-- **Remote-sync bootstrap：** Codex 本機 repository 可能落後 GitHub。每次 task 開始，在依賴 local `AGENTS.md` / `TASKS.md` 內容前，先確認 repository identity、`git status --short`、branch、HEAD，然後 `git fetch origin`。若目前為預期 `main`、working tree clean，且 local `main` 可由 `origin/main` fast-forward，使用 fast-forward-only 方式同步（例如 `git pull --ff-only origin main`）；若已與 `origin/main` 相同則直接繼續。若 dirty、unexpected branch、local ahead/diverged、無法 fast-forward，或 merge/rebase/cherry-pick 未完成，STOP 並回報，不得覆蓋、reset、stash/丟棄未知變更或自行 merge/rebase。**只有完成這個同步判斷後，才以最新 local `AGENTS.md` / `TASKS.md` 為 task source。**
-- **Permission-Gated Operation：** 若目前 stage 的必要 Git/build/test/toolchain/file operation 遭 sandbox／filesystem／execution permission denial，遵守 `AGENTS.md` 的 Permission-Gated Operation 規則；可向使用者要求完成原必要操作所需的最小權限。單純 permission gate 尚不算 operational failure，也不消耗 retry cap；不得自行繞過 permission、安全限制、Git safety 或擴大 stage scope。
-- **Progressive Repository Reading：** 同步後讀 `AGENTS.md`、本 `TASKS.md` 與該 stage 直接相關 evidence/files，從最小足夠範圍開始，只有 evidence 不足才逐級擴張：**L0** = Git preflight + 最新 `AGENTS.md` / `TASKS.md` / current evidence；**L1** = 直接 symbol / target / test；**L2** = caller / callee / owner / direct dependency；**L3** = 完整 relevant file；**L4** = relevant module / directory；**L5** = repo-wide search / read。禁止預設 repo-wide 掃描或跳級讀取。若同步後根目錄沒有 `TASKS.md`，不得憑舊記憶執行已移除的 stage；依使用者當次明確指令處理或 STOP 詢問。
-- Git safety：不得 reset --hard、force push、丟棄或改寫未知變更；不得為了讓工作樹變乾淨而自行 stash/delete user work。
-- Debug / patch 順序：Evidence → Root Cause → Focused Patch → Targeted Validation。Root cause 只能標為 `CONFIRMED ROOT CAUSE`、`HIGH-CONFIDENCE LIKELY ROOT CAUSE`、`INSUFFICIENT OBSERVABILITY`；只有前兩者可直接 patch，第三種先加最小觀測或 STOP。
-- 同一 root cause 自動 retry 最多 1 次；第二次失敗時分類 `SOURCE` / `TOOLCHAIN` / `ENVIRONMENT` / `INFRASTRUCTURE` / `SERVICE` / `HARDWARE_REQUIRED`，不要無限重跑。
-- Validation 由小到大：static/targeted verifier → targeted test → related build → 必要 matrix → full regression。不要為小 patch 預設跑最大驗證。
-- B/B2/C/D 預設 **Context：Default**、**Execution mode：Normal / single-agent**；不得使用 1M context、Fast、Ultra 或 Multi-Agent，除非該 stage 明確記載升級條件且有新 evidence 支持；即使升級條件成立，也必須依前述控制權規則 STOP，由使用者決定並重新 launch，不得由 Codex 自行切換。
-- 若目前使用者所選模型／推理強度在已指定 root cause / patch direction 下仍無法安全完成，Codex 必須保留 evidence、STOP 並回報；不得自行升級模型或推理強度，也不得無證據建議 Sol。
-- 成功驗證後必須同步更新本檔：**刪除整個已完成 stage 的 prompt/metadata 與對應 inventory 項目**，不要留下 Completed 記錄。若尚有 Deferred/Blocked/TODO 則保留本檔；完全無未完成工作時刪除 `TASKS.md`。
-- Commit/push 前 `git diff --check`；只提交本 stage scope。禁止 force push/history rewrite。
-- Codex final report 保持精簡，只列：`Root cause / research gap`、`Modified files`、`Validation`、`Pending / TASKS.md state`；不要重述大量背景。
+- 每次只執行使用者當次明確授權的 Stage；`TASKS.md` 本身不授權開始其他項目。
+- 共通的 repository identity、workspace / permission / credential capability、remote sync、Git safety、failure taxonomy / retry、validation / evidence、Completion Evidence Guard、Progressive Repository Reading、Model / Reasoning / Context / Agent / cost control、long-running operation 與 reporting timestamp，均以最新 `AGENTS.md` routing 到 `masini1491/ai-development-playbook` 的規則為 authority；本檔不複製完整 common policy，避免 drift。
+- `TASKS.md` 只收錄需要未來追蹤或再次執行的 TODO / Blocked / Deferred / Pending-validation 工作。一次性、已知位置、已知修改內容或 root cause、低風險且完成後無追蹤價值的小型 maintenance，不必為形式建立 queue item。
+- 本檔的推薦模型、推理強度、Context、Execution mode 只是給使用者的 launch 建議；Codex 不得自行升降模型、推理強度、Context、Fast / Ultra 或 Multi-Agent。若 evidence 顯示目前設定不足，STOP、保留 evidence，由使用者重新 launch。
+- 執行 Stage 前先安全同步最新 `origin/main`，完成 Repository Identity / workspace capability / Git state / permission gates；只允許 clean、expected `main`、無 local ahead/diverged 且可 fast-forward-only 的同步。同步後重新讀最新 `AGENTS.md` / `TASKS.md`；若 Stage 已消失或 scope 已改變，STOP，不得依舊 Prompt 或記憶執行。
+- Repository reading 從目前 Stage 的最低充分 evidence 開始，依 routed Progressive Repository Reading 逐級擴張；禁止為熟悉專案預設 repo-wide 掃描。
+- 不得因執行途中發現其他問題就順便跨 Stage、architecture、runtime、hardware、deployment 或其他 mutation boundary；out-of-scope work 留待新 task / Stage 或 STOP 回報。
+- Stage 宣稱完成、更新 validation state、移除 queue item、commit / push 或進入下一 Stage 前，必須依 Completion Evidence Guard，以最低充分 canonical repository evidence 交叉確認 current HEAD / scoped diff / required validation / `TASKS.md` state。自然語言 completion report 不得覆蓋 repository evidence。
+- 成功且證據完整後刪除已完成 Stage，不保留 Completed 區段；仍有 Deferred / Blocked / TODO / Pending-validation 時保留本檔，完全無未完成工作時刪除 `TASKS.md`。
 
 ### Codex 短指令啟動格式
 
-使用者可在 Codex UI 手動選好本 stage 指定的模型與推理強度後，只貼短指令：
+使用者可在 Codex UI 手動選好該 Stage 指定的模型與推理強度後，只貼短指令：
 
-> 先安全同步最新 `origin/main`（僅允許 clean、fast-forward-only；異常即 STOP；若必要操作因權限不足被拒絕，依共通規則向我要求最小必要權限，不得自行繞過）。同步後讀根目錄 `AGENTS.md` 與 `TASKS.md`，完整執行 `TASKS.md` 的「<Stage 名稱>」，只執行該 stage。成功驗證後依 `TASKS.md` 規則更新 queue、commit 並 push。
+> 先安全同步最新 `origin/main`（僅允許 clean、fast-forward-only；異常即 STOP；必要 operation 若缺權限，依最新 `AGENTS.md` routing 的 common playbook 要求最小必要 capability，不得自行繞過）。同步後讀根目錄 `AGENTS.md` 與 `TASKS.md`，依 `AGENTS.md` routing 只讀本 Stage 所需的最低必要 Playbook / project evidence，完整執行 `TASKS.md` 的「<Stage 名稱>」，只執行該 Stage。完成前依 Completion Evidence Guard 交叉確認 canonical repository / validation / queue state；成功後依 queue lifecycle 更新 `TASKS.md`、commit / push（僅限本次 launch 已授權者）。
 
 ## Deferred
 
