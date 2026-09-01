@@ -20,7 +20,34 @@
 
 > 先安全同步最新 `origin/main`（僅允許 clean、fast-forward-only；異常即 STOP；必要 operation 若缺權限，依最新 `AGENTS.md` routing 的 common playbook 要求最小必要 capability，不得自行繞過）。同步後讀根目錄 `AGENTS.md` 與 `TASKS.md`，依 `AGENTS.md` routing 只讀本 Stage 所需的最低必要 Playbook / project evidence，完整執行 `TASKS.md` 的「<Stage 名稱>」，只執行該 Stage。完成前依 Completion Evidence Guard 交叉確認 canonical repository / validation / queue state；成功後依 queue lifecycle 更新 `TASKS.md`、commit / push（僅限本次 launch 已授權者）。
 
+## Pre-hardware
+
+### P1 — Bootstrap diagnostic evidence attribution hardening
+
+**推薦模型：** Luna  
+**推理強度：** Low  
+**推薦理由：** current root cause 與位置已明確，主要是修正 diagnostic stage attribution / success wording 並做 targeted compile validation；不需要架構探索或高階推理。  
+**是否值得先用較便宜模型做前置蒐證：** 否；Luna Low 已是最低充分設定。  
+**Context 建議：** L0 → L2；只讀 `firmware/wfrac_bootstrap_probe/`、直接 API/Wi-Fi contract 與必要 validation surface。  
+**Execution mode 建議：** Normal / Agent 1。  
+**Admission reason：** 雖然 patch scope 小，但它直接影響第一次 hardware validation 的 failure phase attribution 與 Completion Evidence Guard，屬 material validation dependency；未修正容易把「API request build failure」誤標為 transport failure，或把「connect request accepted」誤讀為 Wi-Fi 已連線成功。  
+**Current evidence：** `run_request_path()` 在 API request builder 失敗、尚未呼叫 transport 時記錄 `TRANSPORT FAIL`；`esp_wifi_connect()` 只要回 `ESP_OK` 就立即記錄 `WIFI_CONNECT PASS`，真正 connection evidence 仍要等 `GOT_IP`；cleanup calls 的 return values 未判定卻固定記錄 `CLEANUP PASS`。  
+**限制：** 只修 diagnostic evidence semantics / directly required tests or compile checks；不得改 protocol/API/transport behavior、不得增加 retry、不得執行 Wi-Fi/TLS/WF-RAC hardware/network。  
+**Completion gate：** 各 stage label 不超過 canonical evidence；pre-transport failure 不得歸類為 transport；Wi-Fi initiation 與 GOT_IP success 分離；cleanup 不得無條件宣稱 PASS；ESP32-C6 與 ESP32-C3 targeted compile/link validation PASS。成功後移除此項。
+
 ## Deferred
+
+### Continuous ESP-IDF C6/C3 compile/link CI gate
+
+**推薦模型：** Terra  
+**推理強度：** Medium  
+**推薦理由：** 涉及 GitHub Actions、ESP-IDF v6.0.2 toolchain provisioning/caching、matrix scope 與 validation cost，需要兼顧可重現性與 CI 成本，但不需要 Sol。  
+**是否值得先用較便宜模型做前置蒐證：** 可；若只盤點 current workflow 與官方 ESP-IDF CI 安裝方式，可先用 Luna Low 唯讀蒐證，完成後 STOP 由使用者決定正式 implementation launch。  
+**Context 建議：** L0 → L3；先讀 workflow、兩個 firmware CMake、adapter CMake 與 toolchain contract，不做 repo-wide loading。  
+**Execution mode 建議：** Normal / Agent 1。  
+**Admission reason：** current GitHub Actions 只覆蓋 machine contract、Python host tests 與 portable C++ host tests；ESP-IDF-specific transport/time adapters、`idf_compile_smoke`、`wfrac_bootstrap_probe` 與 C6/C3 portability 沒有 continuous CI regression gate。這是持續性的 platform/validation coverage，而非一次性小修。  
+**限制：** 只建立 compile/link CI；default-inert，不得執行 hardware、Wi-Fi、HTTP/HTTPS、TLS handshake 或 real WF-RAC；不得把 credential/operator/cert material放入 workflow。CI 成本需 bounded，避免無必要 matrix/context expansion。  
+**Completion gate：** current supported ESP-IDF baseline 下，至少能自動 compile/link platform integration 與 diagnostic firmware 的 ESP32-C6 primary、ESP32-C3 compatibility targets；failure phase 可區分 toolchain/config/source；既有 host validation 保持 PASS。成功後移除此項。
 
 ### First real WF-RAC read-only probe / hardware validation
 
@@ -30,7 +57,7 @@
 **是否值得先用較便宜模型做前置蒐證：** 若只是確認 build/toolchain/Git state，可用 Luna Low；實際 probe evidence interpretation 仍由 Terra。  
 **Context 建議：** L0 → L2；先讀 Git/AGENTS/TASKS/current evidence，再讀 diagnostic firmware、transport classifier、getDeviceInfo parser 與直接 caller/dependency；只有能明確說出缺少哪個答案時才升 L3，禁止預設 L4/L5。  
 **Execution mode 建議：** Hardware evidence / Agent 1；不使用 Multi-Agent。  
-**觸發條件：** #4H diagnostic harness compile-ready；當次測試 target/board/FQBN/device identity 明確；local endpoint/scheme/time seed/TLS trust inputs 明確；使用者明確授權本次 hardware/network execution。  
+**觸發條件：** `P1 — Bootstrap diagnostic evidence attribution hardening` 已完成並自 queue 移除；#4H diagnostic harness compile-ready；當次測試 target/board/FQBN/device identity 明確；local endpoint/scheme/time seed/TLS trust inputs 明確；使用者明確授權本次 hardware/network execution。  
 **限制：** bounded、read-only、`getDeviceInfo` first；不得 insecure TLS、不得自動 downgrade、不得寫入控制命令。任何真實 credential/operator/cert material不得 commit、log、serial output 或 final report。Hardware/network execution authorization 不自動包含 repository mutation、commit 或 push authorization。
 
 **Prompt scaffold（硬體資料由使用者當次提供，執行前刷新）：**
