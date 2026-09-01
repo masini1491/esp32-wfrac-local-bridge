@@ -163,7 +163,7 @@ void run_request_path(const ProbeConfig& config, wfrac_time_espidf::EspSystemTim
   const wfrac_api::ApiClientContext context{"1.0", config.device_id.data(), config.operator_id.data()};
   if (wfrac_api::build_get_device_info_request(context, time_provider, {request_storage.data(), request_storage.size()},
                                                &request) != wfrac_api::ApiRequestError::none) {
-    log_stage("TRANSPORT", "FAIL");
+    log_stage("API_REQUEST", "FAIL");
     return;
   }
 
@@ -276,7 +276,7 @@ void run_wfrac_bootstrap_probe() {
   wifi_started = true;
   log_stage("WIFI_INIT", "PASS");
   if (esp_wifi_connect() != ESP_OK) goto cleanup;
-  log_stage("WIFI_CONNECT", "PASS");
+  log_stage("WIFI_CONNECT_START", "PASS");
 
   const EventBits_t bits = xEventGroupWaitBits(events.group, kGotIpBit | kDisconnectedBit, pdTRUE, pdFALSE,
                                                 kWifiWaitTicks);
@@ -290,19 +290,21 @@ void run_wfrac_bootstrap_probe() {
   run_request_path(config, &time_provider);
 
 cleanup:
+  bool cleanup_ok = true;
   if (wifi_handler != nullptr) {
-    esp_event_handler_instance_unregister(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, wifi_handler);
+    cleanup_ok = esp_event_handler_instance_unregister(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, wifi_handler) == ESP_OK &&
+                 cleanup_ok;
   }
   if (ip_handler != nullptr) {
-    esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, ip_handler);
+    cleanup_ok = esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, ip_handler) == ESP_OK && cleanup_ok;
   }
   if (wifi_started) {
-    if (got_ip) esp_wifi_disconnect();
-    esp_wifi_stop();
+    if (got_ip) cleanup_ok = esp_wifi_disconnect() == ESP_OK && cleanup_ok;
+    cleanup_ok = esp_wifi_stop() == ESP_OK && cleanup_ok;
   }
-  if (wifi_initialized) esp_wifi_deinit();
+  if (wifi_initialized) cleanup_ok = esp_wifi_deinit() == ESP_OK && cleanup_ok;
   if (station_netif != nullptr) esp_netif_destroy_default_wifi(station_netif);
   vEventGroupDelete(events.group);
-  log_stage("CLEANUP", "PASS");
+  log_stage("CLEANUP", cleanup_ok ? "PASS" : "FAIL");
 #endif
 }
