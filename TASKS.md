@@ -37,6 +37,18 @@
 
 ## Deferred
 
+### Machine-readable TimeProvider implementation-state reconciliation
+
+**推薦模型：** Luna  
+**推理強度：** Low  
+**推薦理由：** current drift、直接 source 與 validator location 均已確認；工作重點是精確區分「portable TimeProvider boundary 已實作」與「production time acquisition/persistence/runtime 尚未完成」，屬 bounded contract/test maintenance。  
+**是否值得先用較便宜模型做前置蒐證：** 否；Luna Low 已是最低充分設定。  
+**Context 建議：** L0 → L2；只讀 `specs/wf-rac-contracts.json` 的 R5、`tools/validate_contracts.py` 對應 checker/tests、portable `time_provider.hpp`、ESP-IDF time adapter與 current roadmap/topic。  
+**Execution mode 建議：** Normal / Agent 1。  
+**Admission reason：** machine-readable contract 仍將 `future_time_provider.exact_runtime_enum` 標為 `PENDING` 且 `implementation=false`，validator 也強制此舊狀態，但 current source 已有 `TimeQuality { unavailable, estimated, trusted }`、`ITimeProvider` 與 ESP-IDF provider。這會使 validation PASS 無法代表 machine-readable implementation-state 與 current source 一致，屬 material contract/validation drift。  
+**限制：** 不得把尚未存在的 trusted-time acquisition、persistence、SNTP/NTP dependency、power-loss recovery或 production runtime宣稱為已完成；只校正 machine-readable implementation-state vocabulary 與相應 validator/tests/docs consistency。  
+**Completion gate：** contract 能明確表示 portable provider/time-quality boundary 已實作，同時保留 actual time acquisition/persistence/runtime 的未完成狀態；validator/tests 對新語意有 targeted coverage，既有 host validation PASS。成功後移除此項。
+
 ### Continuous ESP-IDF C6/C3 compile/link CI gate
 
 **推薦模型：** Terra  
