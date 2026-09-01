@@ -2,6 +2,8 @@
 
 此檔只追蹤尚未完成、Blocked、Deferred 或待驗證工作。完成項目應直接移除；Git history 才是完成紀錄。不得因看到本檔而自行執行未明確授權的工作。
 
+本 repository 採 persistent `TASKS.md` mode；queue 清空時保留此固定 coordination surface，並依 common playbook 收斂為最低充分 `EMPTY` state，不刪除檔案。
+
 ## Codex queue / launch rules
 
 - 每次只執行使用者當次明確授權的 Stage；`TASKS.md` 本身不授權開始其他項目。
@@ -12,7 +14,7 @@
 - Repository reading 從目前 Stage 的最低充分 evidence 開始，依 routed Progressive Repository Reading 逐級擴張；禁止為熟悉專案預設 repo-wide 掃描。
 - 不得因執行途中發現其他問題就順便跨 Stage、architecture、runtime、hardware、deployment 或其他 mutation boundary；out-of-scope work 留待新 task / Stage 或 STOP 回報。
 - Stage 宣稱完成、更新 validation state、移除 queue item、commit / push 或進入下一 Stage 前，必須依 Completion Evidence Guard，以最低充分 canonical repository evidence 交叉確認 current HEAD / scoped diff / required validation / `TASKS.md` state。自然語言 completion report 不得覆蓋 repository evidence。
-- 成功且證據完整後刪除已完成 Stage，不保留 Completed 區段；仍有 Deferred / Blocked / TODO / Pending-validation 時保留本檔，完全無未完成工作時刪除 `TASKS.md`。
+- 成功且證據完整後刪除已完成 Stage，不保留 Completed 區段；queue lifecycle 依最新 `AGENTS.md` routing 的 common playbook authority，完全無 unfinished item 時收斂為 `EMPTY` state。
 
 ### Codex 短指令啟動格式
 
