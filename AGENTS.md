@@ -22,7 +22,8 @@ Reference reading must be topic-scoped。Future task 先讀 `docs/references/REA
 - Debug / root cause / retry / validation → `DEBUG_VALIDATION.md`
 - Architecture / research / upstream/external authority → `RESEARCH_ARCHITECTURE.md`
 - ESP32 / embedded / hardware → `EMBEDDED_PROJECTS.md`
-- Codex model / reasoning / context / agent / prompt discipline → `CODEX_PROMPT_RULES.md`
+- ChatGPT project-conversation planning、TASKS admission、Codex Prompt mode／delivery、copy-ready、結果 reconciliation／ChatGPT 回覆時間戳 → `CHATGPT_WORKFLOW.md`
+- Codex model／Reasoning／Context／Agent、execution mode、usage／cost、tool scheduling/output、Codex reporting → `CODEX_EXECUTION.md`
 - Windows / PowerShell / local toolchain（需要時） → `TOOLCHAIN.md`
 
 External playbook reference 只表示應讀哪個 authority，不表示 execution environment 自動具有 network、filesystem 或 credential capability；需要額外 access 時仍依 routed permission/execution governance 處理。
