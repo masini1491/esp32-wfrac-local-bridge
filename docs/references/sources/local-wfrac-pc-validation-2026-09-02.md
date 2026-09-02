@@ -29,6 +29,10 @@ An earlier Windows PowerShell 5.1 probe using native `curl.exe --data` produced 
 - No self-managed registration, persistent identity, cloud dependency, or production runtime readiness is established.
 - This dossier records observations only; it does not authorize future write commands or hardware execution.
 
+## Machine-readable contract boundary
+
+`specs/wf-rac-contracts.json` describes universal software/protocol contracts and deliberately keeps `current_confirmed_local_count` at `0` while target local validation remains `HARDWARE_TEST_PENDING`. It has no scoped representation for this PC-only, device-profile-specific evidence. The machine-readable contract and validator therefore remain unchanged: this dossier and the reconciled topics retain the dated PC observations without promoting them to ESP32-C3/C6 hardware validation or universal firmware behavior.
+
 ## Privacy and redaction boundary
 
 No Wi-Fi credentials, Operator ID, account or device UUID, exact LAN IP, exact MAC, exact `airconId`, authorization material, or other private-network/account identifier is stored in this dossier. Writer labels such as `GoogleAssistant` and `pc-probe` are retained because they are non-secret diagnostic labels.

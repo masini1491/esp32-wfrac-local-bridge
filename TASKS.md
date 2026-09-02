@@ -24,23 +24,6 @@
 
 ## Ready
 
-### Stage 3 — Reconcile machine-readable evidence state and C3 probe pre-evidence
-
-**推薦模型：** Terra  
-**推理強度：** Medium  
-**推薦理由：** 需要先判斷 machine-readable contract 是否真的承載 local evidence state，再只更新可精確表示的部分；同時要保留 PC evidence 與 ESP32-C3/C6 hardware validation 的 target boundary。  
-**是否值得先用較便宜模型做前置蒐證：** 可；若只檢查 `specs/wf-rac-contracts.json` 是否存在對應 evidence-state欄位，可先由 Luna Low 唯讀確認後 STOP；正式 mutation/reconciliation仍使用 Terra Medium。  
-**Context 建議：** L0 → L3；先讀最新 `AGENTS.md` / `TASKS.md`、Stage 1 dossier與 Stage 2 已更新 topics，再只讀 `specs/wf-rac-contracts.json` 直接相關 sections、validator/tests，以及既有 `First real WF-RAC read-only probe / hardware validation` Stage。  
-**Execution mode 建議：** Normal / Agent 1。  
-**Dependency：** 只有 Stage 2 已完成、已 push，且 Completion Evidence Guard remote read-back確認 topic reconciliation成立後才可啟動。  
-**目標：**
-- 先判斷 machine-readable contract 是否有適合、且語意足以表達「specific local PC evidence confirmed while ESP-IDF target hardware remains pending」的欄位；只有能精確表達時才修改 contract / validator / targeted tests。若 schema 只代表 universal protocol truth，不得為本地兩台實測而把 universal unknown 改成 confirmed；此時保持 machine contract不變並記錄 N/A rationale。
-- 檢查既有 `First real WF-RAC read-only probe / hardware validation` Stage 的 pre-evidence 是否需要最小更新：可引用已知-good PC ground truth（target modules on plain HTTP :51443、`getDeviceInfo` / `getAirconStat` known-good、profile已知），但該 Stage 必須繼續保持 ESP32-C3/C6 Hardware/Network pending，不得因 PC結果完成或刪除。
-- 若 C3 probe 的 explicit scheme / expected response inputs 因 Stage 1/2 evidence 已明確，可收斂其探索範圍，讓下一次 hardware Stage只驗證 ESP-IDF/C3 transport implementation是否重現 known-good device behavior。
-
-**限制：** 不執行 hardware/network test；不修改 production runtime；不把 local profile generalize成 universal firmware contract；不提前完成 C3 hardware Stage。  
-**Validation / completion gate：** machine-readable contract 若有修改，validator/targeted tests與相關 docs一致且 host validation PASS；若判定不應修改，必須以 canonical schema語意證據說明 N/A。既有 C3 hardware Stage仍存在且 target boundary正確。成功後依 queue lifecycle移除此 Stage。
-
 ## Deferred
 
 ### Machine-readable TimeProvider implementation-state reconciliation
@@ -76,6 +59,7 @@
 **Context 建議：** L0 → L2；先讀 Git/AGENTS/TASKS/current evidence，再讀 diagnostic firmware、transport classifier、getDeviceInfo parser 與直接 caller/dependency；只有能明確說出缺少哪個答案時才升 L3，禁止預設 L4/L5。  
 **Execution mode 建議：** Hardware evidence / Agent 1；不使用 Multi-Agent。  
 **觸發條件：** #4H diagnostic harness compile-ready；當次測試 target/board/FQBN/device identity 明確；local endpoint/scheme/time seed/TLS trust inputs 明確；使用者明確授權本次 hardware/network execution。
+**PC pre-evidence（僅限 observed profile）：** 2026-09-02 的 Windows PC 已對兩台 `firmType=WF-RAC`、wireless `010`、MCU `131` 模組，以 explicit plain HTTP、port `51443` 完成 `getDeviceInfo` 與 `getAirconStat`（HTTP `200`、`result: 0`）。下一次 ESP32-C3/C6 probe 可將此作為 known-good read-only baseline：先以 explicit HTTP `:51443` 驗證 ESP-IDF diagnostic transport 是否重現 `getDeviceInfo` HTTP `200` 與 `result: 0`。此 PC evidence 不構成 ESP32-C3/C6 Hardware/Network PASS，也不建立通用 scheme、HTTPS 或 firmware 行為；相關 target evidence 仍為 pending。詳見 `docs/references/sources/local-wfrac-pc-validation-2026-09-02.md`。
 **限制：** bounded、read-only、`getDeviceInfo` first；不得 insecure TLS、不得自動 downgrade、不得寫入控制命令。任何真實 credential/operator/cert material不得 commit、log、serial output 或 final report。Hardware/network execution authorization 不自動包含 repository mutation、commit 或 push authorization。
 
 **Prompt scaffold（硬體資料由使用者當次提供，執行前刷新）：**
