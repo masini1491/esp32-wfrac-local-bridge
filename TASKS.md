@@ -22,40 +22,6 @@
 
 > 先安全同步最新 `origin/main`（僅允許 clean、fast-forward-only；異常即 STOP；必要 operation 若缺權限，依最新 `AGENTS.md` routing 的 common playbook 要求最小必要 capability，不得自行繞過）。同步後讀根目錄 `AGENTS.md` 與 `TASKS.md`，依 `AGENTS.md` routing 先啟用 `CODEX_EXECUTION.md` 的 always-on Codex reporting contract，再只讀本 Stage 所需的其他最低必要 Playbook / project evidence，完整執行 `TASKS.md` 的「<Stage 名稱>」，只執行該 Stage。完成前依 Completion Evidence Guard 交叉確認 canonical repository / validation / queue state；成功後依 queue lifecycle 更新 `TASKS.md`、commit / push（僅限本次 launch 已授權者）。
 
-## Ready
-
-### Diagnostic Web Test Page for read-only bootstrap probe
-
-**推薦模型：** Terra  
-**推理強度：** Medium  
-**推薦理由：** 此 Stage 會在 ESP-IDF diagnostic firmware 內加入 local HTTP/UI surface，需同時處理既有 Wi-Fi/probe lifecycle、bounded operation、secret boundary 與 C6/C3 compile compatibility；屬中等複雜度 embedded integration，不需 Sol。  
-**是否值得先用較便宜模型做前置蒐證：** 否；目前 `wfrac_bootstrap_probe`、Kconfig、read-only `getDeviceInfo` path 與 project boundary 已知，Terra Medium 可直接用最低充分 context implementation。  
-**Context 建議：** L0 → L3；先讀最新 `AGENTS.md` / `TASKS.md`，再讀 `firmware/wfrac_bootstrap_probe/`、直接使用的 transport/client/time interfaces、`docs/security.md`，並依 routing 只取得本 Stage 必要的 `EMBEDDED_PROJECTS.md`、`UI_UX.md`、`DEBUG_VALIDATION.md` / toolchain authority；禁止 repo-wide loading。  
-**Execution mode 建議：** Normal / Agent 1；不使用 Multi-Agent。  
-**Admission reason：** 新到貨 ESP32-C3 SuperMini 使實機 bring-up 即將開始；目前 probe 只能靠 Kconfig + serial 操作。加入 browser-driven diagnostic surface 會新增 firmware runtime/UI boundary，且後續需接 hardware validation，具有 material implementation / validation tracking value，因此應保存為 canonical Stage，而不是 Direct Short Prompt。  
-**本次明確授權例外：** 使用者於 2026-09-02 明確同意把「C3 實機測試用網頁」插入 Phase 1C。這只構成目前 `AGENTS.md`「WebUI 未經另行授權不得實作」規則的**窄範圍 diagnostic exception**：只允許 `wfrac_bootstrap_probe` 的測試頁，不授權正式 Provisioning / Product WebUI、Matter UI、MQTT UI、OTA UI 或其他 runtime scope expansion。
-
-**目標 contract：**
-- 在既有 `firmware/wfrac_bootstrap_probe` 內加入最小、自包含、local-only 的 diagnostic web test page；它是 test consumer / operator surface，不是 production provisioning UI。
-- 預設仍為 inert；只有 diagnostic probe 已明確 enable 且使用者主動操作時才可執行測試。頁面載入本身不得自動送 WF-RAC request。
-- 本 Stage **不做 SoftAP / captive portal / Wi-Fi provisioning**。先沿用既有 Kconfig station Wi-Fi bootstrap，使 ESP32 加入測試 LAN 後提供頁面；Wi-Fi SSID/password 不經此 HTTP page 傳輸。
-- `Operator ID` 維持既有 local Kconfig / RAM-only diagnostic input，不得在頁面顯示、回填或透過 plaintext page 收集；UI 只可顯示「已設定／未設定」等非 secret readiness。其他 project-defined secret 同樣 write-only / non-echo。
-- 頁面可提供本次 read-only probe 所需的非 secret / public test inputs，例如 WF-RAC host、port、device ID、explicit HTTP/HTTPS scheme、estimated time seed、server trust certificate PEM；若 current security contract 將其中任何欄位視為 sensitive，依較嚴格 contract 收斂，不得為 UI 便利放寬。
-- 提供單一明確 action 執行**一次** read-only `getDeviceInfo`；不得 registration、`setAirconStat`、控制寫入、polling、自動重試 loop 或其他 API action。
-- 一次只允許一個 active probe；重複 submit 必須 bounded reject/disable，並保留 timeout / failure / unknown 的可判讀結果，不能只用「request 已送出」顯示成功。
-- 顯示最小充分 sanitized 結果：至少區分 input validation、Wi-Fi/network readiness、transport/TLS/HTTP、WF-RAC application result 與 parser/result outcome；不得把 raw secret、Authorization material、Wi-Fi password、Operator ID 或不必要的 secret-derived characteristic輸出到 HTML、JSON、serial/log 或 final report。
-- UI assets 必須 self-contained，不依賴 CDN、remote font、Internet 或 cloud；保持 resource-light，優先 vanilla HTML/CSS/必要的最小 JS，不為測試頁導入大型 frontend framework。
-- UI 只 presentation / interaction；不得藉此改變 portable protocol、Device Model、wire contract、scheme fallback、TLS identity semantics、time-quality semantics 或 persistence ownership。若 integration 揭露上述 machine contract 需要 semantic change，保存 evidence 後 STOP，另開 scoped task。
-- 不新增 NVS/persistence、mDNS、Matter、MQTT、OTA、production authentication/provisioning、正式 product navigation 或完整 settings architecture。
-
-**Validation / evidence：**
-- 保留既有 host validation PASS；若新增可抽離的 form/API parsing 或 validation helper，加入最低充分 deterministic targeted tests。
-- `wfrac_bootstrap_probe` 對 ESP32-C6 primary 與 ESP32-C3 compatibility target 都必須 compile/link，並確認 intended HTTP server/UI source 真正進入 build，不得以被條件編譯排除的假 PASS 代替。
-- 靜態檢查 default-inert、single active probe、read-only `getDeviceInfo` boundary、no external assets、no persistence，以及 secret non-echo/non-log invariant。
-- 本 Stage **不執行真實 Wi-Fi / HTTP / TLS / WF-RAC hardware/network test**；compile/static PASS 只能把網頁測試 harness 提升到 `COMPILE-READY`，不得宣稱 Hardware/Network PASS。
-
-**Queue relation / completion gate：** 成功後 browser-driven diagnostic harness 應達 `COMPILE-READY`，C6/C3 compile/link 與 targeted validation PASS，且不削弱既有 read-only/security boundary；完成後移除此 Stage。後續真實 C3 board + WF-RAC 測試仍由既有「First real WF-RAC read-only probe / hardware validation」Stage 管理，不得在本 Stage 順手執行硬體測試。
-
 ## Deferred
 
 ### Machine-readable TimeProvider implementation-state reconciliation
