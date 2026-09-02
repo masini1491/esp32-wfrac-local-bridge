@@ -24,6 +24,48 @@
 
 ## Ready
 
+### Stage 1 — Reconcile command-acceptance vs physical-actuation evidence
+
+**推薦模型：** Luna  
+**推理強度：** Low  
+**推薦理由：** 本 Stage 只保存與校正已觀察到的 runtime evidence boundary，不修改 production behavior；核心是避免把 API/state acceptance 過度宣稱為實體冷氣已執行。  
+**是否值得先用較便宜模型做前置蒐證：** 否；Luna Low 已是最低充分設定。  
+**Context 建議：** L0 → L2；先讀最新 `AGENTS.md` / `TASKS.md`、`docs/references/sources/local-wfrac-pc-validation-2026-09-02.md`，再只讀直接承載 command/readback/state semantics 的最低必要 topics。  
+**Execution mode 建議：** Normal / Agent 1。  
+**Admission reason：** 使用者補充 `CONFIRMED_LOCAL` 現象：使用 Google Assistant 或 Smart M-Air 開關冷氣時，偶發 client/UI 顯示已切換，但實體冷氣沒有執行；重新開啟 App 並 fresh read 後，顯示會回到正確實際狀態。此 evidence 會直接限制既有 `result:0`、`updatedBy`、returned `airconStat` 的可宣稱範圍，若不保存容易讓後續 implementation 把 command acceptance 誤當 physical actuation completion。  
+**目標：**
+- 將上述現象以 sanitized、device-profile-scoped `CONFIRMED_LOCAL observation` 保存到既有 local evidence dossier 或最適合的 canonical evidence topic；不得保存 exact LAN/device/account identifiers。
+- 明確建立 evidence boundary：HTTP/application success、`result:0`、`updatedBy`、`expires`、write response / immediate module state 只能證明 WF-RAC command/state acceptance 到其實際量測層級，**不足以單獨證明室內機 physical actuation 已完成**。
+- 對既有 dossier/topic 中可能被解讀成「write accepted = physical HVAC action confirmed」的敘述做最低必要 reconciliation；保留先前 PC 24→26°C、writer/lock/coexistence evidence，但不要超出原 measurement profile。
+- 將「為何 official client 會偶發 optimistic/stale state」保持 `UNKNOWN`；不得無 evidence 歸因於 Wi-Fi、module→indoor-unit link、lock collision、Google/Smart M-Air UI、firmware bug 或其他單一 root cause。
+- 記錄 fresh App read 能重新顯示正確現況這一 observation，但不得因此宣稱已完整理解 official App cache/readback implementation。
+
+**限制：** 不修改 production source、runtime、Matter、polling、retry 或 command coordinator；不執行新的 network/hardware write；不把 observation 泛化到所有 WF-RAC firmware。  
+**Validation / completion gate：** canonical evidence 能清楚區分 command acceptance、module-observed state 與 physical actuation；舊 PC evidence 未被誤刪或過度降級；未知 root cause 保持 UNKNOWN；docs/link/sanitization consistency PASS。成功後依 queue lifecycle移除此 Stage，不得自行開始 Stage 2。
+
+### Stage 2 — Implement bounded post-write verification and state reconciliation
+
+**推薦模型：** Terra  
+**推理強度：** Medium  
+**推薦理由：** 此 Stage 會改變 control runtime semantics，需整合 command lifecycle、authoritative readback、Device Model reconciliation、external-writer interference 與 bounded retry/timeout；屬中等複雜度 state/runtime integration。  
+**是否值得先用較便宜模型做前置蒐證：** 可；若 Stage 1 完成後只盤點現有 command path、Device Model observation/reconciliation 與 future Matter-facing state ownership，可先由 Luna Low 唯讀蒐證後 STOP；正式 design/implementation 使用 Terra Medium。  
+**Context 建議：** L0 → L3；先讀最新 `AGENTS.md` / `TASKS.md` 與 Stage 1 canonical evidence，再讀 command write path、`getAirconStat` read path、Device Model observation/reconciliation、client/runtime orchestration與直接 tests；只有 ownership/contract 不足時才擴到 Matter adapter roadmap，禁止 repo-wide loading。  
+**Execution mode 建議：** Normal / Agent 1；不使用 Multi-Agent。  
+**Dependency：** 只有 Stage 1 已完成、已 push，且 Completion Evidence Guard remote read-back確認 evidence boundary已成立後才可啟動。  
+**目標 contract：**
+- 不得把 `setAirconStat` HTTP/application acceptance、`result:0`、`updatedBy` 或 write response 本身當作最終「實體冷氣已完成命令」的唯一成功條件。
+- 建立 bounded command lifecycle，至少能表達 `sent/accepted → verifying → confirmed` 與 `not-confirmed/timeout/conflict` 等可判讀 outcome；實際 enum/name 依既有 architecture最小整合，不為形式新增平行 state model。
+- 成功 write 後，以 subsequent authoritative `getAirconStat` observation 驗證 desired state；readback 必須經既有 parser/Device Model observation/reconciliation path，不得另造第二套 raw-state truth。
+- verification 必須 bounded；settle delay、readback次數、interval、timeout/retry policy 不得憑聊天範例硬編碼成 universal constants。先依 upstream/current architecture/evidence選最低風險預設，對仍未知的 physical settle timing保持 configurable/pending hardware tuning。
+- 若 readback 與 desired state一致，才可升為 command `confirmed`；若不一致、timeout、transport/application failure或觀察到 external writer，必須保留 authoritative observed state並回報未確認/衝突，不得讓 optimistic desired state永久覆蓋真實 observation。
+- external official control（Smart M-Air / Google Assistant）與 local writer coexistence必須納入 reconciliation；不得因 local pending command而永久阻擋或覆蓋較新的 authoritative external observation。
+- Matter Adapter 未來只能消費此 command/device-model contract，不得自行建 raw WF-RAC request、parse JSON、持有 retry/lock/readback ownership；本 Stage 不要求實作 Matter runtime，除非 current repo 已存在直接 consumer且最低必要 contract adjustment不可避免。
+- 保持 bounded queue、serialization、polling/command coordination與 availability/state-consistency方向；不得導入 infinite polling/retry。
+
+**Validation / evidence：** 先用 deterministic host/FakeTransport tests覆蓋 accepted+confirmed、accepted+mismatch、timeout、transport/application failure、external writer/conflicting observation、eventual convergence等最低必要情境；必要時再 compile/link受影響 ESP-IDF targets。沒有真實 target hardware evidence時只能宣稱 Software/Static-Test/Compile PASS，physical-actuation timing與實機 reconciliation仍保持 `HARDWARE_TEST_PENDING`。  
+**STOP boundary：** 若 implementation需要重新定義 wire protocol、AirconStat parser、registration ownership、write-lock universal semantics、Matter architecture或其他未授權大範圍 contract，保存 evidence後 STOP並另開 scoped Stage，不得順手擴張。  
+**Completion gate：** command acceptance 與 verification completion在 code/API/tests中明確分離；authoritative readback能修正 optimistic desired state；bounded failure/conflict outcome可判讀；既有 portable layering/library readiness保持 `PRESERVED`；targeted validation PASS。成功後依 queue lifecycle移除此 Stage。
+
 ## Deferred
 
 ### Machine-readable TimeProvider implementation-state reconciliation
@@ -48,7 +90,7 @@
 **Execution mode 建議：** Normal / Agent 1。  
 **Admission reason：** current GitHub Actions 只覆蓋 machine contract、Python host tests 與 portable C++ host tests；ESP-IDF-specific transport/time adapters、`idf_compile_smoke`、`wfrac_bootstrap_probe` 與 C6/C3 portability 沒有 continuous CI regression gate。這是持續性的 platform/validation coverage，而非一次性小修。  
 **限制：** 只建立 compile/link CI；default-inert，不得執行 hardware、Wi-Fi、HTTP/HTTPS、TLS handshake 或 real WF-RAC；不得把 credential/operator/cert material放入 workflow。CI 成本需 bounded，避免無必要 matrix/context expansion。  
-**Completion gate：** current supported ESP-IDF baseline 下，至少能自動 compile/link platform integration 與 diagnostic firmware 的 ESP32-C6 primary、ESP32-C3 compatibility targets；failure phase 可區分 toolchain/config/source；既有 host validation 保持 PASS。成功後移除此項。
+**Completion gate：** current supported ESP-IDF baseline 下，至少能自動 compile/link platform integration 與 diagnostic firmware 的 ESP32-C6 primary、ESP32-C3 compatibility targets；failure phase 可區分 toolchain/config/source；既有 host validation保持 PASS。成功後移除此項。
 
 ### First real WF-RAC read-only probe / hardware validation
 
@@ -59,8 +101,8 @@
 **Context 建議：** L0 → L2；先讀 Git/AGENTS/TASKS/current evidence，再讀 diagnostic firmware、transport classifier、getDeviceInfo parser 與直接 caller/dependency；只有能明確說出缺少哪個答案時才升 L3，禁止預設 L4/L5。  
 **Execution mode 建議：** Hardware evidence / Agent 1；不使用 Multi-Agent。  
 **觸發條件：** #4H diagnostic harness compile-ready；當次測試 target/board/FQBN/device identity 明確；local endpoint/scheme/time seed/TLS trust inputs 明確；使用者明確授權本次 hardware/network execution。
-**PC pre-evidence（僅限 observed profile）：** 2026-09-02 的 Windows PC 已對兩台 `firmType=WF-RAC`、wireless `010`、MCU `131` 模組，以 explicit plain HTTP、port `51443` 完成 `getDeviceInfo` 與 `getAirconStat`（HTTP `200`、`result: 0`）。下一次 ESP32-C3/C6 probe 可將此作為 known-good read-only baseline：先以 explicit HTTP `:51443` 驗證 ESP-IDF diagnostic transport 是否重現 `getDeviceInfo` HTTP `200` 與 `result: 0`。此 PC evidence 不構成 ESP32-C3/C6 Hardware/Network PASS，也不建立通用 scheme、HTTPS 或 firmware 行為；相關 target evidence 仍為 pending。詳見 `docs/references/sources/local-wfrac-pc-validation-2026-09-02.md`。
-**限制：** bounded、read-only、`getDeviceInfo` first；不得 insecure TLS、不得自動 downgrade、不得寫入控制命令。任何真實 credential/operator/cert material不得 commit、log、serial output 或 final report。Hardware/network execution authorization 不自動包含 repository mutation、commit 或 push authorization。
+**PC pre-evidence（僅限 observed profile）：** 2026-09-02 的 Windows PC 已對兩台 `firmType=WF-RAC`、wireless `010`、MCU `131` 模組，以 explicit plain HTTP、port `51443` 完成 `getDeviceInfo` 與 `getAirconStat`（HTTP `200`、`result: 0`）。下一次 ESP32-C3/C6 probe 可將此作為 known-good read-only baseline：先以 explicit HTTP `:51443` 驗證 ESP-IDF diagnostic transport是否重現 `getDeviceInfo` HTTP `200` 與 `result: 0`。此 PC evidence不構成 ESP32-C3/C6 Hardware/Network PASS，也不建立通用 scheme、HTTPS 或 firmware 行為；相關 target evidence仍為 pending。詳見 `docs/references/sources/local-wfrac-pc-validation-2026-09-02.md`。
+**限制：** bounded、read-only、`getDeviceInfo` first；不得 insecure TLS、不得自動 downgrade、不得寫入控制命令。任何真實 credential/operator/cert material不得 commit、log、serial output 或 final report。Hardware/network execution authorization不自動包含 repository mutation、commit或 push authorization。
 
 **Prompt scaffold（硬體資料由使用者當次提供，執行前刷新）：**
 
