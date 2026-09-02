@@ -18,7 +18,7 @@ Control request 的 raw AirconStat representation：single Device Model command 
 
 ## Known unknowns
 
-Base64/API envelope、transport execution，以及本 project policy 在使用者硬體上的行為皆為 `HARDWARE_TEST_PENDING`。`CONFIRMED_LOCAL = 0`。
+`CONFIRMED_LOCAL`：兩台 `WF-RAC / wireless 010 / MCU 131` profile module 的 PC local `setAirconStat` round-trip 已將設定由 `24.0°C` 改為 `26.0°C`。這證實該 observed profile接受實際 control write，但不單獨驗證本 project 的 composition policy、ESP-IDF transport execution或其他 model/firmware。後者仍為 `HARDWARE_TEST_PENDING`。見 [2026-09-02 PC local evidence](../sources/local-wfrac-pc-validation-2026-09-02.md)。
 
 ## Provenance pointers
 

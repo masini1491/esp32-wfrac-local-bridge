@@ -7,6 +7,7 @@ R7 software-only transport/security policy；不包含 TLS runtime、HTTP client
 ## Authoritative project conclusions
 
 - Port `51443` observed：older WF-RAC HTTP、WF-RAC-HTTPS HTTPS、WCBN4612L HTTPS；scheme per every firmware version UNKNOWN，不由 retail model推導。
+- `CONFIRMED_LOCAL`：兩台 `WF-RAC / wireless 010 / MCU 131` profile module 已由 Windows PC 透過 plain HTTP `:51443` 成功完成 local API path。此 evidence 不推廣至其他 firmware，亦不建立 ESP-IDF runtime、HTTPS 或 certificate behavior。見 [2026-09-02 PC local evidence](../sources/local-wfrac-pc-validation-2026-09-02.md)。
 - mDNS `_beaver._tcp` TXT empty、port 51443，不能宣告 HTTP/HTTPS scheme。Unknown device architecture 為 HTTPS-first，以 `getDeviceInfo` 作 bootstrap-safe probe，再 HTTP compatibility fallback；timestamp 仍有 module-clock side effect。
 - Successful scheme 應 per-device persist/cache，normal requests 使用 last known scheme；只在 transport-level evidence rediscover，不得每次 poll probe。HTTPS 成功後 sticky：transient failure 或 application refusal 不得 silent downgrade to HTTP。
 - Compatibility profile：preferred TLS 1.2、HTTP/1.1、initially no connection reuse、`Connection: close`；TLS 1.2 是 observed profile，不是 universal minimum。部分 newer device 有 legacy TLS handshake compatibility issue；exact min TLS/ciphers UNKNOWN，global weakening forbidden。
@@ -41,7 +42,7 @@ HTTPS 必須提供非空 server trust certificate；不存在 insecure／trust-a
 
 ## Known unknowns / pending validation
 
-Per-firmware scheme、exact TLS/cipher profile、certificate uniqueness/stability/lifecycle、hostname handling、degraded HTTPS user policy、header casing、certificate validity-time behavior、ESP-IDF error mapping 與 local device：`HARDWARE_TEST_PENDING`。
+Per-firmware scheme、exact TLS/cipher profile、certificate uniqueness/stability/lifecycle、hostname handling、degraded HTTPS user policy、header casing、certificate validity-time behavior、ESP-IDF error mapping 與 local device：`HARDWARE_TEST_PENDING`。PC plain-HTTP evidence 不解除這些 HTTPS／ESP-IDF unknowns。
 
 **R7 TLS / Transport Security Policy：COMPLETE**
 

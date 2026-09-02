@@ -12,6 +12,7 @@ Identity、Operator ID、account table ownership 與 registration lifecycle。
 - Portable `updateAccountInfo`／`deleteAccountInfo` request builders 已 software implemented；兩者固定以 `ApiClientContext.operator_id` 序列化 `accountId`，不接受獨立 accountId。update 的 `remote=0` 是 observed upstream／project compatibility value，不代表 remote semantics 已完整理解。
 - 觀察 account slots 上限為 4；`remoteList` 不可靠，不得自動刪除未知 accounts，只管理自己的 Operator ID。正常 reboot 不應自動 deregister。`aws` bypass 不是 project architecture。
 - `result = 2` 只可在 command context 解讀；expires lifecycle、remote 完整語意與 timezone effect 仍未知。時間細節見 [timestamp-time.md](timestamp-time.md)。
+- `CONFIRMED_LOCAL`：Windows PC 成功 mirror-style `setAirconStat` write 使用 opaque client `deviceId` 與既有 Operator ID；response `updatedBy=pc-probe`。這不保存 exact identity，也不驗證第二 remote UUID identity、self-managed registration 或 registration lifecycle。見 [2026-09-02 PC local evidence](../sources/local-wfrac-pc-validation-2026-09-02.md)。
 
 ## High-risk invariants
 

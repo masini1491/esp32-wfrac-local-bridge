@@ -24,26 +24,6 @@
 
 ## Ready
 
-### Stage 2 — Reconcile WF-RAC topics against local PC evidence
-
-**推薦模型：** Terra  
-**推理強度：** Medium  
-**推薦理由：** 需要把同一批 local evidence 精確映射到 transport、API envelope、identity、time/lock 與 AirconStat/request composition 等既有 authority，並避免把 device-specific evidence過度泛化；屬 bounded multi-document validation-state reconciliation。  
-**是否值得先用較便宜模型做前置蒐證：** 否；Stage 1 dossier 完成後已提供最低充分 provenance。  
-**Context 建議：** L0 → L3；先讀最新 `AGENTS.md` / `TASKS.md` 與 Stage 1 dossier，再依 `docs/references/README.md` 只讀直接相關 topics：`tls-transport.md`、`api-envelope-discovery.md`、`identity-registration.md`、`timestamp-time.md`；只有 evidence 確實影響時再讀 `request-composition.md` / `airconstat-fixed-state.md`。  
-**Execution mode 建議：** Normal / Agent 1。  
-**Dependency：** 只有 Stage 1 已完成、已 push，且 Completion Evidence Guard 的 remote read-back 確認 dossier / sanitization 成立後才可啟動。  
-**目標：** 依 Stage 1 dossier 對既有 topic 的 current evidence state 做最小必要 reconciliation：
-- Transport：對本次兩台 `WF-RAC / wireless 010 / MCU 131` profile，plain HTTP :51443 與 successful local API path 可標 `CONFIRMED_LOCAL`；不得把 per-firmware universal scheme unknown、ESP-IDF runtime mapping、HTTPS/certificate unknown 一併解除。
-- API envelope：把「actual HTTP request / real `getAirconStat` response 尚 pending」中已被 PC local evidence解決的部分精確更新；仍保留 discovery、firmware-wide handlers、polling/retry tuning、ESP-IDF runtime 等未驗證範圍。
-- Identity：保存 `updatedBy` 與 request `deviceId` 的 local writer evidence、既有 Operator ID 可作 mirror-style write 的觀察；不得保存 exact Operator ID，不得宣稱第二 remote UUID 身分、self-managed registration 或 registration lifecycle已驗證。
-- Timestamp / lock：保存本 profile 中成功 write 的 `expires - timestamp = 60s` 與 lock 到期後官方 client可重新寫入的 local evidence；必須明確限制為 observed profile，不得升成所有 firmware universal constant。
-- 若 AirconStat/request-composition topic 目前含「write 未實機驗證」等直接被 24→26°C round-trip 推翻的 statement，做最低充分更新；否則不為形式改檔。
-- 明確標示先前由 PowerShell/curl body corruption造成的 501 incompatibility interpretation為 `SUPERSEDED`，避免舊 troubleshooting evidence重新污染 current conclusions。
-
-**限制：** 不修改 production source；不新增 protocol behavior；不做新的 network/hardware request；不動 registration/account table；不把 PC evidence提升為 ESP32-C3/C6 Hardware PASS。  
-**Validation / completion gate：** 相關 topic 的 `CURRENT` / `SUPERSEDED` / `HARDWARE_TEST_PENDING` 邊界彼此一致，且所有 local claim 都能回指 Stage 1 dossier；docs/link/contract consistency 的最低充分 validation PASS。成功後依 queue lifecycle只移除此 Stage，不得自行開始 Stage 3。
-
 ### Stage 3 — Reconcile machine-readable evidence state and C3 probe pre-evidence
 
 **推薦模型：** Terra  

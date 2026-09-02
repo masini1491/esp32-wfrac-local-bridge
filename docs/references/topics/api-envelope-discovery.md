@@ -12,8 +12,9 @@ WF-RAC local API boundary、handlers、discovery、request serialization 與 com
 - `getDeviceInfo` 是 bootstrap；response body 即使 Content-Type 不理想仍可能包含 useful JSON。Transport status 與 protocol body 必須分開解析。
 - mDNS service 為 `_beaver._tcp`；advertised port 只作提示，expected API port 仍是 `51443`。
 - Request 必須 serialized、one-at-a-time，約 1 秒 pacing；timeout/retry 是 upstream behavior，不是 universal constants。Result semantics 必須 command-specific。
-- Reviewed 五個 local commands 都已有 portable request builder：`getDeviceInfo`、`getAirconStat`、`setAirconStat`、`updateAccountInfo` 與 `deleteAccountInfo`。builders 使用 caller-owned buffer、JSON escaping、64-bit Unix timestamp，並在 AirconStat wrapping 前驗證 CRC；actual HTTP request 仍 pending。
-- `getAirconStat` response parser 已將 contents 的 `airconStat` JSON string 經 Base64 decode、AirconStat structural parse 與 COMMAND／RECEIVE 雙 CRC gate 轉成 portable `AirconFrameView`；response `airconId` 目前 optional，其他 contents fields bounded-skip。這是 software validation，不代表已從實機取得 response。
+- Reviewed 五個 local commands 都已有 portable request builder：`getDeviceInfo`、`getAirconStat`、`setAirconStat`、`updateAccountInfo` 與 `deleteAccountInfo`。builders 使用 caller-owned buffer、JSON escaping、64-bit Unix timestamp，並在 AirconStat wrapping 前驗證 CRC；project ESP-IDF runtime execution仍 pending。
+- `getAirconStat` response parser 已將 contents 的 `airconStat` JSON string 經 Base64 decode、AirconStat structural parse 與 COMMAND／RECEIVE 雙 CRC gate 轉成 portable `AirconFrameView`；response `airconId` 目前 optional，其他 contents fields bounded-skip。這是 software validation；它本身不代表 portable implementation已在 ESP-IDF target上解析實機 response。
+- `CONFIRMED_LOCAL`：在兩台 `WF-RAC / wireless 010 / MCU 131` profile module，Windows PC 已收到 `getDeviceInfo`／`getAirconStat` 的 HTTP `200`、`result: 0` response；`getAirconStat` 的 Base64 payload可依既有 parser contract解讀。PC `setAirconStat` 亦完成 `24.0°C → 26.0°C` round-trip。這不驗證 ESP-IDF runtime、discovery、firmware-wide handlers、polling 或 retry tuning。見 [2026-09-02 PC local evidence](../sources/local-wfrac-pc-validation-2026-09-02.md)。
 
 ## High-risk invariants
 
@@ -21,7 +22,7 @@ WF-RAC local API boundary、handlers、discovery、request serialization 與 com
 
 ## Known unknowns / pending validation
 
-Local transport、discovery、exact polling／retry tuning 與 firmware-specific handlers：`HARDWARE_TEST_PENDING`。
+ESP-IDF local transport、discovery、exact polling／retry tuning 與 firmware-specific handlers：`HARDWARE_TEST_PENDING`。先前 PowerShell/native-`curl.exe` body corruption 造成的 HTTP `501` command-incompatibility interpretation已為 `SUPERSEDED`；它不是目前 firmware limitation。見 [2026-09-02 PC local evidence](../sources/local-wfrac-pc-validation-2026-09-02.md)。
 
 ## Related machine-readable contract
 

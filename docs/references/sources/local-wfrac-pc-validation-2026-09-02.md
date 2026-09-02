@@ -14,6 +14,7 @@ The evidence was obtained during a bounded PC probe on 2026-09-02. Device-specif
 - The `getAirconStat` Base64 payload was decoded by the existing parser contract into observed operation, settings, and telemetry data. This dossier does not redefine parser semantics.
 - After Google Assistant controlled one module, its response evidence showed `updatedBy=GoogleAssistant` and a refreshed `expires`; the AirconStat data reflected the observed state change.
 - A PC local `setAirconStat` operation changed the setting from `24.0°C` to `26.0°C`, with HTTP `200` and application `result: 0`. The write response showed `updatedBy=pc-probe` and an observed `expires - timestamp` delta of `60s`.
+- That successful PC write used an opaque client request `deviceId` with an existing Operator ID in a mirror-style flow. Exact identity values are not retained.
 - After the PC write lock expired, the official Smart M-Air client controlled the same module successfully. The new writer refreshed `updatedBy` / `expires`, showing coexistence of the local writer and the official client under this observed lock lifecycle.
 
 ## SUPERSEDED diagnostic interpretation

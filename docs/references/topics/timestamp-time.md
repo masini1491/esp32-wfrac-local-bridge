@@ -13,6 +13,7 @@ R5 canonical time architecture record，涵蓋 WF-RAC timestamp、module clock�
 - ESP-IDF evidence：RTC timer 可跨一般 reset／sleep保持，但 power-on reset 會重置；high-resolution timer 不跨 reset。software/watchdog reset 不等於 power loss，power loss 後也不能由 NVS checkpoint 知道 exact elapsed wall time。`time()`、`gettimeofday()`、`settimeofday()`、`adjtime()` 可使用；SNTP 是 optional acquisition／correction mechanism，不是 system-time prerequisite。
 - Time boundary 已實作：`wfrac_time_espidf::EspSystemTimeProvider` 以 `gettimeofday()` 讀取 ESP-IDF POSIX system clock，RAM 初始 quality 必為 unavailable，僅 explicit seed/adopt 可設為 estimated/trusted。seed 使用 `settimeofday()`，因此會改變 process/device-wide system time；adopt 只採納已設定的 clock。沒有 timezone correction、automatic trust heuristic、fixed/build timestamp、SNTP 或 persistence；power-cycle後 quality recovery 仍 pending。
 - Daily local control 不要求 Internet、DNS 或 NTP。Persisted checkpoint 不是 trusted current time，只能作 lower-quality degraded estimate。External battery RTC 目前未選定且非 current architecture requirement。Future timestamp representation 必須 64-bit capable。
+- `CONFIRMED_LOCAL`：在 `WF-RAC / wireless 010 / MCU 131` observed profile，successful PC `setAirconStat` response 的 `expires - timestamp` 為 `60s`；lock 到期後官方 Smart M-Air client 可再次寫入並刷新 writer／expiry metadata。這是 profile-specific diagnostic evidence，不是 universal firmware lifetime、scheduler 或 timezone constant。見 [2026-09-02 PC local evidence](../sources/local-wfrac-pc-validation-2026-09-02.md)。
 
 ## High-risk invariants
 
