@@ -24,39 +24,6 @@
 
 ## Ready
 
-### Stage 1 — Persist sanitized 2026-09-02 PC WF-RAC local evidence
-
-**推薦模型：** Luna  
-**推理強度：** Low  
-**推薦理由：** 本 Stage 只把已取得、已判讀的實機證據保存成 canonical provenance dossier，不改 production behavior、protocol implementation 或 machine-readable semantics；資料範圍與去識別化要求已明確。  
-**是否值得先用較便宜模型做前置蒐證：** 否；Luna Low 已是最低充分設定。  
-**Context 建議：** L0 → L2；先讀最新 `AGENTS.md` / `TASKS.md`、`docs/references/README.md`，再只讀與 evidence dossier placement / credential boundary 直接相關的最低必要 reference/security evidence。  
-**Execution mode 建議：** Normal / Agent 1。  
-**Admission reason：** 2026-09-02 已取得兩台真實 WF-RAC module 的 PC→LAN local API read/write/coexistence evidence，已跨過一次性除錯門檻；若不保存，後續 C3 hardware bring-up 與 protocol validation 容易重新探索已知事實。  
-**前置 evidence（conversation-provided，寫入前必須依本 Stage 只保存最低充分 sanitized facts）：**
-- 兩台真實 module 均已以 plain HTTP port 51443 成功完成 `getDeviceInfo` 與 `getAirconStat`，HTTP 200、application `result:0`。
-- 兩台回報相同 profile：`firmType=WF-RAC`、wireless firmware `010`、MCU firmware `131`。
-- `getDeviceInfo` 回傳的 `airconId` / `macAddress` 與各自實體 module MAC 對應一致；不得把 exact MAC / airconId 寫入 public Git。
-- `getAirconStat` 的 Base64 payload 可被既有 parser contract 解出實際 operation/settings/telemetry；本 Stage 不重新定義 parser semantics。
-- Google Assistant 成功控制其中一台後，觀察到 `updatedBy=GoogleAssistant` 且 `expires` 刷新，同時 AirconStat 反映實際狀態變化。
-- PC local `setAirconStat` 已成功把設定溫度 24.0°C 改為 26.0°C，HTTP 200、`result:0`；成功 write 後 `updatedBy=pc-probe`，且該次 response 的 `expires - timestamp = 60s`。
-- PC write lock 到期後，Smart M-Air 官方 client 可再次成功控制同一 module，`updatedBy` / `expires` 由新 writer 刷新，證明此實測 profile 下 local writer 與官方控制可依 lock lifecycle coexist。
-- 先前 Windows PowerShell 5.1 直接把 JSON `$body` 傳給 native `curl.exe --data` 所產生的 HTTP 501 / `Not supported this command`，已由 byte-length evidence 與 UTF-8 no-BOM file + `--data-binary @file` 成功結果證實為 quoting/body corruption；舊 501 command-incompatibility interpretation 必須標為 `SUPERSEDED`，不得保留成 current firmware limitation。
-
-**去識別化 / security boundary：**
-- 不得提交 Wi-Fi credentials、Operator ID、remote/account UUID、手機 deviceId、exact LAN IP、exact MAC、exact airconId、Authorization/credential material 或其他可識別家庭網路/帳號的值。
-- dossier 只使用 `Device A` / `Device B` 或等價匿名標籤；可保存 firmware profile、port/scheme、command/result、狀態轉換、60 秒 observed delta、`GoogleAssistant` / `pc-probe` 這類非 secret writer label，以及 PowerShell/curl root-cause pattern。
-- 不得把本次 PC evidence 宣稱為 ESP32-C3/C6 Hardware PASS、production readiness、所有 WF-RAC firmware universal behavior，或 self-managed registration validation。
-
-**目標：** 在 `docs/references/sources/` 建立一份 topic-independent、sanitized、date-stamped local evidence dossier；名稱可採 `local-wfrac-pc-validation-2026-09-02.md` 或依現有 naming convention 的等價名稱。內容至少區分：test scope/profile、CONFIRMED_LOCAL observations、SUPERSEDED diagnostic interpretation、limits/non-generalization、privacy redactions，以及後續 topic reconciliation pointers。必要時更新 `docs/references/README.md` / sources index 的最低充分入口，但不得在本 Stage 修改各 topic 的 authoritative conclusion。
-
-**Validation / completion gate：**
-- dossier 可由 current repo reader 明確辨識其 evidence scope 是 Windows PC → real WF-RAC modules，而不是 ESP-IDF target hardware。
-- exact credential/private-network identifiers 未出現在 scoped diff。
-- `CONFIRMED_LOCAL` / `SUPERSEDED` / limits 表達與最新 Playbook evidence lifecycle一致。
-- 不修改 production source、tests、machine-readable contract 或 authoritative topic conclusions。
-- 完成前執行最低充分 docs/link/sanitization check；成功後依 queue lifecycle只移除此 Stage，不得自行開始 Stage 2。
-
 ### Stage 2 — Reconcile WF-RAC topics against local PC evidence
 
 **推薦模型：** Terra  
