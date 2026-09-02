@@ -20,7 +20,7 @@
 
 使用者可在 Codex UI 手動選好該 Stage 指定的模型與推理強度後，只貼短指令：
 
-> 先安全同步最新 `origin/main`（僅允許 clean、fast-forward-only；異常即 STOP；必要 operation 若缺權限，依最新 `AGENTS.md` routing 的 common playbook 要求最小必要 capability，不得自行繞過）。同步後讀根目錄 `AGENTS.md` 與 `TASKS.md`，依 `AGENTS.md` routing 只讀本 Stage 所需的最低必要 Playbook / project evidence，完整執行 `TASKS.md` 的「<Stage 名稱>」，只執行該 Stage。完成前依 Completion Evidence Guard 交叉確認 canonical repository / validation / queue state；成功後依 queue lifecycle 更新 `TASKS.md`、commit / push（僅限本次 launch 已授權者）。
+> 先安全同步最新 `origin/main`（僅允許 clean、fast-forward-only；異常即 STOP；必要 operation 若缺權限，依最新 `AGENTS.md` routing 的 common playbook 要求最小必要 capability，不得自行繞過）。同步後讀根目錄 `AGENTS.md` 與 `TASKS.md`，依 `AGENTS.md` routing 先啟用 `CODEX_EXECUTION.md` 的 always-on Codex reporting contract，再只讀本 Stage 所需的其他最低必要 Playbook / project evidence，完整執行 `TASKS.md` 的「<Stage 名稱>」，只執行該 Stage。完成前依 Completion Evidence Guard 交叉確認 canonical repository / validation / queue state；成功後依 queue lifecycle 更新 `TASKS.md`、commit / push（僅限本次 launch 已授權者）。
 
 ## Deferred
 
