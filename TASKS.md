@@ -22,31 +22,6 @@
 
 > 先安全同步最新 `origin/main`（僅允許 clean、fast-forward-only；異常即 STOP；必要 operation 若缺權限，依最新 `AGENTS.md` routing 的 common playbook 要求最小必要 capability，不得自行繞過）。同步後讀根目錄 `AGENTS.md` 與 `TASKS.md`，依 `AGENTS.md` routing 先啟用 `CODEX_EXECUTION.md` 的 always-on Codex reporting contract，再只讀本 Stage 所需的其他最低必要 Playbook / project evidence，完整執行 `TASKS.md` 的「<Stage 名稱>」，只執行該 Stage。完成前依 Completion Evidence Guard 交叉確認 canonical repository / validation / queue state；成功後依 queue lifecycle 更新 `TASKS.md`、commit / push（僅限本次 launch 已授權者）。
 
-## Ready
-
-### Stage 2 — Implement bounded post-write verification and state reconciliation
-
-**推薦模型：** Terra  
-**推理強度：** Medium  
-**推薦理由：** 此 Stage 會改變 control runtime semantics，需整合 command lifecycle、authoritative readback、Device Model reconciliation、external-writer interference 與 bounded retry/timeout；屬中等複雜度 state/runtime integration。  
-**是否值得先用較便宜模型做前置蒐證：** 可；若 Stage 1 完成後只盤點現有 command path、Device Model observation/reconciliation 與 future Matter-facing state ownership，可先由 Luna Low 唯讀蒐證後 STOP；正式 design/implementation 使用 Terra Medium。  
-**Context 建議：** L0 → L3；先讀最新 `AGENTS.md` / `TASKS.md` 與 Stage 1 canonical evidence，再讀 command write path、`getAirconStat` read path、Device Model observation/reconciliation、client/runtime orchestration與直接 tests；只有 ownership/contract 不足時才擴到 Matter adapter roadmap，禁止 repo-wide loading。  
-**Execution mode 建議：** Normal / Agent 1；不使用 Multi-Agent。  
-**Dependency：** 只有 Stage 1 已完成、已 push，且 Completion Evidence Guard remote read-back確認 evidence boundary已成立後才可啟動。  
-**目標 contract：**
-- 不得把 `setAirconStat` HTTP/application acceptance、`result:0`、`updatedBy` 或 write response 本身當作最終「實體冷氣已完成命令」的唯一成功條件。
-- 建立 bounded command lifecycle，至少能表達 `sent/accepted → verifying → confirmed` 與 `not-confirmed/timeout/conflict` 等可判讀 outcome；實際 enum/name 依既有 architecture最小整合，不為形式新增平行 state model。
-- 成功 write 後，以 subsequent authoritative `getAirconStat` observation 驗證 desired state；readback 必須經既有 parser/Device Model observation/reconciliation path，不得另造第二套 raw-state truth。
-- verification 必須 bounded；settle delay、readback次數、interval、timeout/retry policy 不得憑聊天範例硬編碼成 universal constants。先依 upstream/current architecture/evidence選最低風險預設，對仍未知的 physical settle timing保持 configurable/pending hardware tuning。
-- 若 readback 與 desired state一致，才可升為 command `confirmed`；若不一致、timeout、transport/application failure或觀察到 external writer，必須保留 authoritative observed state並回報未確認/衝突，不得讓 optimistic desired state永久覆蓋真實 observation。
-- external official control（Smart M-Air / Google Assistant）與 local writer coexistence必須納入 reconciliation；不得因 local pending command而永久阻擋或覆蓋較新的 authoritative external observation。
-- Matter Adapter 未來只能消費此 command/device-model contract，不得自行建 raw WF-RAC request、parse JSON、持有 retry/lock/readback ownership；本 Stage 不要求實作 Matter runtime，除非 current repo 已存在直接 consumer且最低必要 contract adjustment不可避免。
-- 保持 bounded queue、serialization、polling/command coordination與 availability/state-consistency方向；不得導入 infinite polling/retry。
-
-**Validation / evidence：** 先用 deterministic host/FakeTransport tests覆蓋 accepted+confirmed、accepted+mismatch、timeout、transport/application failure、external writer/conflicting observation、eventual convergence等最低必要情境；必要時再 compile/link受影響 ESP-IDF targets。沒有真實 target hardware evidence時只能宣稱 Software/Static-Test/Compile PASS，physical-actuation timing與實機 reconciliation仍保持 `HARDWARE_TEST_PENDING`。  
-**STOP boundary：** 若 implementation需要重新定義 wire protocol、AirconStat parser、registration ownership、write-lock universal semantics、Matter architecture或其他未授權大範圍 contract，保存 evidence後 STOP並另開 scoped Stage，不得順手擴張。  
-**Completion gate：** command acceptance 與 verification completion在 code/API/tests中明確分離；authoritative readback能修正 optimistic desired state；bounded failure/conflict outcome可判讀；既有 portable layering/library readiness保持 `PRESERVED`；targeted validation PASS。成功後依 queue lifecycle移除此 Stage。
-
 ## Deferred
 
 ### Machine-readable TimeProvider implementation-state reconciliation

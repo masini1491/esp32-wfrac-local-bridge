@@ -34,7 +34,7 @@ ITransport
 platform adapter
 ```
 
-`wfrac_client` 不 serialize JSON、不建 timestamp、不 parse response，也不實作 HTTP/TLS。它將已建立的 `ApiRequestView` 以原 body 交給首次 attempt，立即以 SchemePolicy 記錄結果；只有 policy 明確回傳 `retry_http_compatibility` 才以同一 body 作唯一 HTTP fallback。因此每次 executor 最多兩次 physical attempts，沒有 loop 或 automatic rediscovery。
+`wfrac_client` 的 request executor 不 serialize JSON、不建 timestamp、不 parse response，也不實作 HTTP/TLS。它將已建立的 `ApiRequestView` 以原 body 交給首次 attempt，立即以 SchemePolicy 記錄結果；只有 policy 明確回傳 `retry_http_compatibility` 才以同一 body 作唯一 HTTP fallback。因此每次 executor 最多兩次 physical attempts，沒有 loop 或 automatic rediscovery。獨立的 portable post-write verifier 使用既有 API builder／executor／response parser 與 Device Model reconciliation：`setAirconStat` accepted 後只進入 verifying，caller 以 bounded policy 排程每一次 `getAirconStat` readback；matching authoritative observation 才 confirmed，mismatch 保留 observed state，且不重送 write。它不假定 settle delay、poll interval、writer identity 或 physical actuation 已被確認。
 
 raw HTTP response bytes → `wfrac_api` response envelope → command/result/contents → typed `getDeviceInfo` bootstrap fields。response parser 不依賴 HTTP status、Transport 或 ESP-IDF；nonzero result 只是保留的 command-specific data，不是 generic parse failure。`getAirconStat` contents parser 以 caller-owned scratch 將 JSON-decoded Base64 text 交給 `wfrac_protocol::base64_decode`，再以 `parse_aircon_stat` 驗證結構與 COMMAND／RECEIVE CRC；只有兩個 CRC 都有效才輸出 `AirconFrameView`，供未來 Protocol semantic／Device Model integration 使用。
 
@@ -50,7 +50,7 @@ validated AirconFrameView
 RECEIVE semantic decode → BasicHvacState → DeviceState observation/reconciliation
 ```
 
-`wfrac_device_model` 的 read-path boundary 只認 `AirconFrameView`，不依賴 API、Transport 或 ESP-IDF，並在 mapping 時再次確認雙 CRC 與基本 block layout。成功 observation 不改 availability；reconciliation 的 observed-converged 只表示 state target 與 observation 相同，並非 transport confirmation 或 command causality。
+`wfrac_device_model` 的 read-path boundary 只認 `AirconFrameView`，不依賴 API、Transport 或 ESP-IDF，並在 mapping 時再次確認雙 CRC 與基本 block layout。成功 observation 不改 availability；pending command 只在 `sent`、`accepted`、`verifying` lifecycle phase中等待外層 resolution。reconciliation 的 observed-converged 只表示 state target 與 observation 相同，並非 transport confirmation、writer identity 或 physical command causality。
 
 ```text
 future trusted/estimated time source

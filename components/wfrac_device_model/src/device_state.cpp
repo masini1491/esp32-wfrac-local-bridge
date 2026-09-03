@@ -108,6 +108,23 @@ DeviceStateError begin_pending_command(const CommandIntent& intent, DeviceState*
   if (validation != DeviceStateError::none) return validation;
   if (state->pending.intent.has_value()) return DeviceStateError::already_pending;
   state->pending.intent = intent;
+  state->pending.phase = PendingCommandPhase::sent;
+  return DeviceStateError::none;
+}
+
+DeviceStateError mark_pending_command_accepted(DeviceState* state) {
+  if (state == nullptr) return DeviceStateError::invalid_argument;
+  if (!state->pending.intent.has_value()) return DeviceStateError::no_pending_command;
+  if (state->pending.phase != PendingCommandPhase::sent) return DeviceStateError::invalid_argument;
+  state->pending.phase = PendingCommandPhase::accepted;
+  return DeviceStateError::none;
+}
+
+DeviceStateError begin_pending_verification(DeviceState* state) {
+  if (state == nullptr) return DeviceStateError::invalid_argument;
+  if (!state->pending.intent.has_value()) return DeviceStateError::no_pending_command;
+  if (state->pending.phase != PendingCommandPhase::accepted) return DeviceStateError::invalid_argument;
+  state->pending.phase = PendingCommandPhase::verifying;
   return DeviceStateError::none;
 }
 
@@ -116,6 +133,7 @@ DeviceStateError finish_pending_command(PendingCommandOutcome outcome, DeviceSta
   if (!state->pending.intent.has_value()) return DeviceStateError::no_pending_command;
   (void)outcome;
   state->pending.intent.reset();
+  state->pending.phase = PendingCommandPhase::none;
   return DeviceStateError::none;
 }
 
@@ -135,6 +153,7 @@ ReconciliationResult reconcile_observation(const BasicHvacState& observation, De
   if (pending_before.has_value()) {
     if (intent_matches_observation(*pending_before, observation)) {
       state->pending.intent.reset();
+      state->pending.phase = PendingCommandPhase::none;
       result.pending = PendingReconciliation::observed_converged;
     } else {
       result.pending = PendingReconciliation::not_converged;

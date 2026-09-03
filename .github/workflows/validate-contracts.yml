@@ -119,3 +119,26 @@ jobs:
           components/wfrac_client/src/request_executor.cpp
           tests/host_cpp/test_client.cpp
           -o client-tests && ./client-tests
+
+      - name: Run C++ control verification tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_protocol/include
+          -Icomponents/wfrac_api/include
+          -Icomponents/wfrac_transport/include
+          -Icomponents/wfrac_device_model/include
+          -Icomponents/wfrac_client/include
+          components/wfrac_protocol/src/crc16.cpp
+          components/wfrac_protocol/src/aircon_frame.cpp
+          components/wfrac_protocol/src/aircon_state.cpp
+          components/wfrac_protocol/src/base64.cpp
+          components/wfrac_api/src/api_request.cpp
+          components/wfrac_api/src/api_response.cpp
+          components/wfrac_transport/src/scheme_policy.cpp
+          components/wfrac_device_model/src/protocol_mapping.cpp
+          components/wfrac_device_model/src/device_state.cpp
+          components/wfrac_device_model/src/protocol_observation.cpp
+          components/wfrac_client/src/request_executor.cpp
+          components/wfrac_client/src/control_verification.cpp
+          tests/host_cpp/test_control_verification.cpp
+          -o control-verification-tests && ./control-verification-tests

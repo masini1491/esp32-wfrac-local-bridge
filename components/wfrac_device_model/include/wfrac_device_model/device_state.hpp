@@ -38,11 +38,14 @@ struct SetFanIntent {
 
 using CommandIntent = std::variant<SetPowerIntent, SetModeIntent, SetTargetTemperatureIntent, SetFanIntent>;
 
+enum class PendingCommandPhase { none, sent, accepted, verifying };
+
 struct PendingCommand {
   std::optional<CommandIntent> intent;
+  PendingCommandPhase phase = PendingCommandPhase::none;
 };
 
-enum class PendingCommandOutcome { confirmed, rejected, failed, timed_out };
+enum class PendingCommandOutcome { confirmed, rejected, failed, timed_out, not_confirmed };
 enum class AvailabilityState { unknown, available, unavailable };
 enum class PendingReconciliation { none, not_converged, observed_converged };
 
@@ -66,6 +69,8 @@ struct DeviceState {
 DeviceStateError apply_desired_intent(const CommandIntent& intent, DesiredHvacState* desired);
 DeviceStateError stage_desired_intent(const CommandIntent& intent, DeviceState* state);
 DeviceStateError begin_pending_command(const CommandIntent& intent, DeviceState* state);
+DeviceStateError mark_pending_command_accepted(DeviceState* state);
+DeviceStateError begin_pending_verification(DeviceState* state);
 DeviceStateError finish_pending_command(PendingCommandOutcome outcome, DeviceState* state);
 
 void apply_observation(const BasicHvacState& observation, DeviceState* state);

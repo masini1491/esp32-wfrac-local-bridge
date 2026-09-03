@@ -45,6 +45,7 @@
 - ESP-IDF v6.0.2 local toolchain baseline、platform-specific HTTP/TLS error classifier，以及 ESP32-C6／ESP32-C3 repository compile harness／local firmware compile gate：**完成**
 - EspHttpTransport single-attempt HTTP POST adapter、HTTPS trust-certificate configuration、caller-owned response collection 與 C6／C3 compile/link validation：**完成**
 - Portable `wfrac_client` request executor、exact SchemePolicy-driven compatibility fallback、same-body retry 與最多兩次 attempts：**完成**
+- Portable post-write verification step API：`setAirconStat` accepted 後以 caller-scheduled bounded `getAirconStat` readback、既有 parser 與 Device Model reconciliation 判定 confirmed／not-confirmed；沒有 write retry、無自動 polling，physical actuation／settle timing 仍 pending：**完成**
 - Portable WF-RAC response envelope 與 getDeviceInfo bootstrap parser（command／result／contents、canonical airconId）：**完成**
 - getAirconStat contents → Base64 → raw AirconStat → structural parser／COMMAND＋RECEIVE dual-CRC integrity gate（response `airconId` optional）：**完成**
 - Validated AirconFrame RECEIVE semantic decode → BasicHvacState → DeviceState observation／reconciliation read path：**完成**
