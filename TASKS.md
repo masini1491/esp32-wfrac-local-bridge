@@ -24,25 +24,6 @@
 
 ## Ready
 
-### Stage 1 — Reconcile command-acceptance vs physical-actuation evidence
-
-**推薦模型：** Luna  
-**推理強度：** Low  
-**推薦理由：** 本 Stage 只保存與校正已觀察到的 runtime evidence boundary，不修改 production behavior；核心是避免把 API/state acceptance 過度宣稱為實體冷氣已執行。  
-**是否值得先用較便宜模型做前置蒐證：** 否；Luna Low 已是最低充分設定。  
-**Context 建議：** L0 → L2；先讀最新 `AGENTS.md` / `TASKS.md`、`docs/references/sources/local-wfrac-pc-validation-2026-09-02.md`，再只讀直接承載 command/readback/state semantics 的最低必要 topics。  
-**Execution mode 建議：** Normal / Agent 1。  
-**Admission reason：** 使用者補充 `CONFIRMED_LOCAL` 現象：使用 Google Assistant 或 Smart M-Air 開關冷氣時，偶發 client/UI 顯示已切換，但實體冷氣沒有執行；重新開啟 App 並 fresh read 後，顯示會回到正確實際狀態。此 evidence 會直接限制既有 `result:0`、`updatedBy`、returned `airconStat` 的可宣稱範圍，若不保存容易讓後續 implementation 把 command acceptance 誤當 physical actuation completion。  
-**目標：**
-- 將上述現象以 sanitized、device-profile-scoped `CONFIRMED_LOCAL observation` 保存到既有 local evidence dossier 或最適合的 canonical evidence topic；不得保存 exact LAN/device/account identifiers。
-- 明確建立 evidence boundary：HTTP/application success、`result:0`、`updatedBy`、`expires`、write response / immediate module state 只能證明 WF-RAC command/state acceptance 到其實際量測層級，**不足以單獨證明室內機 physical actuation 已完成**。
-- 對既有 dossier/topic 中可能被解讀成「write accepted = physical HVAC action confirmed」的敘述做最低必要 reconciliation；保留先前 PC 24→26°C、writer/lock/coexistence evidence，但不要超出原 measurement profile。
-- 將「為何 official client 會偶發 optimistic/stale state」保持 `UNKNOWN`；不得無 evidence 歸因於 Wi-Fi、module→indoor-unit link、lock collision、Google/Smart M-Air UI、firmware bug 或其他單一 root cause。
-- 記錄 fresh App read 能重新顯示正確現況這一 observation，但不得因此宣稱已完整理解 official App cache/readback implementation。
-
-**限制：** 不修改 production source、runtime、Matter、polling、retry 或 command coordinator；不執行新的 network/hardware write；不把 observation 泛化到所有 WF-RAC firmware。  
-**Validation / completion gate：** canonical evidence 能清楚區分 command acceptance、module-observed state 與 physical actuation；舊 PC evidence 未被誤刪或過度降級；未知 root cause 保持 UNKNOWN；docs/link/sanitization consistency PASS。成功後依 queue lifecycle移除此 Stage，不得自行開始 Stage 2。
-
 ### Stage 2 — Implement bounded post-write verification and state reconciliation
 
 **推薦模型：** Terra  

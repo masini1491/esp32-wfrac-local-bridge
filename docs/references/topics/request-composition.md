@@ -16,9 +16,13 @@ Control request 的 raw AirconStat representation：single Device Model command 
 
 `PROJECT_POLICY / INFERRED`：full safe operation-data query request 已實作為 1–3 個既有 allowlisted generic query segments、最新 CRC-valid RECEIVE compatibility baseline、COMMAND byte 8 bit `0x08` carry，以及 RECEIVE no-request sentinel。COMMAND 只帶實際 query segments；RECEIVE 不複製 observation 的 response segments。此為 pure raw AirconStat composition，仍未建立 Base64/API envelope 或任何 request runtime。
 
+## Command acceptance boundary
+
+PC local write acceptance與後續 module-observed state不等於 indoor unit physical actuation confirmed。Google Assistant／Smart M-Air 偶發顯示控制完成但實體未執行，fresh read 後顯示可恢復正確現況；其 root cause 維持 `UNKNOWN`。見 [2026-09-02 PC local evidence](../sources/local-wfrac-pc-validation-2026-09-02.md)。
+
 ## Known unknowns
 
-`CONFIRMED_LOCAL`：兩台 `WF-RAC / wireless 010 / MCU 131` profile module 的 PC local `setAirconStat` round-trip 已將設定由 `24.0°C` 改為 `26.0°C`。這證實該 observed profile接受實際 control write，但不單獨驗證本 project 的 composition policy、ESP-IDF transport execution或其他 model/firmware。後者仍為 `HARDWARE_TEST_PENDING`。見 [2026-09-02 PC local evidence](../sources/local-wfrac-pc-validation-2026-09-02.md)。
+`CONFIRMED_LOCAL`：兩台 `WF-RAC / wireless 010 / MCU 131` profile module 的 PC local `setAirconStat` 已獲接受，後續 module-observed state 回報設定由 `24.0°C` 改為 `26.0°C`。這證實該 observed profile接受實際 control write並可回報 readback state，但不單獨驗證 physical HVAC actuation、本 project 的 composition policy、ESP-IDF transport execution或其他 model/firmware。後者仍為 `HARDWARE_TEST_PENDING`。見 [2026-09-02 PC local evidence](../sources/local-wfrac-pc-validation-2026-09-02.md)。
 
 ## Provenance pointers
 

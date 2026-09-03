@@ -12,10 +12,17 @@ The evidence was obtained during a bounded PC probe on 2026-09-02. Device-specif
 - Both modules reported the observed profile `firmType=WF-RAC`, wireless firmware `010`, and MCU firmware `131`.
 - Each module's returned `airconId` / `macAddress` matched its corresponding physical module identity. Exact identifiers are not retained here.
 - The `getAirconStat` Base64 payload was decoded by the existing parser contract into observed operation, settings, and telemetry data. This dossier does not redefine parser semantics.
-- After Google Assistant controlled one module, its response evidence showed `updatedBy=GoogleAssistant` and a refreshed `expires`; the AirconStat data reflected the observed state change.
-- A PC local `setAirconStat` operation changed the setting from `24.0°C` to `26.0°C`, with HTTP `200` and application `result: 0`. The write response showed `updatedBy=pc-probe` and an observed `expires - timestamp` delta of `60s`.
+- After Google Assistant controlled one module, its response evidence showed `updatedBy=GoogleAssistant` and a refreshed `expires`; the returned AirconStat reflected the module-reported state change.
+- A PC local `setAirconStat` operation was accepted with HTTP `200` and application `result: 0`; subsequent module-observed state reported the setting change from `24.0°C` to `26.0°C`. The write response showed `updatedBy=pc-probe` and an observed `expires - timestamp` delta of `60s`.
 - That successful PC write used an opaque client request `deviceId` with an existing Operator ID in a mirror-style flow. Exact identity values are not retained.
-- After the PC write lock expired, the official Smart M-Air client controlled the same module successfully. The new writer refreshed `updatedBy` / `expires`, showing coexistence of the local writer and the official client under this observed lock lifecycle.
+- After the PC write lock expired, the official Smart M-Air client issued a control accepted by the same module. The new writer refreshed `updatedBy` / `expires`, showing coexistence of the local writer and the official client under this observed lock lifecycle.
+
+## Command acceptance versus physical actuation
+
+- In additional `CONFIRMED_LOCAL` observations, Google Assistant or Smart M-Air could show an on/off control as completed while the indoor unit did not physically execute the requested change.
+- Reopening the app and performing a fresh read could restore a display matching the observed physical state. This is an observation of client/readback behavior, not evidence that the implementation of the cache or readback path is understood.
+- HTTP/application acceptance, `result: 0`, `updatedBy`, `expires`, write response, and immediate module-reported AirconStat are distinct from confirmed physical HVAC actuation. None alone proves that the indoor unit executed the command.
+- The root cause of the occasional optimistic or stale client/UI state remains `UNKNOWN`; these observations do not attribute it to Wi-Fi, the module-to-indoor-unit link, lock collision, client behavior, firmware, or another single cause.
 
 ## SUPERSEDED diagnostic interpretation
 
@@ -23,7 +30,7 @@ An earlier Windows PowerShell 5.1 probe using native `curl.exe --data` produced 
 
 ## Limits and non-generalization
 
-- The observations are software/network evidence from a Windows PC to two real local modules. They do not establish ESP32-C3/C6 compile, flash, Wi-Fi, TLS, or hardware validation.
+- The observations are software/network evidence from a Windows PC to two real local modules. They do not establish ESP32-C3/C6 compile, flash, Wi-Fi, TLS, hardware validation, or physical actuation for every accepted command.
 - Plain HTTP success does not establish HTTPS certificate behavior or a universal transport policy.
 - The observed firmware profile and lock behavior must not be generalized to all WF-RAC models, firmware revisions, or accounts.
 - No self-managed registration, persistent identity, cloud dependency, or production runtime readiness is established.
