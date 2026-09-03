@@ -18,6 +18,10 @@ Reference reading must be topic-scoped。Future task 先讀 `docs/references/REA
 
 本專案使用 `masini1491/ai-development-playbook` 作為 common development baseline；本 `AGENTS.md` 與 repository architecture、security、protocol、hardware 及其他 formal technical contracts 保留 project-specific authority 與 exceptions。common playbook 不覆蓋 project-specific formal authority；衝突依使用者當次指示、repository formal source、playbook 與 queue 的既定 authority hierarchy 處理。Routing 只要求依目前 task 讀最低必要 topic，不代表完整掃描 playbook。
 
+最低 bootstrap 由 `CHAT_INIT.md` 提供；AI context loading、Hot／Cold／Evidence／Historical surface、routing 與 retrieval cost 依 `AI_CONTEXT.md`。本 repository opt-in 的 ChatGPT Coordination Write Allowlist 僅包含 `/TASKS.md`（Hot coordination）與 `/BACKLOG.md`（Cold Registry）；兩者都不取代 project formal technical authority。Playbook routing 只提供 common authority pointer，不自動授予 filesystem、network、credential 或 execution capability。
+
+- New-session minimal bootstrap / task routing → `CHAT_INIT.md`
+- AI readability / Context loading / Hot-Cold-Evidence-Historical / retrieval cost → `AI_CONTEXT.md`
 - Git / repository / permission / external-service operation → `REPOSITORY_EXECUTION.md`
 - Debug / root cause / retry / validation → `DEBUG_VALIDATION.md`
 - Architecture / research / upstream/external authority → `RESEARCH_ARCHITECTURE.md`
