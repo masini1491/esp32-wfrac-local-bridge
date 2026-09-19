@@ -2,17 +2,7 @@
 
 此檔是本 repository 的 current Hot coordination surface，只追蹤目前 executable／critical-path、已正式 admission 的工作；完成項目直接移除，Git history 才是完成紀錄。不得因看到本檔而自行執行未經使用者當次明確授權的 Stage。
 
-## Hot — Adopt sanitized evidence staging surface
-
-- Goal：保留既有 `/TASKS.md`（Hot）與 `/BACKLOG.md`（Cold）有效治理，並新增 ChatGPT 可維護的 sanitized evidence staging surface：`/evidence/inbox/*.md`。
-- Actor：本 Stage 涉及 `AGENTS.md`／governance mutation，依目前 `ChatGPT+Codex` collaboration 由 Codex 執行 implementation；ChatGPT 負責 planning 與 completion reconciliation。
-- Required governance semantics：
-  - `/evidence/inbox/*.md` 僅保存 repo-safe、sanitized observation／現場或外部 evidence 與 provenance staging；預設不載入，無 execution authority，也不是 architecture／protocol／security／validation canonical truth。
-  - 不得先提交 secret/private raw material 再刪除；credential、Operator ID、Wi-Fi secret 等仍遵守既有 security boundary。
-  - 已 canonicalized 的 `docs/references/sources/*` 不遷移、不複製回 inbox；inbox 只作 staging，reconciliation 後應收斂成 canonical pointer／必要 delta 或移除。
-  - 未列入 allowlist 的其他 path 維持 read-only；不得藉本 Stage 擴大 ChatGPT 對 source、tests、README、其他 docs 或 governance 的 direct-write authority。
-- Implementation scope：依最新版 common Playbook 的 Multi-Surface adoption procedure，最低充分更新 project governance／routing，建立 evidence staging path 與必要的非 allowlisted surface contract；先檢查 derived dependencies，只有 correctness 必需時才同步相關 classification。不要做 AGENTS slimming、README 整理、source/runtime/hardware 修改或其他無關重構。
-- Completion gate：remote canonical state 明確列出 `/TASKS.md`、`/BACKLOG.md`、`/evidence/inbox/*.md` 的責任與 ChatGPT write boundary；evidence semantic／sanitization／default-load／no-execution-authority 清楚；existing canonical evidence 不被重複搬移；必要 targeted validation/read-back PASS。完成後移除此 Hot Stage，將 `TASKS.md` 收斂回 `EMPTY`，commit／push。
+目前沒有已 admission 且可執行的 Hot task：`EMPTY`。Cold work 請見 [`BACKLOG.md`](BACKLOG.md)；sanitized evidence staging 請見 [`evidence/inbox/`](evidence/inbox/)。兩者都不具 execution authority，只有依 current authority/evidence reconciliation、promotion 到 Hot 並取得使用者明確 launch 後才可執行。
 
 ## Codex queue / launch rules
 
