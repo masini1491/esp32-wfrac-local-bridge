@@ -18,7 +18,9 @@ Reference reading must be topic-scoped。Future task 先讀 `docs/references/REA
 
 ## Common playbook routing
 
-本專案採用 `masini1491/ai-development-playbook` 的 floating `main` 作為 common development baseline，AI mode 為 `ChatGPT+Codex`。本 `AGENTS.md` 僅保留 project mapping、project-native authority 與較嚴格例外；repository architecture、security、protocol、hardware 及其他 formal technical contracts 優先於 common playbook。依目前 task 由 `CHAT_INIT.md` 進入最低必要 owner，不得完整掃描 playbook，也不得把 routing 視為 execution、filesystem、network、credential 或下一 Stage 的授權。
+本專案採用 `masini1491/ai-development-playbook` 的 floating `main` 作為 common development baseline，AI mode 為 `ChatGPT+Codex`；adoption 不等於 unconditional activation。bounded ordinary WF-RAC technical query 先走 project-native technical owners，在 evidence 充分時停止，不因採用 Playbook 自動載入 shared `CHAT_INIT.md`。只有 governance、repository mutation、Git/repository operation、validation/completion、AI workflow／handoff 或 current project routing 判定需要 shared governance 時，才將 `main` resolve 至 exact revision，再由 `CHAT_INIT.md` 進入最低必要 owner。
+
+本 `AGENTS.md` 僅保留 project mapping、project-native authority 與較嚴格例外；repository architecture、security、protocol、hardware 及其他 formal technical contracts 優先於 common playbook。不得完整掃描 playbook，也不得把 routing 視為 execution、filesystem、network、credential 或下一 Stage 的授權。
 
 Project-native technical owners 包括 `docs/architecture.md`、`docs/security.md`、`docs/roadmap.md`、`docs/references/README.md`／直接相關 topics、`specs/wf-rac-contracts.json` 及 current source/tests/evidence；普通 technical query 應在充分 evidence 後停止。ChatGPT Coordination Write Allowlist 僅包含 `/TASKS.md`、`/BACKLOG.md` 與 `/evidence/inbox/*.md`；這些 coordination/staging surface 不取代上述正式 authority。
 
