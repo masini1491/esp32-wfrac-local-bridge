@@ -2,7 +2,38 @@
 
 此檔是本 repository 的 current Hot coordination surface，只追蹤目前 executable／critical-path、已正式 admission 的工作；完成項目直接移除，Git history 才是完成紀錄。不得因看到本檔而自行執行未經使用者當次明確授權的 Stage。
 
-目前沒有已 admission 且可執行的 Hot task：`EMPTY`。Cold work 請見 [`BACKLOG.md`](BACKLOG.md)；sanitized evidence staging 請見 [`evidence/inbox/`](evidence/inbox/)。兩者都不具 execution authority，只有依 current authority/evidence reconciliation、promotion 到 Hot 並取得使用者明確 launch 後才可執行。
+## Hot — Project governance ownership normalization
+
+**Goal：** 依 current `masini1491/ai-development-playbook` ownership architecture，將跨專案共通方法論上移到 shared canonical owners，WF-RAC 本地只保留 project mapping、project-native authority／stricter exceptions 與必要 routing；這是 docs-only governance normalization，不改變產品、runtime、protocol、security 或 validation truth。
+
+**Current decisions / authority：**
+- Playbook baseline：`main`。
+- Project AI mode：`ChatGPT+Codex`；將此既有使用者決策持久化到 project governance。
+- Current technical phase remains `Phase 1C — WF-RAC Transport Abstraction`；phase/current capability 不等於 execution authority。
+- Existing technical owners remain authoritative：`docs/architecture.md`、`docs/security.md`、`docs/roadmap.md`、`docs/references/README.md`／`docs/references/**`、`specs/wf-rac-contracts.json` 及 current source/tests/evidence。
+
+**Required normalization：**
+- `AGENTS.md`：保留 Playbook adoption／baseline／AI mode、project-native activation/mapping、WF-RAC-specific stricter restrictions、coordination write allowlist 與最低充分 technical-owner pointers；移除或收斂 shared Playbook 已擁有的 generic bootstrap、owner catalogue、Hot/Cold/Evidence lifecycle、generic permission/capability、model/delegation、debug/retry/validation/reporting 等 methodology duplication。
+- 釐清 current phase／implemented capability 與 Task/Stage execution authority；不得再用 Phase 1C 的「允許項目」文字形成獨立 execution grant。必要 current technical state應由既有 technical owners承接或由 AGENTS 只保留最低 survival wording。
+- `TASKS.md`：維持真正 Hot surface；移除 project-local generic Codex launch／safe-sync／Completion Evidence Guard／Prompt template 副本。Stage完成後收斂成最低充分 `EMPTY` Hot state與 Cold／Evidence pointers。
+- `BACKLOG.md`：只瘦身通用 Cold lifecycle header；三個現有 `CANDIDATE` 的 identity、goal、trigger、exclusions、completion gate與 commitment level保持不變。
+- `/evidence/inbox/*.md` 既有 opt-in與 sanitized staging role保持有效；不建立第二份 validation/architecture truth。
+- 先做 derived dependency／routing integrity check；只在 correctness 必須時更新上述三個治理／coordination files，不新增新 owner、新 router 或新 information surface。
+
+**Hard exclusions：**
+- 不修改 `README.md`、`docs/**`、`specs/**`、`components/**`、`firmware/**`、`tests/**`、`tools/**`、workflow／CI 或 `evidence/inbox/*`。
+- 不改 Phase 1C technical truth、C6/C3 target、layering、protocol、TLS/security、credential policy、portable-library boundary、roadmap state、existing evidence taxonomy 或任何 runtime behavior。
+- 不改三個 BACKLOG Candidate 的 recommendation／commitment authority。
+- 不因 normalization 擴張 ChatGPT write authority或 Codex implementation authority。
+
+**Completion gate：**
+- Final scoped diff 只應包含 `AGENTS.md`、`TASKS.md`，以及必要時僅 header-normalization 的 `BACKLOG.md`。
+- Remote canonical governance 明確存在 single Playbook baseline `main` + `Project AI mode: ChatGPT+Codex`。
+- Shared methodology duplication materially reduced；project-native hardware/protocol/security/technical authority沒有被刪弱或搬成 shared truth。
+- Project-native activation/routing能讓普通 project technical query 不因採用 Playbook而無條件 full-load shared governance；需要 governance/mutation/Git/validation/handoff 時仍能依 current shared `CHAT_INIT.md` closure最低充分 owner。
+- `TASKS.md` 完成後為最低充分 `EMPTY`；`BACKLOG.md` 三個 Candidates語意與 commitment不變；`evidence/inbox` contract仍有效。
+- 做最低充分 routing/read-back與 `git diff --check`；不為此 docs-only Stage跑 source/build/hardware validation。
+- 成功後 commit／push，回報 final remote HEAD與 changed-file list。
 
 ## Codex queue / launch rules
 
