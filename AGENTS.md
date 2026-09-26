@@ -24,12 +24,31 @@ Reference reading must be topic-scoped。Future task 先讀 `docs/references/REA
 
 Project-native technical owners 包括 `docs/architecture.md`、`docs/security.md`、`docs/roadmap.md`、`docs/references/README.md`／直接相關 topics、`specs/wf-rac-contracts.json` 及 current source/tests/evidence；普通 technical query 應在充分 evidence 後停止。ChatGPT Coordination Write Allowlist 僅包含 `/TASKS.md`、`/BACKLOG.md` 與 `/evidence/inbox/*.md`；這些 coordination/staging surface 不取代上述正式 authority。
 
+## AI Development Playbook baseline
+
+- Playbook repository: `masini1491/ai-development-playbook`
+- Playbook baseline: `main`
+- Project AI mode: `ChatGPT+Codex`
+- The declared baseline's `REPORTING.md` applies to substantive user-facing engineering replies even when other shared Playbook governance is not activated; this thin reporting pointer does not activate `CHAT_INIT.md` or expand task, write, execution, permission, credential or validation authority.
+- Adoption is conditional: ordinary technical work stays project-native unless the current action requires shared governance; when required, resolve `main` to an exact revision and enter that revision's `CHAT_INIT.md`.
+
+## Authority boundary
+
+本 repository 的 project-specific authority 與 technical source of truth（包括 architecture、security、protocol、hardware、current task/evidence）優先於 shared Playbook。採用 Playbook 本身不會新增 task、write、execution、deployment、permission、credential 或 validation authority；shared routing 也不會跳過本 repository 的 user authorization、scope、security 或 hardware restrictions。
+
+## Project-specific minimum contract
+
+- Canonical technical source(s): `docs/architecture.md`, `docs/security.md`, `docs/roadmap.md`, `docs/references/README.md`, `specs/wf-rac-contracts.json`, current source/tests/evidence
+- Current coordination surface: `TASKS.md`
+- Required validation: task-scoped targeted validation, canonical read-back, and `git diff --check` as applicable
+- Project-specific exceptions or restrictions: Phase 1C no-real-network/hardware boundary, credential secrecy, ESP-IDF/C6/C3 targets, portable-library boundary, and user-authorized scope only
+
 `/evidence/inbox/*.md` 只保存 repo-safe、sanitized observation／provenance staging，預設不載入、不具 execution authority，也不是 architecture、protocol、security 或 validation canonical truth。不得先提交 raw secret/private evidence 再清理；既有 canonical `docs/references/sources/*` 不複製回 inbox，reconciliation 後應收斂為 canonical pointer／必要 delta 或移除。未列入 allowlist 的其他 path 維持 read-only。
 
 - New-session bootstrap / task routing → `CHAT_INIT.md`; AI context / Hot-Cold-Evidence retrieval → `AI_CONTEXT.md`
 - Git / permission / external-service → `REPOSITORY_EXECUTION.md`; debug / retry / validation → `DEBUG_VALIDATION.md`
 - Architecture / upstream authority → `RESEARCH_ARCHITECTURE.md`; ESP32 / embedded / hardware → `EMBEDDED_PROJECTS.md`
-- ChatGPT workflow / task admission / coordination → `CHATGPT_WORKFLOW.md`; Codex execution / reporting → `CODEX_EXECUTION.md`
+- ChatGPT workflow / task admission / coordination → `CHATGPT_WORKFLOW.md`; substantive user-facing reporting → `REPORTING.md`; Codex execution / actor-specific reporting metadata → `CODEX_EXECUTION.md`
 - Windows / PowerShell / local toolchain（需要時） → `TOOLCHAIN.md`
 
 External playbook reference 只表示應讀哪個 authority，不表示 execution environment 自動具有 network、filesystem 或 credential capability；需要額外 access 時仍依 routed permission/execution governance 處理。
