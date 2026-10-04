@@ -2,13 +2,6 @@
 
 本檔是 Cold coordination surface：ordinary bootstrap 預設不載入、不具 execution authority，也不是 architecture、protocol、security 或 evidence canonical truth。Cold item 必須先回到 current authority/evidence reconciliation，promotion 到 `TASKS.md` Hot coordination，並取得使用者明確 launch 才能執行；保存不提高 AI 建議的 recommendation authority。
 
-## CANDIDATE — Continuous ESP-IDF C6/C3 compile/link CI gate
-
-- Goal：建立 ESP-IDF v6.0.2 platform integration 與 diagnostic firmware 的 C6 primary／C3 compatibility compile/link CI gate。
-- Trigger / scope：重新確認 current workflow、firmware CMake 與 toolchain authority後，建立 bounded CI provisioning/cache/matrix；只做 compile/link。
-- Exclusions：不做 hardware、Wi-Fi、HTTP/HTTPS、TLS handshake、real WF-RAC，也不提交 credentials/operator/cert material；既有 host validation保持不變。
-- Completion gate：CI 可區分 toolchain/config/source failure，C6/C3 compile/link PASS，且成本與 scope 維持 bounded。
-
 ## CANDIDATE — First real WF-RAC read-only probe / hardware validation
 
 - Goal：在明確 target/board/FQBN/device identity、endpoint/scheme/time seed/trust inputs與使用者 hardware/network authorization成立後，執行 bounded、read-only `getDeviceInfo` probe。
