@@ -56,11 +56,11 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 | 分類 | Physical lines |
 | --- | ---: |
 | Firmware（components、diagnostic bootstrap firmware） | 4094 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4031 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4032 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
 | 技術文件（README、AGENTS、docs） | 811 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **9373** |
+| **合計** | **9374** |
 
 以上依 tracked Git content 統計實體行數（physical lines），包含空白與註解；不包含 TASKS／BACKLOG coordination、evidence staging、第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 包含 portable components、ESP-IDF adapters 與 diagnostic source，不代表已完成 network runtime 或 hardware validation。
 

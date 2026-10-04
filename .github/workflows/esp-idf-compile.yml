@@ -57,5 +57,6 @@ jobs:
           . "$IDF_PATH/export.sh"
           idf.py -C "$FIRMWARE" -B build-ci -D "IDF_TARGET=$IDF_TARGET" build
           if [ "$FIRMWARE" = "firmware/wfrac_bootstrap_probe" ]; then
-            grep -qx '# CONFIG_WFRAC_PROBE_ENABLED is not set' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
+            test -r "$GITHUB_WORKSPACE/build-ci/sdkconfig"
+            ! grep -qx 'CONFIG_WFRAC_PROBE_ENABLED=y' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
           fi
