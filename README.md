@@ -54,11 +54,11 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 | 分類 | Physical lines |
 | --- | ---: |
 | Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 2776 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 3461 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 3489 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 698 |
+| 技術文件（README、AGENTS、docs） | 700 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **7372** |
+| **合計** | **7402** |
 
 以上為 repository files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
 
