@@ -1,0 +1,61 @@
+name: ESP-IDF compile/link
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'components/**'
+      - 'firmware/**'
+      - '.github/workflows/esp-idf-compile.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'components/**'
+      - 'firmware/**'
+      - '.github/workflows/esp-idf-compile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: ${{ matrix.target }} / ${{ matrix.firmware }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: espressif/idf:v6.0.2
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        target: [esp32c6, esp32c3]
+        firmware: [firmware/idf_compile_smoke, firmware/wfrac_bootstrap_probe]
+    defaults:
+      run:
+        shell: bash
+    env:
+      IDF_TARGET: ${{ matrix.target }}
+      FIRMWARE: ${{ matrix.firmware }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # GitHub container steps do not rely on the image's normal entrypoint.
+      - name: Verify ESP-IDF provisioning
+        run: |
+          . "$IDF_PATH/export.sh"
+          test "$(idf.py --version)" = "ESP-IDF v6.0.2"
+          test -f "$FIRMWARE/CMakeLists.txt"
+          echo "Provisioned ESP-IDF v6.0.2: $IDF_TARGET / $FIRMWARE"
+
+      - name: Compile and link (no firmware execution)
+        run: |
+          . "$IDF_PATH/export.sh"
+          idf.py -C "$FIRMWARE" -B build-ci -D "IDF_TARGET=$IDF_TARGET" build
+          if [ "$FIRMWARE" = "firmware/wfrac_bootstrap_probe" ]; then
+            grep -qx '# CONFIG_WFRAC_PROBE_ENABLED is not set' "$FIRMWARE/build-ci/sdkconfig"
+          fi

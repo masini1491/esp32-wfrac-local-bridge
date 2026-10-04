@@ -18,6 +18,8 @@ python -m unittest tests.host.test_validate_contracts
 
 本地開發驗證需要 Python 3、支援 C++17 的 MSYS2 UCRT64 GCC/G++ 與 ESP-IDF v6.0.2；ESP32-C6 為 primary target，ESP32-C3 為 compatibility target。Windows interactive/local development 使用 PowerShell 7（`pwsh`、`PSEdition Core`）；Windows PowerShell 5.1（`powershell.exe`）不屬正式 PowerShell validation runtime。這不取代既有 Python/C++/ESP-IDF tooling，也不要求 GitHub Actions 改用 Windows。
 
+獨立的 [ESP-IDF compile/link workflow](.github/workflows/esp-idf-compile.yml) 使用官方 `espressif/idf:v6.0.2` image，在相關 `main` push／PR 持續編譯 `idf_compile_smoke` 與 default-inert `wfrac_bootstrap_probe`，各涵蓋 ESP32-C6／ESP32-C3；亦可手動觸發。此四格 gate 只提供遠端 compile/link evidence，不執行 firmware、flash、Wi-Fi 或 WF-RAC request；既有 Python／host C++ CI 保持獨立。
+
 ## 專案狀態
 
 目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable request executor、typed API request builders、response envelope／getDeviceInfo bootstrap parser，以及 getAirconStat contents → Base64 → AirconStat structural／dual-CRC integrity gate → RECEIVE semantic decode → DeviceState observation。Device Model boundary會再次檢查雙 CRC；availability 仍是 runtime-owned，observation convergence 不等於 transport confirmation。ESP-IDF `EspSystemTimeProvider` 以 explicit seed/adopt 將 POSIX system clock 提供給既有 64-bit TimeProvider path，初始 unavailable，沒有自動同步或 trust inference。response `airconId` 為 optional，unknown contents fields 可 bounded-skip，result semantics 保持 command-specific。ESP-IDF adapter 仍只提供 single-attempt HTTP POST source integration。`firmware/wfrac_bootstrap_probe` 已提供 default-inert、RAM-only、one-shot read-only `getDeviceInfo` diagnostic wiring，狀態為 **COMPILE-READY**，不是 hardware/network validated。actual bootstrap probe、mDNS、persistent identity、certificate trust acquisition、runtime 與 Matter mapping仍暫緩。
@@ -53,14 +55,14 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（Phase 1A protocol core／Phase 1B device model／Phase 1C transport/API abstraction） | 2776 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 3489 |
+| Firmware（components、diagnostic bootstrap firmware） | 4094 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4031 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 700 |
+| 技術文件（README、AGENTS、docs） | 811 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **7402** |
+| **合計** | **9373** |
 
-以上為 repository files 的實體行數（physical lines），包含空白與註解；不包含第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 指 portable C/C++ protocol component，不代表已完成 network runtime 或 hardware validation。
+以上依 tracked Git content 統計實體行數（physical lines），包含空白與註解；不包含 TASKS／BACKLOG coordination、evidence staging、第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 包含 portable components、ESP-IDF adapters 與 diagnostic source，不代表已完成 network runtime 或 hardware validation。
 
 ## License
 

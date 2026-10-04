@@ -44,6 +44,7 @@
 - Portable TimeProvider（trusted／estimated／unavailable）、64-bit Unix timestamp、五個 typed local API request builders、JSON escaping、AirconStat CRC validation／Base64 wrapping、`accountId=operatorId` 與 compatibility `remote=0` serialization：**完成**
 - HTTPS-first portable scheme policy、caller-owned per-device in-memory cache、sticky HTTPS／HTTP、explicit `scheme_mismatch`-only HTTP compatibility fallback decision，以及 TLS identity failure taxonomy：**完成**
 - ESP-IDF v6.0.2 local toolchain baseline、platform-specific HTTP/TLS error classifier，以及 ESP32-C6／ESP32-C3 repository compile harness／local firmware compile gate：**完成**
+- Continuous ESP-IDF v6.0.2 GitHub Actions compile/link gate：獨立 workflow 覆蓋 C6／C3 × compile smoke／default-inert bootstrap probe 四格；與既有 host CI 分離，只驗證 buildability，不代表 runtime／hardware／network validation。
 - EspHttpTransport single-attempt HTTP POST adapter、HTTPS trust-certificate configuration、caller-owned response collection 與 C6／C3 compile/link validation：**完成**
 - Portable `wfrac_client` request executor、exact SchemePolicy-driven compatibility fallback、same-body retry 與最多兩次 attempts：**完成**
 - Portable post-write verification step API：`setAirconStat` accepted 後以 caller-scheduled bounded `getAirconStat` readback、既有 parser 與 Device Model reconciliation 判定 confirmed／not-confirmed；沒有 write retry、無自動 polling，physical actuation／settle timing 仍 pending：**完成**
