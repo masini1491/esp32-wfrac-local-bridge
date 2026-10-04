@@ -309,13 +309,13 @@
     "timezone": {"role": "account_metadata", "separate_from_unix_epoch": true, "exact_runtime_effect": "UNKNOWN"},
     "expires": {"depends_on_module_time": true, "exact_representation": "UNKNOWN", "duration": "UNKNOWN", "refresh_semantics": "UNKNOWN", "universal_schedule_constant": false},
     "esp_idf": {"rtc_survives_non_power_on_reset": true, "power_on_reset_resets_rtc_timer": true, "system_time_apis": ["time", "gettimeofday", "settimeofday", "adjtime"], "sntp_is_optional_time_acquisition_method": true, "timezone_conversion_separate": true, "time_t_64_bit_since_v5": true, "authority_boundary": "ESP-IDF platform behavior only; not WF-RAC protocol authority"},
-    "future_time_provider": {"separate_service_boundary": true, "daily_control_requires_internet": false, "daily_control_requires_dns": false, "daily_control_requires_ntp": false, "time_quality_model_required": true, "minimum_conceptual_states": ["trusted", "estimated/degraded", "unavailable"], "exact_runtime_enum": "PENDING", "implementation": false},
+    "future_time_provider": {"separate_service_boundary": true, "daily_control_requires_internet": false, "daily_control_requires_dns": false, "daily_control_requires_ntp": false, "time_quality_model_required": true, "portable_boundary_implemented": true, "quality_states": ["unavailable", "estimated", "trusted"], "esp_idf_system_time_adapter_implemented": true, "explicit_seed_adopt_implemented": true, "time_acquisition_implemented": false, "persistence_implemented": false, "power_loss_recovery_implemented": false, "sntp_implemented": false},
     "persisted_checkpoint": {"is_trusted_current_time": false, "may_support_degraded_estimate": true},
     "power_loss": {"exact_elapsed_wall_time_after_power_loss_without_external_source": "unavailable"},
     "external_rtc": {"selected": false, "required_by_current_architecture": false},
     "registration_correction": {"clock_correction_is_architecture_inference": true, "requires_explicit_expired_or_unregistered_refusal": true, "unknown_account_deletion": false, "self_managed_reregistration_bounded": true},
     "degraded_time": {"best_available_progressing_estimate_is_project_recommendation": true, "hardware_validation": "HARDWARE_TEST_PENDING"},
-    "remaining_unknowns": ["freshness/replay hidden firmware behavior", "timezone runtime effect", "expires representation/lifetime/refresh", "clock correction behavior", "trusted time source selection", "exact runtime quality enum", "all local hardware behavior"]
+    "remaining_unknowns": ["freshness/replay hidden firmware behavior", "timezone runtime effect", "expires representation/lifetime/refresh", "clock correction behavior", "trusted time source selection", "all local hardware behavior"]
   },
   "temperature_semantics_r6": {
     "runtime_implemented": false,

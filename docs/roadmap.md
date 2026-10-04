@@ -35,7 +35,8 @@
 - Device Model command intent → Protocol safe command mapping，含 lossless 0.5°C target-temperature boundary：**完成**
 - Observed-baseline control request composition、official no-request sentinel、RECEIVE compatibility projection 與 command byte8 carry：**完成**
 - Full safe operation-data query request composition（1–3 bounded query、RECEIVE compatibility baseline 與 no-request sentinel）：**完成**
-- Advanced protocol fields、diagnostics projection、Base64/API envelope、TimeProvider/timestamp、Operator ID、automatic command dispatch、queue、transport ACK semantics、retry、timeout clock、polling、availability policy、transport/runtime、Matter mapping 與 hardware validation：尚未實作
+- Portable TimeProvider/timestamp boundary 與 ESP-IDF system-time adapter 已於 Phase 1C 完成；trusted／estimated acquisition、persistence、power-loss recovery 與 production runtime integration仍 pending。
+- Advanced protocol fields、diagnostics projection、Base64/API envelope、Operator ID、automatic command dispatch、queue、transport ACK semantics、retry、timeout clock、polling、availability policy、transport/runtime、Matter mapping 與 hardware validation：尚未實作
 
 ## Phase 1C — WF-RAC Transport Abstraction
 

@@ -190,7 +190,12 @@ def check_time_architecture_r5(contract: dict[str, Any]) -> None:
     provider = r5["future_time_provider"]
     for key in ("daily_control_requires_internet", "daily_control_requires_dns", "daily_control_requires_ntp"):
         require(provider[key] is False, f"time_architecture_r5.provider.{key}: daily control dependency forbidden")
-    require(provider["time_quality_model_required"] is True and provider["implementation"] is False, "time_architecture_r5: provider implementation boundary mismatch")
+    require(provider["time_quality_model_required"] is True, "time_architecture_r5: time quality model is required")
+    require(provider["portable_boundary_implemented"] is True, "time_architecture_r5: portable TimeProvider boundary must be implemented")
+    require(provider["quality_states"] == ["unavailable", "estimated", "trusted"], "time_architecture_r5: implemented TimeQuality states mismatch")
+    require(provider["esp_idf_system_time_adapter_implemented"] is True and provider["explicit_seed_adopt_implemented"] is True, "time_architecture_r5: ESP-IDF system-time adapter boundary must be implemented")
+    for key in ("time_acquisition_implemented", "persistence_implemented", "power_loss_recovery_implemented", "sntp_implemented"):
+        require(provider[key] is False, f"time_architecture_r5.provider.{key}: acquisition/persistence/recovery/SNTP remains pending")
     require(r5["persisted_checkpoint"]["is_trusted_current_time"] is False, "time_architecture_r5: checkpoint cannot be trusted current time")
     require(r5["power_loss"]["exact_elapsed_wall_time_after_power_loss_without_external_source"] == "unavailable", "time_architecture_r5: power-loss boundary mismatch")
     require(r5["external_rtc"]["selected"] is False and r5["external_rtc"]["required_by_current_architecture"] is False, "time_architecture_r5: external RTC boundary mismatch")

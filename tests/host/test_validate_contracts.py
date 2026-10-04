@@ -214,6 +214,29 @@ class ContractValidatorTests(unittest.TestCase):
     def test_daily_control_does_not_require_ntp(self) -> None:
         self.assert_rejected(lambda c: c["time_architecture_r5"]["future_time_provider"].update(daily_control_requires_ntp=True))
 
+    def test_time_provider_boundary_and_quality_states_are_implemented(self) -> None:
+        provider = self.canonical["time_architecture_r5"]["future_time_provider"]
+        self.assertIs(provider["portable_boundary_implemented"], True)
+        self.assertEqual(provider["quality_states"], ["unavailable", "estimated", "trusted"])
+        self.assertIs(provider["esp_idf_system_time_adapter_implemented"], True)
+        self.assertIs(provider["explicit_seed_adopt_implemented"], True)
+
+    def test_time_acquisition_persistence_recovery_and_sntp_remain_pending(self) -> None:
+        mutations = (
+            lambda c: c["time_architecture_r5"]["future_time_provider"].update(portable_boundary_implemented=False),
+            lambda c: c["time_architecture_r5"]["future_time_provider"].update(quality_states=["PENDING"]),
+            lambda c: c["time_architecture_r5"]["future_time_provider"].update(esp_idf_system_time_adapter_implemented=False),
+            lambda c: c["time_architecture_r5"]["future_time_provider"].update(explicit_seed_adopt_implemented=False),
+            lambda c: c["time_architecture_r5"]["future_time_provider"].update(time_acquisition_implemented=True),
+            lambda c: c["time_architecture_r5"]["future_time_provider"].update(persistence_implemented=True),
+            lambda c: c["time_architecture_r5"]["future_time_provider"].update(power_loss_recovery_implemented=True),
+            lambda c: c["time_architecture_r5"]["future_time_provider"].update(sntp_implemented=True),
+            lambda c: c["time_architecture_r5"].update(runtime_implemented=True),
+        )
+        for index, mutation in enumerate(mutations):
+            with self.subTest(index=index):
+                self.assert_rejected(mutation)
+
     def test_checkpoint_is_not_trusted_current_time(self) -> None:
         self.assert_rejected(lambda c: c["time_architecture_r5"]["persisted_checkpoint"].update(is_trusted_current_time=True))
 
