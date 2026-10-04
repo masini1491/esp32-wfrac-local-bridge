@@ -37,7 +37,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 範圍與證據
 
-Diagnostic firmware 另提供 default-off `WFRAC_PROBE_WEBUI_ENABLED`：embedded WebUI／temporary WPA2 SoftAP，只由 explicit bounded POST 觸發一次 APSTA connect 與 read-only getDeviceInfo，共用原 one-shot executor。需本地 unique AP passphrase，預設空值 fail closed；STA／WF-RAC inputs 不寫 NVS、不回顯／log，HTTPS 仍需 explicit PEM trust，不自動降級。詳細安全邊界見 [security](docs/security.md)。這不是 production provisioning；本次只 software／compile validation，未執行任何 firmware network／hardware operation。Continuous CI 保留原四格 default gates，再加入 WebUI-enabled C6／C3 兩格與 offline form regression。
+Diagnostic firmware 另提供 default-off `WFRAC_PROBE_WEBUI_ENABLED`：embedded WebUI／temporary WPA2 SoftAP，只由 explicit bounded POST 觸發一次 APSTA connect 與 read-only getDeviceInfo，共用原 one-shot executor。需本地 unique AP passphrase，預設空值 fail closed；STA／WF-RAC inputs 不寫 NVS、不回顯／log，HTTPS 仍需 explicit PEM trust，不自動降級。詳細安全邊界見 [security](docs/security.md)。狀態為 **COMPILE-READY**，不是 production provisioning／hardware validated。[Remote six-cell CI](https://github.com/masini1491/esp32-wfrac-local-bridge/actions/runs/37227175448) 保留原四格 default gates，新增 WebUI-enabled C6／C3 full-link，均 PASS；[host CI](https://github.com/masini1491/esp32-wfrac-local-bridge/actions/runs/37227175431) 含 offline form regression 亦 PASS，tested revision `4b937eaf1a21fc86f3a9575be1431f750ad46554`。`webui.defaults` 是 synthetic compile-only fixture，不得 flash；實機必須另行明確授權並提供本地 unique configuration。本次 firmware network／hardware executions = 0。
 
 本階段只記錄研究、架構、硬體策略、安全與 roadmap。Reference facts 依 `CONFIRMED_UPSTREAM`、`CONFIRMED_LOCAL`、`INFERRED`、`UNKNOWN`、`HARDWARE_TEST_PENDING` 分級。WF-RAC 使用者硬體的 protocol/runtime validation 目前為 `HARDWARE_TEST_PENDING`。
 
