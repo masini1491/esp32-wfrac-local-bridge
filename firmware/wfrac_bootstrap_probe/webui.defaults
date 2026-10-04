@@ -1,4 +1,6 @@
-# Compile coverage only: no credentials and no firmware execution.
+# CI compile coverage only. NEVER flash this synthetic fixture configuration.
 CONFIG_WFRAC_PROBE_WEBUI_ENABLED=y
 CONFIG_WFRAC_PROBE_ENABLED=n
 CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+# Non-secret test material prevents compile-time pruning of the full AP/HTTPD path.
+CONFIG_WFRAC_PROBE_AP_PASSWORD="compile-only-fixture"

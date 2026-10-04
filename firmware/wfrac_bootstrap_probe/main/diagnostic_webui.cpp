@@ -108,6 +108,9 @@ esp_err_t submit(httpd_req_t* req) {
 }  // namespace
 
 void start_diagnostic_webui() {
+  // Silence SDK diagnostics that could include submitted endpoint/certificate data.
+  esp_log_level_set("*", ESP_LOG_NONE);
+  esp_log_level_set("wfrac_probe", ESP_LOG_INFO);
   // A local, unique AP passphrase is mandatory. Empty repository defaults fail closed.
   const char* passphrase = CONFIG_WFRAC_PROBE_AP_PASSWORD;
   const auto length = std::strlen(passphrase);

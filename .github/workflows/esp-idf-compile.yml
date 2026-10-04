@@ -74,6 +74,7 @@ jobs:
             ! grep -qx 'CONFIG_WFRAC_PROBE_ENABLED=y' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
             if [ "$VARIANT" = webui ]; then
               grep -qx 'CONFIG_WFRAC_PROBE_WEBUI_ENABLED=y' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
+              grep -qx 'CONFIG_WFRAC_PROBE_AP_PASSWORD="compile-only-fixture"' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
             else
               ! grep -qx 'CONFIG_WFRAC_PROBE_WEBUI_ENABLED=y' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
             fi
