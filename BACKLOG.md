@@ -2,13 +2,6 @@
 
 本檔是 Cold coordination surface：ordinary bootstrap 預設不載入、不具 execution authority，也不是 architecture、protocol、security 或 evidence canonical truth。Cold item 必須先回到 current authority/evidence reconciliation，promotion 到 `TASKS.md` Hot coordination，並取得使用者明確 launch 才能執行；保存不提高 AI 建議的 recommendation authority。
 
-## CANDIDATE — Machine-readable TimeProvider implementation-state reconciliation
-
-- Goal：校正 machine-readable contract 與目前 portable `TimeProvider` boundary／ESP-IDF adapter implementation state，同時保留 trusted-time acquisition、persistence、SNTP/NTP、power-loss recovery 與 production runtime 尚未完成。
-- Trigger / scope：重新讀取 current contract、validator、time provider source／docs 後，做 bounded vocabulary、validator/tests/docs consistency maintenance；不得宣稱未完成的 acquisition 或 persistence。
-- Exclusions：不新增 SNTP/NTP、network dependency、NVS persistence、power-loss recovery 或 production runtime。
-- Completion gate：machine-readable state 能表達 provider/time-quality boundary 已實作，並保留 acquisition/persistence/runtime pending；targeted validator/tests/docs PASS。
-
 ## CANDIDATE — Continuous ESP-IDF C6/C3 compile/link CI gate
 
 - Goal：建立 ESP-IDF v6.0.2 platform integration 與 diagnostic firmware 的 C6 primary／C3 compatibility compile/link CI gate。
