@@ -22,6 +22,14 @@ jobs:
       - name: Run host tests
         run: python -m unittest tests.host.test_validate_contracts
 
+      - name: Run offline diagnostic form tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Ifirmware/wfrac_bootstrap_probe/main
+          firmware/wfrac_bootstrap_probe/main/diagnostic_form.cpp
+          tests/host_cpp/test_diagnostic_form.cpp
+          -o diagnostic-form-tests && ./diagnostic-form-tests
+
       - name: Run C++ protocol core tests
         run: >-
           g++ -std=c++17 -Wall -Wextra -Werror

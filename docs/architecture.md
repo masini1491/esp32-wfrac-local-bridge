@@ -64,6 +64,8 @@ EspSystemTimeProvider → ITimeProvider → WF-RAC API builder
 
 `firmware/wfrac_bootstrap_probe` 是獨立的 diagnostic firmware consumer，不是 portable component、production Wi-Fi owner 或未來 Matter provisioning architecture。它的預設組態為 inert；source 只建立 RAM-only、bounded one-shot STA 與 read-only `getDeviceInfo` wiring。其 compile/link evidence 只能標示 `COMPILE-READY`，實際 Wi-Fi、TLS、WF-RAC 與 hardware validation 仍為 `HARDWARE_TEST_PENDING`。
 
+另有 default-off diagnostic WebUI path：embedded form → bounded firmware-local POST parser → shared one-shot executor/result → existing TimeProvider/API/client/transport boundaries。Temporary WPA2 SoftAP 只在 explicit submit 時進 APSTA，一次 STA connect（20 秒 bound）／getDeviceInfo（5 秒 transport timeout），不 retry/poll/fallback；結束回 AP-only 供下一次 explicit 操作。所有 credentials／scratch 為 RAM-bound，UI 不反射敏感輸入／response identity；HTTPS trust 仍 explicit。Wi-Fi／HTTPD lifecycle 留在 firmware consumer，不新增 portable dependency／production provisioning architecture。
+
 ```text
 WF-RAC API bytes
         ↓

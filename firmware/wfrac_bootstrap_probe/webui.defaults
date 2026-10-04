@@ -1,0 +1,4 @@
+# Compile coverage only: no credentials and no firmware execution.
+CONFIG_WFRAC_PROBE_WEBUI_ENABLED=y
+CONFIG_WFRAC_PROBE_ENABLED=n
+CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y

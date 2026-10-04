@@ -37,6 +37,8 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 範圍與證據
 
+Diagnostic firmware 另提供 default-off `WFRAC_PROBE_WEBUI_ENABLED`：embedded WebUI／temporary WPA2 SoftAP，只由 explicit bounded POST 觸發一次 APSTA connect 與 read-only getDeviceInfo，共用原 one-shot executor。需本地 unique AP passphrase，預設空值 fail closed；STA／WF-RAC inputs 不寫 NVS、不回顯／log，HTTPS 仍需 explicit PEM trust，不自動降級。詳細安全邊界見 [security](docs/security.md)。這不是 production provisioning；本次只 software／compile validation，未執行任何 firmware network／hardware operation。Continuous CI 保留原四格 default gates，再加入 WebUI-enabled C6／C3 兩格與 offline form regression。
+
 本階段只記錄研究、架構、硬體策略、安全與 roadmap。Reference facts 依 `CONFIRMED_UPSTREAM`、`CONFIRMED_LOCAL`、`INFERRED`、`UNKNOWN`、`HARDWARE_TEST_PENDING` 分級。WF-RAC 使用者硬體的 protocol/runtime validation 目前為 `HARDWARE_TEST_PENDING`。
 
 ## 開發方式與專案規模
@@ -55,12 +57,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（components、diagnostic bootstrap firmware） | 4094 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4032 |
+| Firmware（components、diagnostic bootstrap firmware） | 4380 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4134 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 811 |
+| 技術文件（README、AGENTS、docs） | 822 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **9374** |
+| **合計** | **9773** |
 
 以上依 tracked Git content 統計實體行數（physical lines），包含空白與註解；不包含 TASKS／BACKLOG coordination、evidence staging、第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 包含 portable components、ESP-IDF adapters 與 diagnostic source，不代表已完成 network runtime 或 hardware validation。
 

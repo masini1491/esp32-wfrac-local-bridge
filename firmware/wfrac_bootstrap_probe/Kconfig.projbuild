@@ -1,8 +1,24 @@
 menu "WF-RAC diagnostic bootstrap probe"
 
+config WFRAC_PROBE_WEBUI_ENABLED
+    bool "Enable temporary diagnostic SoftAP WebUI"
+    default n
+    help
+        Diagnostic only, not production provisioning. Requires a local unique
+        AP passphrase. One explicit form POST performs at most one STA connect
+        and one read-only getDeviceInfo; no retry, polling or persistence.
+
+config WFRAC_PROBE_AP_PASSWORD
+    string "Local unique temporary diagnostic AP passphrase (8-63 bytes)"
+    default ""
+    depends on WFRAC_PROBE_WEBUI_ENABLED
+    help
+        Keep local configuration out of Git. Empty defaults fail closed.
+
 config WFRAC_PROBE_ENABLED
     bool "Enable the one-shot diagnostic bootstrap probe"
     default n
+    depends on !WFRAC_PROBE_WEBUI_ENABLED
     help
         Disabled by default. When disabled, the firmware does not seed time,
         initialize Wi-Fi, or make a WF-RAC request.

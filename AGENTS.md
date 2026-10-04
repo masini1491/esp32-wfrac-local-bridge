@@ -4,6 +4,8 @@
 
 上述 phase／capability 描述只界定 project technical boundary，不構成 execution authority；任何實作、runtime、hardware 或 coordination mutation 仍須有使用者當次明確授權。
 
+Diagnostic-only exception：`firmware/wfrac_bootstrap_probe` 可實作 default-off temporary SoftAP WebUI／APSTA、RAM-bound credentials 與每次 explicit submit 最多一次 bounded STA connect／read-only getDeviceInfo，僅限 implementation、offline host tests 與 compile/link validation。Production Provisioning/WebUI、persistent credential store、一般 Wi-Fi/network runtime 仍禁止；實際 Wi-Fi、HTTP/TLS、WF-RAC、flash／hardware execution 仍須獨立明確授權，不由此 exception 開啟。
+
 正式 framework 是 ESP-IDF；ESP32-C6 為 primary、ESP32-C3 為 compatibility target；Matter-over-Wi-Fi 是 primary transport。固定 layering：WF-RAC Transport → WF-RAC Protocol → WF-RAC Device Model → Matter Adapter → Matter over Wi-Fi。
 
 Matter Adapter 不得直接建 request、parse raw JSON、管理 Operator ID、retry、discovery 或 socket；Device Model 應與傳輸層及上層整合介面解耦，保持清楚的模組邊界與可測試性。未來 runtime 應採 non-blocking、bounded timeout/retry、bounded command queue、command serialization、polling/command coordination、state consistency 與 explicit availability。

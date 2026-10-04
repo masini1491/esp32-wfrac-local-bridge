@@ -53,5 +53,6 @@
 - Validated AirconFrame RECEIVE semantic decode → BasicHvacState → DeviceState observation／reconciliation read path：**完成**
 - ESP-IDF POSIX system-time provider、explicit seed／adopt boundary 與 64-bit Unix-seconds API path：**完成**
 - Diagnostic Wi-Fi + read-only `getDeviceInfo` bootstrap firmware skeleton（RAM-only、one-shot、default inert、C6/C3 compile/link）：**COMPILE-READY**；實際 Wi-Fi／TLS／WF-RAC validation 尚未開始
+- Diagnostic-only default-off WebUI／temporary SoftAP/APSTA、bounded POST inputs、shared one-shot getDeviceInfo executor、sanitized results 與 offline seam tests；continuous CI 額外驗證 WebUI-enabled C6／C3 path。Production Provisioning/WebUI、credential persistence 與 actual diagnostic hardware/network execution 仍未開始。
 - Portable WF-RAC C++ library stack 維持 monorepo boundary；ESP-IDF reference implementation 與未來 Matter bridge firmware 可各自作為 consumer，packaging／versioning／external distribution：尚未開始
 - actual trusted／estimated time acquisition source、Operator ID persistence、persistent scheme cache／NVS、actual WF-RAC bootstrap／network validation、certificate trust acquisition、explicit scheme-mismatch evidence、mDNS、runtime retry/rate limiting、rediscovery trigger、hardware validation 與 Matter：尚未實作

@@ -1,12 +1,8 @@
 #include "bootstrap_probe.hpp"
 
 #include <array>
-#include <cinttypes>
-#include <cstddef>
-#include <cstdint>
 #include <cstring>
-#include <limits>
-
+#include "sdkconfig.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -20,291 +16,174 @@
 #include "wfrac_transport/scheme_policy.hpp"
 #include "wfrac_transport_espidf/esp_http_transport.hpp"
 
-#ifndef CONFIG_WFRAC_PROBE_ENABLED
-#define CONFIG_WFRAC_PROBE_ENABLED 0
-#endif
-#ifndef CONFIG_WFRAC_PROBE_WIFI_SSID
-#define CONFIG_WFRAC_PROBE_WIFI_SSID ""
-#endif
-#ifndef CONFIG_WFRAC_PROBE_WIFI_PASSWORD
-#define CONFIG_WFRAC_PROBE_WIFI_PASSWORD ""
-#endif
-#ifndef CONFIG_WFRAC_PROBE_HOST
-#define CONFIG_WFRAC_PROBE_HOST ""
-#endif
-#ifndef CONFIG_WFRAC_PROBE_PORT
-#define CONFIG_WFRAC_PROBE_PORT 51443
-#endif
-#ifndef CONFIG_WFRAC_PROBE_DEVICE_ID
-#define CONFIG_WFRAC_PROBE_DEVICE_ID ""
-#endif
-#ifndef CONFIG_WFRAC_PROBE_OPERATOR_ID
-#define CONFIG_WFRAC_PROBE_OPERATOR_ID ""
-#endif
-#ifndef CONFIG_WFRAC_PROBE_TIME_SEED
-#define CONFIG_WFRAC_PROBE_TIME_SEED ""
-#endif
-#ifndef CONFIG_WFRAC_PROBE_SCHEME_HTTP
-#define CONFIG_WFRAC_PROBE_SCHEME_HTTP 0
-#endif
-#ifndef CONFIG_WFRAC_PROBE_SERVER_CERT_PEM
-#define CONFIG_WFRAC_PROBE_SERVER_CERT_PEM ""
-#endif
-
 namespace {
-
-constexpr char kTag[] = "wfrac_probe";
-constexpr EventBits_t kGotIpBit = BIT0;
-constexpr EventBits_t kDisconnectedBit = BIT1;
-constexpr TickType_t kWifiWaitTicks = pdMS_TO_TICKS(20000U);
-constexpr uint32_t kDiagnosticTimeoutMs = 5000U;
-
-constexpr std::size_t kHostCapacity = 128U;
-constexpr std::size_t kDeviceIdCapacity = 128U;
-constexpr std::size_t kOperatorIdCapacity = 128U;
-constexpr std::size_t kRequestCapacity = 1024U;
-constexpr std::size_t kResponseCapacity = 2048U;
-constexpr std::size_t kAirconIdCapacity = 128U;
-constexpr std::size_t kMacAddressCapacity = 64U;
-
-void log_stage(const char* stage, const char* result) { ESP_LOGI(kTag, "%s %s", stage, result); }
-
-struct ProbeConfig {
-  std::array<char, kHostCapacity> host{};
-  std::array<char, kDeviceIdCapacity> device_id{};
-  std::array<char, kOperatorIdCapacity> operator_id{};
-  wifi_config_t wifi{};
-  int64_t time_seed = 0;
-  uint16_t port = 0;
-  wfrac_transport::SchemeKnowledge scheme = wfrac_transport::SchemeKnowledge::https_confirmed;
-};
-
-struct WifiEvents {
-  EventGroupHandle_t group = nullptr;
-  int disconnect_reason = 0;
-};
-
-bool is_nonempty(const char* value) { return value != nullptr && value[0] != '\0'; }
-
-bool copy_text(const char* source, char* destination, std::size_t destination_size) {
-  if (!is_nonempty(source) || destination == nullptr || destination_size == 0U) return false;
-  const std::size_t source_size = std::strlen(source);
-  if (source_size >= destination_size) return false;
-  std::memcpy(destination, source, source_size);
-  destination[source_size] = '\0';
-  return true;
-}
-
-bool copy_wifi_text(const char* source, uint8_t* destination, std::size_t destination_size) {
-  if (source == nullptr || destination == nullptr) return false;
-  const std::size_t source_size = std::strlen(source);
-  if (source_size > destination_size) return false;
-  if (source_size > 0U) std::memcpy(destination, source, source_size);
-  return true;
-}
-
-bool parse_positive_int64(const char* text, int64_t* value) {
-  if (!is_nonempty(text) || value == nullptr) return false;
-  int64_t parsed = 0;
-  for (const char* cursor = text; *cursor != '\0'; ++cursor) {
-    if (*cursor < '0' || *cursor > '9') return false;
-    const int digit = *cursor - '0';
-    if (parsed > (std::numeric_limits<int64_t>::max() - digit) / 10) return false;
-    parsed = parsed * 10 + digit;
-  }
-  if (parsed <= 0) return false;
-  *value = parsed;
-  return true;
-}
-
-bool load_config(ProbeConfig* config) {
-  if (config == nullptr) return false;
-  *config = {};
-  if (!copy_text(CONFIG_WFRAC_PROBE_HOST, config->host.data(), config->host.size()) ||
-      !copy_text(CONFIG_WFRAC_PROBE_DEVICE_ID, config->device_id.data(), config->device_id.size()) ||
-      !copy_text(CONFIG_WFRAC_PROBE_OPERATOR_ID, config->operator_id.data(), config->operator_id.size()) ||
-      !is_nonempty(CONFIG_WFRAC_PROBE_WIFI_SSID) ||
-      !parse_positive_int64(CONFIG_WFRAC_PROBE_TIME_SEED, &config->time_seed)) {
-    return false;
-  }
-
-  const int configured_port = CONFIG_WFRAC_PROBE_PORT;
-  if (configured_port < 1 || configured_port > 65535) return false;
-  config->port = static_cast<uint16_t>(configured_port);
-
-  if (!copy_wifi_text(CONFIG_WFRAC_PROBE_WIFI_SSID, config->wifi.sta.ssid, sizeof(config->wifi.sta.ssid)) ||
-      !copy_wifi_text(CONFIG_WFRAC_PROBE_WIFI_PASSWORD, config->wifi.sta.password, sizeof(config->wifi.sta.password))) {
-    return false;
-  }
-
-#if CONFIG_WFRAC_PROBE_SCHEME_HTTP
-  config->scheme = wfrac_transport::SchemeKnowledge::http_confirmed;
-#else
-  config->scheme = wfrac_transport::SchemeKnowledge::https_confirmed;
-#endif
-  return true;
-}
-
-void wifi_event_handler(void* argument, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+constexpr EventBits_t kGotIp = BIT0, kDisconnected = BIT1;
+struct WifiEvents { EventGroupHandle_t group; int reason = 0; };
+void event_handler(void* argument, esp_event_base_t base, int32_t id, void* data) {
   auto* events = static_cast<WifiEvents*>(argument);
-  if (events == nullptr || events->group == nullptr) return;
-  if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-    const auto* disconnected = static_cast<const wifi_event_sta_disconnected_t*>(event_data);
-    events->disconnect_reason = disconnected == nullptr ? 0 : disconnected->reason;
-    xEventGroupSetBits(events->group, kDisconnectedBit);
-  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-    xEventGroupSetBits(events->group, kGotIpBit);
-  }
+  if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
+    const auto* event = static_cast<const wifi_event_sta_disconnected_t*>(data);
+    events->reason = event == nullptr ? 0 : event->reason;
+    xEventGroupSetBits(events->group, kDisconnected);
+  } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) xEventGroupSetBits(events->group, kGotIp);
 }
 
-void run_request_path(const ProbeConfig& config, wfrac_time_espidf::EspSystemTimeProvider* time_provider) {
-  std::array<uint8_t, kRequestCapacity> request_storage{};
+void request_path(const diagnostic::Input& input, wfrac_api::ITimeProvider* clock, diagnostic::Result* result) {
+  std::array<uint8_t, 1024> request_bytes{};
+  std::array<uint8_t, 2048> response_bytes{};
+  std::array<uint8_t, 128> aircon_id{};
+  std::array<uint8_t, 64> mac{};
+  diagnostic::EraseOnExit wipe_request{request_bytes.data(), request_bytes.size()};
+  diagnostic::EraseOnExit wipe_response{response_bytes.data(), response_bytes.size()};
+  diagnostic::EraseOnExit wipe_id{aircon_id.data(), aircon_id.size()};
+  diagnostic::EraseOnExit wipe_mac{mac.data(), mac.size()};
+  result->stage = diagnostic::Stage::request;
+  const wfrac_api::ApiClientContext context{"1.0", input.device_id.data(), input.operator_id.data()};
   wfrac_api::ApiRequestView request{};
-  const wfrac_api::ApiClientContext context{"1.0", config.device_id.data(), config.operator_id.data()};
-  if (wfrac_api::build_get_device_info_request(context, time_provider, {request_storage.data(), request_storage.size()},
-                                               &request) != wfrac_api::ApiRequestError::none) {
-    log_stage("API_REQUEST", "FAIL");
-    return;
+  const auto request_error = wfrac_api::build_get_device_info_request(context, clock,
+      {request_bytes.data(), request_bytes.size()}, &request);
+  if (request_error != wfrac_api::ApiRequestError::none) { result->code = static_cast<int>(request_error); return; }
+  wfrac_transport_espidf::EspHttpTransportConfig config{};
+  if (input.scheme == diagnostic::Scheme::https) {
+    config.tls.server_cert_pem = input.certificate.data();
+    config.tls.server_cert_len = std::strlen(input.certificate.data()) + 1;
+    config.tls.common_name = input.common_name[0] == '\0' ? nullptr : input.common_name.data();
+    if (!config.tls.has_valid_pem_certificate()) { result->code = static_cast<int>(diagnostic::InputError::trust_required); return; }
   }
-
-  wfrac_transport_espidf::EspHttpTransportConfig transport_config{};
-  if (config.scheme == wfrac_transport::SchemeKnowledge::https_confirmed) {
-    transport_config.tls.server_cert_pem = CONFIG_WFRAC_PROBE_SERVER_CERT_PEM;
-    transport_config.tls.server_cert_len = 0U;
-    if (!transport_config.tls.has_valid_pem_certificate()) {
-      ESP_LOGE(kTag, "HTTPS trust certificate missing");
-      return;
-    }
-  }
-
-  wfrac_transport_espidf::EspHttpTransport transport(transport_config);
-  wfrac_transport::SchemeCache scheme_cache{};
-  scheme_cache.knowledge = config.scheme;
-  std::array<uint8_t, kResponseCapacity> response_storage{};
+  wfrac_transport_espidf::EspHttpTransport transport{config};
+  wfrac_transport::SchemeCache cache{};
+  // Explicit configuration, NOT discovered evidence; sticky knowledge prevents fallback.
+  cache.knowledge = input.scheme == diagnostic::Scheme::http ? wfrac_transport::SchemeKnowledge::http_confirmed :
+      wfrac_transport::SchemeKnowledge::https_confirmed;
   wfrac_transport::TransportResponse response{};
   wfrac_client::RequestExecutionReport report{};
-  const wfrac_client::ClientEndpoint endpoint{config.host.data(), config.port, kDiagnosticTimeoutMs};
-  const wfrac_transport::TransportError transport_error =
-      wfrac_client::execute_api_request(request, endpoint, &scheme_cache, &transport,
-                                        {response_storage.data(), response_storage.size()}, &response, &report);
-  if (transport_error != wfrac_transport::TransportError::none) {
-    ESP_LOGE(kTag, "TRANSPORT FAIL (%d)", static_cast<int>(transport_error));
-    return;
-  }
-
-  ESP_LOGI(kTag, "HTTP_STATUS PASS (%d)", response.http_status);
+  const wfrac_client::ClientEndpoint endpoint{input.host.data(), input.port, 5000U};
+  result->stage = diagnostic::Stage::transport;
+  const auto error = wfrac_client::execute_api_request(request, endpoint, &cache, &transport,
+      {response_bytes.data(), response_bytes.size()}, &response, &report);
+  result->request_attempts = static_cast<unsigned>(report.attempts);
+  result->code = static_cast<int>(error);
+  result->http_status = response.http_status;
+  if (error != wfrac_transport::TransportError::none) return;
+  result->stage = diagnostic::Stage::envelope;
   wfrac_api::ApiResponseEnvelopeView envelope{};
-  if (wfrac_api::parse_api_response_envelope({response_storage.data(), response.body_size}, "getDeviceInfo", &envelope) !=
-      wfrac_api::ApiResponseError::none) {
-    ESP_LOGE(kTag, "API_ENVELOPE FAIL");
-    return;
-  }
-  ESP_LOGI(kTag, "API_ENVELOPE PASS result=%" PRId64, envelope.result);
+  const auto parsed = wfrac_api::parse_api_response_envelope({response_bytes.data(), response.body_size}, "getDeviceInfo", &envelope);
+  result->code = static_cast<int>(parsed);
+  if (parsed != wfrac_api::ApiResponseError::none) return;
+  result->has_result = true;
+  result->api_result = envelope.result;  // Raw command-specific integer, not a global success assertion.
   if (!envelope.has_contents) return;
-
-  std::array<uint8_t, kAirconIdCapacity> aircon_id{};
-  std::array<uint8_t, kMacAddressCapacity> mac_address{};
-  wfrac_api::GetDeviceInfoContents device_info{};
-  if (wfrac_api::parse_get_device_info_contents(envelope.contents_json, {aircon_id.data(), aircon_id.size()},
-                                                 {mac_address.data(), mac_address.size()}, &device_info) !=
-      wfrac_api::ApiResponseError::none) {
-    ESP_LOGE(kTag, "DEVICE_INFO FAIL");
-    return;
-  }
-  ESP_LOGI(kTag, "DEVICE_INFO PASS airconId=%s", reinterpret_cast<const char*>(aircon_id.data()));
-  if (device_info.has_mac_address) {
-    ESP_LOGI(kTag, "DEVICE_INFO macAddress=%s", reinterpret_cast<const char*>(mac_address.data()));
-  }
-  if (device_info.has_ap_mode) ESP_LOGI(kTag, "DEVICE_INFO apMode=%" PRId64, device_info.ap_mode);
+  result->stage = diagnostic::Stage::device_info;
+  wfrac_api::GetDeviceInfoContents contents{};
+  const auto typed = wfrac_api::parse_get_device_info_contents(envelope.contents_json,
+      {aircon_id.data(), aircon_id.size()}, {mac.data(), mac.size()}, &contents);
+  result->code = static_cast<int>(typed);
+  result->device_info_parsed = typed == wfrac_api::ApiResponseError::none;
+  if (result->device_info_parsed) result->stage = diagnostic::Stage::done;
+  // Neither response identities nor request/credential strings enter logs/results.
 }
-
 }  // namespace
 
-void run_wfrac_bootstrap_probe() {
-  log_stage("BOOT", "PASS");
-#if !CONFIG_WFRAC_PROBE_ENABLED
-  ESP_LOGI(kTag, "bootstrap probe disabled");
-  return;
-#else
-  ProbeConfig config{};
-  if (!load_config(&config)) {
-    log_stage("CONFIG", "FAIL");
-    return;
+diagnostic::Result execute_diagnostic_probe(const diagnostic::Input& input, bool reuse_ap) {
+  diagnostic::Result result{};
+  const auto valid = diagnostic::validate_input(input);
+  if (valid != diagnostic::InputError::none) { result.code = static_cast<int>(valid); return result; }
+  result.stage = diagnostic::Stage::time;
+  wfrac_time_espidf::EspSystemTimeProvider clock{};
+  const auto seeded = clock.seed({input.time_seed, wfrac_api::TimeQuality::estimated});
+  if (seeded != wfrac_time_espidf::EspSystemTimeError::none) { result.code = static_cast<int>(seeded); return result; }
+  result.stage = diagnostic::Stage::wifi_init;
+  WifiEvents events{xEventGroupCreate()};
+  if (events.group == nullptr) { result.code = ESP_ERR_NO_MEM; return result; }
+  bool initialized = false, started = false, connect_called = false, loop_owned = false;
+  esp_netif_t* sta = nullptr;
+  esp_event_handler_instance_t wifi_handler = nullptr, ip_handler = nullptr;
+  wifi_config_t station{};
+  diagnostic::EraseOnExit wipe_station{&station, sizeof(station)};
+  std::memcpy(station.sta.ssid, input.ssid.data(), std::strlen(input.ssid.data()));
+  std::memcpy(station.sta.password, input.password.data(), std::strlen(input.password.data()));
+  wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
+  init.nvs_enable = 0;
+  auto operation = [&result](esp_err_t error) { result.code = error; return error == ESP_OK; };
+  esp_log_level_set("wifi", ESP_LOG_NONE);
+  esp_log_level_set("HTTP_CLIENT", ESP_LOG_NONE);
+  esp_log_level_set("esp-tls", ESP_LOG_NONE);
+  esp_log_level_set("transport_base", ESP_LOG_NONE);
+  if (!reuse_ap) {
+    if (!operation(esp_netif_init()) || !operation(esp_event_loop_create_default())) goto cleanup;
+    loop_owned = true;
+    sta = esp_netif_create_default_wifi_sta();
+    if (sta == nullptr) { result.code = ESP_ERR_NO_MEM; goto cleanup; }
+    if (!operation(esp_wifi_init(&init))) goto cleanup;
+    initialized = true;
   }
-  log_stage("CONFIG", "PASS");
-
-  wfrac_time_espidf::EspSystemTimeProvider time_provider{};
-  if (time_provider.seed({config.time_seed, wfrac_api::TimeQuality::estimated}) !=
-      wfrac_time_espidf::EspSystemTimeError::none) {
-    log_stage("TIME", "FAIL");
-    return;
+  if (!operation(esp_wifi_set_storage(WIFI_STORAGE_RAM)) ||
+      !operation(esp_wifi_set_mode(reuse_ap ? WIFI_MODE_APSTA : WIFI_MODE_STA)) ||
+      !operation(esp_wifi_set_config(WIFI_IF_STA, &station)) ||
+      !operation(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, event_handler, &events, &wifi_handler)) ||
+      !operation(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, event_handler, &events, &ip_handler))) goto cleanup;
+  if (!reuse_ap) {
+    if (!operation(esp_wifi_start())) goto cleanup;
+    started = true;
   }
-  log_stage("TIME", "PASS");
-
-  WifiEvents events{};
-  events.group = xEventGroupCreate();
-  if (events.group == nullptr) {
-    log_stage("WIFI_INIT", "FAIL");
-    return;
+  result.stage = diagnostic::Stage::wifi_connect;
+  result.connect_attempts = 1;
+  connect_called = true;
+  if (!operation(esp_wifi_connect())) goto cleanup;  // Exactly one; handlers never reconnect.
+  result.stage = diagnostic::Stage::got_ip;
+  {
+    const auto bits = xEventGroupWaitBits(events.group, kGotIp | kDisconnected, pdTRUE, pdFALSE, pdMS_TO_TICKS(20000U));
+    if ((bits & kDisconnected) != 0) { result.code = events.reason; goto cleanup; }
+    if ((bits & kGotIp) == 0) { result.code = ESP_ERR_TIMEOUT; goto cleanup; }
   }
-
-  bool netif_created = false;
-  bool wifi_initialized = false;
-  bool wifi_started = false;
-  bool got_ip = false;
-  esp_event_handler_instance_t wifi_handler = nullptr;
-  esp_event_handler_instance_t ip_handler = nullptr;
-  esp_netif_t* station_netif = nullptr;
-
-  esp_err_t error = esp_netif_init();
-  if (error == ESP_OK && esp_event_loop_create_default() == ESP_OK) {
-    station_netif = esp_netif_create_default_wifi_sta();
-    netif_created = station_netif != nullptr;
-  }
-  wifi_init_config_t wifi_init = WIFI_INIT_CONFIG_DEFAULT();
-  if (!netif_created || esp_wifi_init(&wifi_init) != ESP_OK) goto cleanup;
-  wifi_initialized = true;
-  if (esp_wifi_set_storage(WIFI_STORAGE_RAM) != ESP_OK || esp_wifi_set_mode(WIFI_MODE_STA) != ESP_OK ||
-      esp_wifi_set_config(WIFI_IF_STA, &config.wifi) != ESP_OK ||
-      esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, wifi_event_handler, &events,
-                                          &wifi_handler) != ESP_OK ||
-      esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, &events, &ip_handler) !=
-          ESP_OK ||
-      esp_wifi_start() != ESP_OK) {
-    goto cleanup;
-  }
-  wifi_started = true;
-  log_stage("WIFI_INIT", "PASS");
-  if (esp_wifi_connect() != ESP_OK) goto cleanup;
-  log_stage("WIFI_CONNECT_START", "PASS");
-
-  const EventBits_t bits = xEventGroupWaitBits(events.group, kGotIpBit | kDisconnectedBit, pdTRUE, pdFALSE,
-                                                kWifiWaitTicks);
-  got_ip = (bits & kGotIpBit) != 0U;
-  if (!got_ip) {
-    if ((bits & kDisconnectedBit) != 0U) ESP_LOGE(kTag, "GOT_IP FAIL disconnect=%d", events.disconnect_reason);
-    else log_stage("GOT_IP", "FAIL");
-    goto cleanup;
-  }
-  log_stage("GOT_IP", "PASS");
-  run_request_path(config, &time_provider);
-
+  request_path(input, &clock, &result);
 cleanup:
-  bool cleanup_ok = true;
-  if (wifi_handler != nullptr) {
-    cleanup_ok = esp_event_handler_instance_unregister(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, wifi_handler) == ESP_OK &&
-                 cleanup_ok;
+  if (connect_called) {
+    const auto disconnected = esp_wifi_disconnect();
+    result.cleanup_ok = (disconnected == ESP_OK || disconnected == ESP_ERR_WIFI_NOT_CONNECT) && result.cleanup_ok;
   }
-  if (ip_handler != nullptr) {
-    cleanup_ok = esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, ip_handler) == ESP_OK && cleanup_ok;
+  if (reuse_ap) {
+    wifi_config_t empty{};
+    result.cleanup_ok = esp_wifi_set_config(WIFI_IF_STA, &empty) == ESP_OK && result.cleanup_ok;
+    result.cleanup_ok = esp_wifi_set_mode(WIFI_MODE_AP) == ESP_OK && result.cleanup_ok;
+  } else {
+    if (started) result.cleanup_ok = esp_wifi_stop() == ESP_OK && result.cleanup_ok;
+    if (initialized) result.cleanup_ok = esp_wifi_deinit() == ESP_OK && result.cleanup_ok;
   }
-  if (wifi_started) {
-    if (got_ip) cleanup_ok = esp_wifi_disconnect() == ESP_OK && cleanup_ok;
-    cleanup_ok = esp_wifi_stop() == ESP_OK && cleanup_ok;
-  }
-  if (wifi_initialized) cleanup_ok = esp_wifi_deinit() == ESP_OK && cleanup_ok;
-  if (station_netif != nullptr) esp_netif_destroy_default_wifi(station_netif);
+  if (wifi_handler != nullptr) result.cleanup_ok = esp_event_handler_instance_unregister(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, wifi_handler) == ESP_OK && result.cleanup_ok;
+  if (ip_handler != nullptr) result.cleanup_ok = esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, ip_handler) == ESP_OK && result.cleanup_ok;
+  if (sta != nullptr) esp_netif_destroy_default_wifi(sta);
+  if (loop_owned) result.cleanup_ok = esp_event_loop_delete_default() == ESP_OK && result.cleanup_ok;
   vEventGroupDelete(events.group);
-  log_stage("CLEANUP", cleanup_ok ? "PASS" : "FAIL");
+  return result;
+}
+
+void run_wfrac_bootstrap_probe() {
+#if CONFIG_WFRAC_PROBE_WEBUI_ENABLED
+  start_diagnostic_webui();
+#elif CONFIG_WFRAC_PROBE_ENABLED
+  static diagnostic::Input input{};
+  diagnostic::EraseOnExit wipe{&input, sizeof(input)};
+  auto copy = [](const char* source, auto& out) {
+    const auto n = std::strlen(source);
+    if (n >= out.size()) return false;
+    std::memcpy(out.data(), source, n + 1);
+    return true;
+  };
+  if (!copy(CONFIG_WFRAC_PROBE_WIFI_SSID, input.ssid) || !copy(CONFIG_WFRAC_PROBE_WIFI_PASSWORD, input.password) ||
+      !copy(CONFIG_WFRAC_PROBE_HOST, input.host) || !copy(CONFIG_WFRAC_PROBE_DEVICE_ID, input.device_id) ||
+      !copy(CONFIG_WFRAC_PROBE_OPERATOR_ID, input.operator_id) ||
+      !copy(CONFIG_WFRAC_PROBE_SERVER_CERT_PEM, input.certificate) ||
+      !diagnostic::positive_decimal(CONFIG_WFRAC_PROBE_TIME_SEED, &input.time_seed)) {
+    ESP_LOGE("wfrac_probe", "CONFIG FAIL"); return;
+  }
+  input.port = CONFIG_WFRAC_PROBE_PORT;
+#if CONFIG_WFRAC_PROBE_SCHEME_HTTP
+  input.scheme = diagnostic::Scheme::http;
+#endif
+  const auto result = execute_diagnostic_probe(input, false);
+  ESP_LOGI("wfrac_probe", "stage=%u code=%d cleanup=%d", static_cast<unsigned>(result.stage), result.code, result.cleanup_ok);
+#else
+  ESP_LOGI("wfrac_probe", "bootstrap probe disabled");
 #endif
 }

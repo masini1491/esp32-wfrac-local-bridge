@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   compile:
-    name: ${{ matrix.target }} / ${{ matrix.firmware }}
+    name: ${{ matrix.target }} / ${{ matrix.firmware }} / ${{ matrix.variant }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:
@@ -31,12 +31,21 @@ jobs:
       matrix:
         target: [esp32c6, esp32c3]
         firmware: [firmware/idf_compile_smoke, firmware/wfrac_bootstrap_probe]
+        variant: [default]
+        include:
+          - target: esp32c6
+            firmware: firmware/wfrac_bootstrap_probe
+            variant: webui
+          - target: esp32c3
+            firmware: firmware/wfrac_bootstrap_probe
+            variant: webui
     defaults:
       run:
         shell: bash
     env:
       IDF_TARGET: ${{ matrix.target }}
       FIRMWARE: ${{ matrix.firmware }}
+      VARIANT: ${{ matrix.variant }}
 
     steps:
       - name: Checkout
@@ -55,8 +64,17 @@ jobs:
       - name: Compile and link (no firmware execution)
         run: |
           . "$IDF_PATH/export.sh"
-          idf.py -C "$FIRMWARE" -B build-ci -D "IDF_TARGET=$IDF_TARGET" build
+          extra=()
+          if [ "$VARIANT" = webui ]; then
+            extra=(-D 'SDKCONFIG_DEFAULTS=sdkconfig.defaults;webui.defaults')
+          fi
+          idf.py -C "$FIRMWARE" -B build-ci -D "IDF_TARGET=$IDF_TARGET" "${extra[@]}" build
           if [ "$FIRMWARE" = "firmware/wfrac_bootstrap_probe" ]; then
             test -r "$GITHUB_WORKSPACE/build-ci/sdkconfig"
             ! grep -qx 'CONFIG_WFRAC_PROBE_ENABLED=y' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
+            if [ "$VARIANT" = webui ]; then
+              grep -qx 'CONFIG_WFRAC_PROBE_WEBUI_ENABLED=y' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
+            else
+              ! grep -qx 'CONFIG_WFRAC_PROBE_WEBUI_ENABLED=y' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
+            fi
           fi

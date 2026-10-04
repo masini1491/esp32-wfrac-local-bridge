@@ -1,0 +1,2 @@
+# Register the firmware-local menu through ESP-IDF's main component.
+rsource "../Kconfig.projbuild"
