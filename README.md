@@ -18,7 +18,7 @@ python -m unittest tests.host.test_validate_contracts
 
 本地開發驗證需要 Python 3、支援 C++17 的 MSYS2 UCRT64 GCC/G++ 與 ESP-IDF v6.0.2；ESP32-C6 為 primary target，ESP32-C3 為 compatibility target。Windows interactive/local development 使用 PowerShell 7（`pwsh`、`PSEdition Core`）；Windows PowerShell 5.1（`powershell.exe`）不屬正式 PowerShell validation runtime。這不取代既有 Python/C++/ESP-IDF tooling，也不要求 GitHub Actions 改用 Windows。
 
-獨立的 [ESP-IDF compile/link workflow](.github/workflows/esp-idf-compile.yml) 使用官方 `espressif/idf:v6.0.2` image，在相關 `main` push／PR 持續編譯 `idf_compile_smoke` 與 default-inert `wfrac_bootstrap_probe`，各涵蓋 ESP32-C6／ESP32-C3；亦可手動觸發。此四格 gate 只提供遠端 compile/link evidence，不執行 firmware、flash、Wi-Fi 或 WF-RAC request；既有 Python／host C++ CI 保持獨立。
+獨立的 [ESP-IDF compile/link workflow](.github/workflows/esp-idf-compile.yml) 使用官方 `espressif/idf:v6.0.2` image，在相關 `main` push／PR 持續編譯 `idf_compile_smoke` 與 default-inert `wfrac_bootstrap_probe`，各涵蓋 ESP32-C6／ESP32-C3；亦可手動觸發。此四格 gate 只提供遠端 compile/link evidence，不執行 firmware、flash、Wi-Fi 或 WF-RAC request；既有 Python／host C++ CI 保持獨立。初次四格 [remote validation run](https://github.com/masini1491/esp32-wfrac-local-bridge/actions/runs/37220534600) 已 PASS。
 
 ## 專案狀態
 
