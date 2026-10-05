@@ -36,7 +36,7 @@
 - Observed-baseline control request composition、official no-request sentinel、RECEIVE compatibility projection 與 command byte8 carry：**完成**
 - Full safe operation-data query request composition（1–3 bounded query、RECEIVE compatibility baseline 與 no-request sentinel）：**完成**
 - Portable TimeProvider/timestamp boundary 與 ESP-IDF system-time adapter 已於 Phase 1C 完成；trusted／estimated acquisition、persistence、power-loss recovery 與 production runtime integration仍 pending。
-- Advanced protocol fields、diagnostics projection、Base64/API envelope、Operator ID、automatic command dispatch、queue、transport ACK semantics、retry、timeout clock、polling、availability policy、transport/runtime、Matter mapping 與 hardware validation：尚未實作
+- Advanced protocol fields、diagnostics projection、Base64/API envelope、Operator ID、automatic command dispatch、queue、transport ACK semantics、retry、timeout clock、polling、availability policy、transport/runtime、完整 Matter mapping 與 hardware validation：尚未實作
 
 ## Phase 1C — WF-RAC Transport Abstraction
 
@@ -56,4 +56,4 @@
 - Diagnostic Wi-Fi + read-only `getDeviceInfo` bootstrap firmware skeleton（RAM-only、one-shot、default inert、C6/C3 compile/link）：**COMPILE-READY**；實際 Wi-Fi／TLS／WF-RAC validation 尚未開始
 - Diagnostic-only default-off WebUI／temporary SoftAP/APSTA、bounded POST inputs、shared one-shot getDeviceInfo executor、sanitized results 與 offline seam tests：**COMPILE-READY（WebUI-enabled C6／C3 full-link remote CI PASS，六格與 host CI 全綠）**，evidence pointer 見 README。Production Provisioning/WebUI、application credential persistence 與 actual diagnostic hardware/network execution 仍未開始。
 - Portable WF-RAC C++ library stack 維持 monorepo boundary；ESP-IDF reference implementation 與未來 Matter bridge firmware 可各自作為 consumer，packaging／versioning／external distribution：尚未開始
-- actual trusted／estimated time acquisition source、Operator ID persistence、persistent scheme cache／NVS、actual WF-RAC bootstrap／network validation、certificate trust acquisition、explicit scheme-mismatch evidence、mDNS、runtime retry/rate limiting、rediscovery trigger、hardware validation 與 Matter：尚未實作
+- actual trusted／estimated time acquisition source、Operator ID persistence、persistent scheme cache／NVS、actual WF-RAC bootstrap／network validation、certificate trust acquisition、explicit scheme-mismatch evidence、mDNS、runtime retry/rate limiting、rediscovery trigger、hardware validation 與 actual Matter runtime／commissioning：尚未實作
