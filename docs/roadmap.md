@@ -48,6 +48,7 @@
 - EspHttpTransport single-attempt HTTP POST adapter、HTTPS trust-certificate configuration、caller-owned response collection 與 C6／C3 compile/link validation：**完成**
 - Portable `wfrac_client` request executor、exact SchemePolicy-driven compatibility fallback、same-body retry 與最多兩次 attempts：**完成**
 - Portable post-write verification step API：`setAirconStat` accepted 後以 caller-scheduled bounded `getAirconStat` readback、既有 parser 與 Device Model reconciliation 判定 confirmed／not-confirmed；沒有 write retry、無自動 polling，physical actuation／settle timing 仍 pending：**完成**
+- Portable runtime orchestration skeleton：caller-driven synchronous step、bounded/coalescing queue、poll/command coordination、read-only retry decisions、availability、monotonic deadlines 與既有 verifier／superseding desired reconciliation：**host-testable core 完成**；所有 device timing 為 caller policy，production scheduler／platform execution／physical timing evidence 仍 pending。
 - Portable WF-RAC response envelope 與 getDeviceInfo bootstrap parser（command／result／contents、canonical airconId）：**完成**
 - getAirconStat contents → Base64 → raw AirconStat → structural parser／COMMAND＋RECEIVE dual-CRC integrity gate（response `airconId` optional）：**完成**
 - Validated AirconFrame RECEIVE semantic decode → BasicHvacState → DeviceState observation／reconciliation read path：**完成**

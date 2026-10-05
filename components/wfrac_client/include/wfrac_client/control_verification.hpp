@@ -57,6 +57,9 @@ struct ControlVerificationReport {
   wfrac_device_model::ObservationMappingError observation_error =
       wfrac_device_model::ObservationMappingError::none;
   int64_t application_result = 0;
+  // Nonzero only after successful integrity parsing and observation mapping.
+  // Bytes reside in buffers.raw_aircon_stat; no frame view is retained here.
+  std::size_t validated_raw_aircon_stat_size = 0U;
 };
 
 // Begins a setAirconStat command. A result of accepted means only that the

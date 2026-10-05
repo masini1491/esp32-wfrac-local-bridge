@@ -31,6 +31,8 @@ python -m unittest tests.host.test_validate_contracts
 - WF-RAC：本地 HTTP/HTTPS API（ESP-IDF single-attempt transport adapter 已實作；runtime 未實作）
 - 控制原則：Local-first；日常控制不依賴雲端、MQTT 或 Internet
 
+`wfrac_client::RuntimeOrchestrator` 已提供 portable、caller-driven synchronous step core：bounded/coalescing command queue、poll/command serialization、read-only retry、explicit availability 與既有 post-write verifier整合。Monotonic clock 與 Unix TimeProvider 分離，所有 poll/settle/retry/deadline/baseline-age timing 由 caller policy 提供；不重送 write，不建立 production scheduler/thread，也沒有 hardware/network execution evidence。
+
 架構方向為 `WF-RAC Transport → WF-RAC Protocol → WF-RAC Device Model → Matter Adapter → Matter over Wi-Fi`。Matter Adapter 只使用高階 Device Model request，不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。
 
 本專案的方向是 portable WF-RAC C++ library stack、ESP-IDF reference implementation 與 future Matter bridge firmware；目前維持 monorepo，library packaging、versioning 與外部 package distribution 尚未開始。
@@ -57,12 +59,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（components、diagnostic bootstrap firmware） | 4385 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4135 |
+| Firmware（components、diagnostic bootstrap firmware） | 4739 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4434 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 822 |
+| 技術文件（README、AGENTS、docs） | 833 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **9779** |
+| **合計** | **10443** |
 
 以上依 tracked Git content 統計實體行數（physical lines），包含空白與註解；不包含 TASKS／BACKLOG coordination、evidence staging、第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 包含 portable components、ESP-IDF adapters 與 diagnostic source，不代表已完成 network runtime 或 hardware validation。
 

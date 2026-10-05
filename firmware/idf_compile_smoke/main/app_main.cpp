@@ -4,6 +4,7 @@
 #include "wfrac_transport_espidf/esp_http_transport.hpp"
 #include "wfrac_client/control_verification.hpp"
 #include "wfrac_client/request_executor.hpp"
+#include "wfrac_client/runtime_orchestrator.hpp"
 #include "wfrac_api/api_response.hpp"
 #include "wfrac_device_model/protocol_observation.hpp"
 #include "wfrac_time_espidf/esp_system_time_provider.hpp"
@@ -52,6 +53,8 @@ static_assert(!wfrac_transport_espidf::EspTlsVerificationConfig{kEmptyPem, 0U, n
 static_assert(std::is_base_of_v<wfrac_transport::ITransport, wfrac_transport_espidf::EspHttpTransport>);
 static_assert(sizeof(wfrac_client::RequestExecutionReport) >= sizeof(std::size_t));
 static_assert(sizeof(wfrac_client::PostWriteVerificationSession) >= sizeof(std::size_t));
+static_assert(std::is_default_constructible_v<wfrac_client::RuntimeOrchestrator>);
+static_assert(wfrac_client::RuntimeOrchestrator::max_queue_capacity == 4U);
 static_assert(sizeof(wfrac_api::ApiResponseEnvelopeView) >= sizeof(int64_t));
 static_assert(sizeof(wfrac_api::GetAirconStatContents) >= sizeof(std::size_t));
 static_assert(sizeof(wfrac_device_model::ObservationReconciliationResult) >= sizeof(std::size_t));

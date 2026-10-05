@@ -183,6 +183,7 @@ ControlVerificationOutcome perform_post_write_readback(
     report->outcome = ControlVerificationOutcome::readback_observation_failure;
     return report->outcome;
   }
+  report->validated_raw_aircon_stat_size = contents.raw_aircon_stat_size;
   if (reconciled.reconciliation.pending == wfrac_device_model::PendingReconciliation::observed_converged) {
     session->write_accepted = false;
     report->outcome = ControlVerificationOutcome::confirmed;

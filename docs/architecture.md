@@ -88,6 +88,14 @@ Matter Adapter 只對 Device Model 發出高階 request，如 `setPower()`、`se
 
 Device Model 目前明確區分最近設備 observation、上層 desired writable state、尚未由外層 resolve 的單一 pending command，以及外層設定的 availability。設定 desired 或 pending 不會 optimistic 更新 observed；pending completion 也不會自行改寫 observed 或 desired。`reconcile_observation()` 可明確以新 observation 判定 pending target 是否 observed-converged，並逐欄清除已收斂的 desired；若 active pending 與同欄位較新的 desired 不同，該 desired 會保留以避免 race。這只代表 observation 與 target 一致，不代表 transport confirmation 或 command causality。明確的 command mapping boundary 會將單一 Device Model intent 轉成 Protocol safe `CommandState`，並僅接受可 lossless 表示的 0.5°C target temperature。observed-baseline request-composition boundary 進一步使用最新 CRC-valid RECEIVE state 作 compatibility baseline、只 patch requested receive-side field、carry COMMAND byte8 bit `0x08`，並為兩個 block 放入 official no-request sentinel；它輸出 raw AirconStat，仍不組合 Base64、JSON 或實際 request。full safe operation-data query request composition 也使用相同 baseline／byte8 carry policy，並在 COMMAND 放入 1–3 個 allowlisted query segments、在 RECEIVE 放入 no-request sentinel；它仍未建立 API envelope、automatic command dispatch、queue、polling、timeout source 或 runtime。
 
+## Portable orchestration step boundary
+
+`wfrac_client::RuntimeOrchestrator` 只由 caller 驅動 `step()`；每 step 最多一個 logical API operation，physical attempts 仍由既有 executor／SchemePolicy 決定。沒有 scheduler、thread/task owner 或 autonomous polling。Bounded queue（固定 storage 上限 4，caller 可縮小）coalesce 尚未 dispatch 的同欄位 intent；pending verification 優先於下一個 write／一般 poll。較新的 desired 不取消舊 pending，仍由既有 Device Model reconciliation 保護／清除。
+
+Control raw bytes 由既有 observed-baseline builder 產生；每次 write 前重新 parse cached raw storage、確認雙 CRC 與 caller-defined baseline age，任何可能 delivered write 都使舊 baseline 失效。Readback 沿用 verifier，只在 mismatching observation／remaining policy budget 下排程下一步，transport failure 不復活 pending、不重送 write。普通 poll 僅對 timeout／connection／I/O failure 作 bounded read retry decision，TLS identity／TLS failure 不 downgrade 或 retry burst。
+
+Caller 提供 monotonic clock、Unix TimeProvider 及所有 poll/settle/retry/deadline/age policy；不猜 physical timing。同步 operation 的 deadline 在前後檢查，不中斷既有 transport call；late observation 仍更新 authoritative observed state，但 report 為 timed_out。Clock regression fail closed，recovery 由 caller 負責。Availability 只由 authoritative read success／configured consecutive read-failure threshold 更新，不由 write acceptance 或 local time-unavailable 推定。所有 storage/strings 非 owning、externally serialized、無 explicit heap；portable dependency 不變，platform runtime integration 仍 pending。
+
 ## WF-RAC module 與 AirconStat 的來源關係
 
 新增 pinned reference 的 firmware analysis 將 WF-RAC module 描述為雙處理器架構：
