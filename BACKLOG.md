@@ -2,13 +2,6 @@
 
 本檔是 Cold coordination surface：ordinary bootstrap 預設不載入、不具 execution authority，也不是 architecture、protocol、security 或 evidence canonical truth。Cold item 必須先回到 current authority/evidence reconciliation，promotion 到 `TASKS.md` Hot coordination，並取得使用者明確 launch 才能執行；保存不提高 AI 建議的 recommendation authority。
 
-## CANDIDATE — Portable persistence boundary + ESP-IDF NVS compile-only adapter
-
-- Goal：先建立 portable persistence interface / fake store，再以 ESP-IDF NVS adapter做 compile-only integration，服務未來 Operator ID、confirmed scheme cache與 bounded time/checkpoint metadata。
-- Trigger / scope：先 reconcile current security/identity/time/scheme authority，逐項定義什麼可持久化、schema/version/failure semantics與secret boundary；host tests + C6/C3 compile/link。
-- Exclusions：不寫入真實 NVS、不得持久化真實 credentials於測試/CI、不得 hardware execution；不把 persisted time checkpoint當 trusted wall clock。
-- Completion gate：portable interface/fake semantics與ESP-IDF adapter compile path成立，security ownership清楚，Library readiness PRESERVED。
-
 ## CANDIDATE — Advanced protocol / diagnostic semantics
 
 - Goal：繼續補齊 current evidence可支持的 vane、diagnostics、advanced fixed-state fields、operation-data physical conversions與其他 read-side semantics。
