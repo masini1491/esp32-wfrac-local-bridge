@@ -58,7 +58,10 @@ wfrac_protocol::AirconBlockView receive_block(std::array<uint8_t, wfrac_protocol
 
 }  // namespace
 
+void test_operation_values();
+
 int main() {
+  test_operation_values();
   assert(wfrac_protocol::crc16_ccitt(nullptr, 0) == 0xFFFF);
   const std::array<uint8_t, 3> vector{{0x01, 0x02, 0x03}};
   assert(wfrac_protocol::crc16_ccitt(vector.data(), vector.size()) == 0xADAD);
@@ -230,16 +233,16 @@ int main() {
   };
   assert_operation({0x80U, 0x10U, 0xABU, 0xCDU}, wfrac_protocol::OperationSemanticKind::outdoor_ambient,
                     wfrac_protocol::OperationScope::shared_outdoor,
-                    wfrac_protocol::OperationValueQuality::canonical_ambient_raw_pending_lookup);
+                    wfrac_protocol::OperationValueQuality::canonical_ambient_lookup);
   assert_operation({0x80U, 0x20U, 0x01U, 0xFEU}, wfrac_protocol::OperationSemanticKind::indoor_ambient,
                     wfrac_protocol::OperationScope::per_indoor,
-                    wfrac_protocol::OperationValueQuality::canonical_ambient_raw_pending_lookup);
+                    wfrac_protocol::OperationValueQuality::canonical_ambient_lookup);
   assert_operation({0x80U, 0x30U, 0x02U, 0x03U}, wfrac_protocol::OperationSemanticKind::unknown,
                     wfrac_protocol::OperationScope::unknown,
                     wfrac_protocol::OperationValueQuality::unknown_semantic, false);
   assert_operation({0x94U, 0x10U, 0x12U, 0x34U}, wfrac_protocol::OperationSemanticKind::current_run_energy,
                     wfrac_protocol::OperationScope::per_indoor,
-                    wfrac_protocol::OperationValueQuality::bounded_derived_available_later, true, true);
+                    wfrac_protocol::OperationValueQuality::exact_current_run_energy, true, true);
   assert_operation({0x11U, 0x01U, 0x02U, 0x03U}, wfrac_protocol::OperationSemanticKind::compressor_frequency,
                     wfrac_protocol::OperationScope::shared_outdoor, wfrac_protocol::OperationValueQuality::raw_only);
   assert_operation({0x90U, 0x04U, 0x05U, 0x06U}, wfrac_protocol::OperationSemanticKind::operating_current,

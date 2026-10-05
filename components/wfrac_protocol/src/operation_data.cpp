@@ -1,6 +1,7 @@
 #include "wfrac_protocol/operation_data.hpp"
 
 #include "wfrac_protocol/aircon_block.hpp"
+#include "ambient_tables.hpp"
 
 namespace wfrac_protocol {
 namespace {
@@ -34,16 +35,17 @@ OperationData decode_operation_segment(const OperationSegment& raw) {
     case 0x80U:
       if (raw.op1 == 0x10U) {
         return known_result(raw, OperationSemanticKind::outdoor_ambient, OperationScope::shared_outdoor,
-                            OperationValueQuality::canonical_ambient_raw_pending_lookup);
+                            OperationValueQuality::canonical_ambient_lookup);
       }
       if (raw.op1 == 0x20U) {
         return known_result(raw, OperationSemanticKind::indoor_ambient, OperationScope::per_indoor,
-                            OperationValueQuality::canonical_ambient_raw_pending_lookup);
+                            OperationValueQuality::canonical_ambient_lookup);
       }
       break;
     case 0x94U: {
+      if (raw.op1 != 0x10U) break;
       OperationData result = known_result(raw, OperationSemanticKind::current_run_energy, OperationScope::per_indoor,
-                                          OperationValueQuality::bounded_derived_available_later);
+                                          OperationValueQuality::exact_current_run_energy);
       result.unit_relation_known = true;
       return result;
     }
@@ -104,6 +106,34 @@ OperationData decode_operation_segment(const OperationSegment& raw) {
   OperationData result{};
   result.raw = raw;
   return result;
+}
+
+OperationValueError decode_ambient_temperature(const OperationSegment& raw, AmbientTemperature* output) {
+  if (output == nullptr) return OperationValueError::invalid_argument;
+  const auto saved = raw;
+  *output = {};
+  output->raw = saved;
+  const auto data = decode_operation_segment(saved);
+  if (data.kind != OperationSemanticKind::outdoor_ambient && data.kind != OperationSemanticKind::indoor_ambient) {
+    return OperationValueError::unsupported_segment;
+  }
+  output->kind = data.kind;
+  output->scope = data.scope;
+  output->deci_celsius = data.kind == OperationSemanticKind::outdoor_ambient
+      ? outdoor_deci_celsius[saved.op2] : indoor_deci_celsius[saved.op2];
+  return OperationValueError::none;
+}
+
+OperationValueError decode_current_run_energy(const OperationSegment& raw, CurrentRunEnergy* output) {
+  if (output == nullptr) return OperationValueError::invalid_argument;
+  const auto saved = raw;
+  *output = {};
+  output->raw = saved;
+  if (decode_operation_segment(saved).kind != OperationSemanticKind::current_run_energy) {
+    return OperationValueError::unsupported_segment;
+  }
+  output->quarter_kwh = static_cast<uint16_t>(static_cast<uint16_t>(saved.op3) << 8U) | saved.op2;
+  return OperationValueError::none;
 }
 
 OperationSegment make_operation_query_segment(uint8_t code) { return {code, 0xFFU, 0xFFU, 0xFFU}; }

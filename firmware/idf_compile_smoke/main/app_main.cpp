@@ -10,6 +10,7 @@
 #include "wfrac_time_espidf/esp_system_time_provider.hpp"
 #include "wfrac_matter_adapter/rac_mapping.hpp"
 #include "wfrac_persistence_espidf/nvs_persistence.hpp"
+#include "wfrac_protocol/operation_data.hpp"
 
 using wfrac_transport::TransportError;
 using wfrac_transport_espidf::EspHttpFailureEvidence;
@@ -98,3 +99,10 @@ wfrac_persistence::PersistenceError persistence_link_smoke() {
 }
 
 extern "C" void app_main(void) {}
+// Pure decoder compile/link coverage; never called by the inert app_main.
+wfrac_protocol::OperationValueError operation_value_link_smoke() {
+  wfrac_protocol::AmbientTemperature ambient{};
+  wfrac_protocol::CurrentRunEnergy energy{};
+  wfrac_protocol::decode_ambient_temperature({0x80U, 0x10U, 128U, 0}, &ambient);
+  return wfrac_protocol::decode_current_run_energy({0x94U, 0x10U, 1U, 0}, &energy);
+}

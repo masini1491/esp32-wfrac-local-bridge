@@ -13,6 +13,12 @@ R3 WF-RAC-visible matrix、raw segment preservation、query transaction 與 CNS/
 - `0x7C` 不可建模為 protection boolean；`0x13` 不可升級為 calibrated percentage。`0x0C`／`0x05` 只有 direct CNS evidence，WF-RAC HTTP visibility UNKNOWN，不是 confirmed unsupported。Generic operation-data write 維持 OUT_OF_SCOPE。
 - Per-indoor：demand、EEV、indoor coils、energy；shared outdoor：frequency、current、discharge、outdoor coil。Scope 不直接轉成 Matter endpoint。
 
+## Software decoder boundary
+
+`decode_ambient_temperature()` 現只對 `0x80/OP1=0x10` outdoor 與 `0x80/OP1=0x20` indoor 做完整256-entry network lookup，回傳 exact integer deci-Celsius、scope及完整raw。`decode_current_run_energy()` 現只接受 `0x94/OP1=0x10`，以OP2 low／OP3 high組成uint16 quarter-kWh count，exact Wh=count×250；不是 lifetime counter，不累加或推定reset fault。Unsupported selector/code不造physical value，raw仍保留，metadata reset；null output是invalid argument。
+
+僅上述classifier quality升為 `canonical_ambient_lookup`／`exact_current_run_energy`；非canonical `0x94` selector改為unknown。其餘diagnostic quality、query/write邊界不變，不接入Device Model／Matter。證據仍為 `CONFIRMED_UPSTREAM`＋software host validation；local hardware保持 `HARDWARE_TEST_PENDING`。
+
 ## High-risk invariants
 
 App capability flags 不等於 protocol presence；firmware constant zero 不等於 unsupported。Temperature 詳細 conversion 見 [temperature-conversion.md](temperature-conversion.md)。

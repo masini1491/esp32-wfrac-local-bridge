@@ -2,7 +2,7 @@
 
 ## Scope
 
-R6 canonical temperature concepts、WF-RAC network lookup boundary、diagnostic sensor quality與 multi-split scope；不包含 runtime codec、full lookup tables 或 Matter mapping。
+R6 canonical temperature concepts、WF-RAC network lookup boundary、diagnostic sensor quality與 multi-split scope；包含software-only canonical ambient decoder，不包含其餘diagnostic curves或Matter mapping。
 
 ## Authoritative project conclusions
 
@@ -12,6 +12,12 @@ R6 canonical temperature concepts、WF-RAC network lookup boundary、diagnostic 
 - `0x81` THI-R1 與 `0x87` THI-R3 是 per-indoor heat-exchanger sensors，raw 必須保留；candidate NTC curve R25=5200Ω、B=3900K、G=367、Rs=1912Ω，raw 170 是最高明確 thermometer-supported anchor，以上為 extrapolated/inferred，非 precision calibration。`0x87` 的 outlet 是 cooling-context wording，不是 mode-independent universal semantic。
 - `0x82` THO-R1 是 shared outdoor raw-only channel，不重用 indoor curve，physical unit UNKNOWN。`0x85` shared outdoor discharge/hot-gas raw 可在 observed normal range 以 raw/2+32 °C 解讀，但 low-end semantics 未 universal establish，raw 保留。`0xB1` shared outdoor TDSH/discharge-superheat diagnostic raw-only，無 confirmed Celsius conversion。
 - Diagnostic quality 必須區分 canonical ambient、diagnostic derived temperature、raw diagnostic。Multi-split scope：0x80 indoor／0x81／0x87 per indoor；0x80 outdoor／0x82／0x85 shared outdoor。Feature/data scope 不等於 capability identity。
+
+## Lookup implementation / provenance
+
+`components/wfrac_protocol/src/ambient_tables.hpp` 現保存兩張256-entry exact deci-Celsius numeric tables；由 `blues-sechseck/Mitsubishi-WF-RAC-Integration@928efd8637bcb346a4945c545ab76733eae6245c` 的 `custom_components/mitsubishi_wf_rac/wfrac/utils.py` normalization而來。MIT copyright／permission notice保留於table header；只引入numeric data，沒有port surrounding parser／comments。Pinned `rac_parser.py` 的 `_parse_temperatures()` 確認selector與OP2 index；沒有採用newer main。Machine-readable contract不嵌入512數值，指向implementation owner。
+
+`decode_ambient_temperature()` 的integer output不損失pinned一位decimal精度；all-index host fingerprints／endpoints／clamped low-end／midpoints驗證data integrity，不代表local calibration。Controller room state、direct CNS representation、0x81/0x87 curve與其他UNKNOWN boundaries不變；local validation仍 `HARDWARE_TEST_PENDING`。
 
 ## High-risk invariants
 

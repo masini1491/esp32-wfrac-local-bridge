@@ -48,6 +48,8 @@ enum class OperationValueQuality {
   no_usable_value_established,
   unknown_semantic,
   special_extension,
+  canonical_ambient_lookup,
+  exact_current_run_energy,
 };
 
 struct OperationData {
@@ -61,6 +63,31 @@ struct OperationData {
 
 bool operation_segment_at(const AirconBlockView& block, std::size_t index, OperationSegment* output);
 OperationData decode_operation_segment(const OperationSegment& raw);
+
+enum class OperationValueError { none, invalid_argument, unsupported_segment };
+
+// WF-RAC network 0x80: OP1 0x10 outdoor / 0x20 indoor, OP2 lookup index.
+// Not controller room state or a direct CNS formula; OP3 is preserved, not used.
+struct AmbientTemperature {
+  OperationSegment raw{};
+  OperationSemanticKind kind = OperationSemanticKind::unknown;
+  OperationScope scope = OperationScope::unknown;
+  int16_t deci_celsius = 0;
+};
+
+// 0x94 / OP1 0x10: current-run, per-indoor counter, NOT lifetime energy.
+// No accumulation, reset-fault inference, or cross-unit aggregation here.
+struct CurrentRunEnergy {
+  OperationSegment raw{};
+  uint16_t quarter_kwh = 0;
+  constexpr uint32_t watt_hours() const { return static_cast<uint32_t>(quarter_kwh) * 250U; }
+};
+
+// Non-null outputs reset at entry and retain all raw bytes even on unsupported
+// segments. Physical metadata is valid ONLY when the return value is none.
+// Allocation-free read-side decoders; no queries, writes, or consumer mutation.
+OperationValueError decode_ambient_temperature(const OperationSegment& raw, AmbientTemperature* output);
+OperationValueError decode_current_run_energy(const OperationSegment& raw, CurrentRunEnergy* output);
 
 enum class OperationQueryError {
   none,
