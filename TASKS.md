@@ -35,9 +35,14 @@
 - Fan / fan-only / dry / vane / 3D Auto / outdoor temperature / energy / vacant-property / diagnostics / error-code mappings remain `UNKNOWN` unless this Stage obtains direct pinned Matter + current WF-RAC evidence sufficient for a bounded standard mapping. Do not use custom/vendor clusters merely to close a gap。
 - If the mapping becomes an independent retrieval intent, add the minimum focused Matter-mapping topic under `docs/references/topics/` and keep `docs/references/sources/esp-matter.md` as provenance rather than duplicating full upstream content。
 
-**Governance reconciliation：**
-- Current `AGENTS.md` generically prohibits Matter Adapter / Matter runtime. This Stage authorizes only the **software-only mapping / adapter contract + host/compile validation** exception. Reconcile that wording minimally while keeping actual Matter stack/runtime, commissioning, fabric, network/hardware execution and unrelated scope prohibited。
-- Update architecture / roadmap / README / machine-readable contract only where current truth, canonical ownership or derived metrics actually require it；do not perform a broad docs rewrite。
+**User-authorized corrective reconciliation（2026-10-05）：**
+- 使用者已明確授權本既有 Hot Stage 的 software-only Matter mapping / adapter contract，以及為消除 current authority / current-truth drift 所需的最低充分 project-document correction；這是既有 Stage revision，不是新 task，也不授權 Matter runtime / hardware。
+- Current `AGENTS.md` 仍 generic 禁止 Matter Adapter / Matter runtime。先最小修正為：允許本 Stage 的 **software-only Matter mapping / adapter contract + host/compile validation**；actual Matter stack/runtime、commissioning、fabric、network/hardware execution與未授權相鄰 scope仍禁止。不得寫成「TASKS 本身產生 authority」。
+- `docs/references/sources/esp-matter.md` 目前仍寫 Phase 0.3 尚未開始／本次不建立 Matter mapping，與 current Hot 衝突；修成 provenance-only source dossier，保留 pinned revision / license / authority boundary，不保存 stale task-status instruction。
+- Matter mapping已成為獨立 retrieval intent；新增最低充分 `docs/references/topics/matter-rac-mapping.md`（或等價 focused topic），保存 project-admitted mapping semantics、pinned Matter authority、UNKNOWN/unsupported boundary與 provenance pointer，不複製整份 upstream source。
+- `docs/roadmap.md` 與 `README.md` 的「Matter mapping 暫緩」current-status wording修成：**software-only mapping / adapter contract進行中；actual Matter runtime / commissioning仍暫緩**。
+- `docs/architecture.md` / `specs/wf-rac-contracts.json` 只有在 current canonical truth實際需要時才改；「完整 Matter mapping尚未完成」本身仍為真，不為形式改寫。
+- 完成上述 corrective reconciliation後再進 mapping implementation；若 current authority仍有無法消除的衝突，STOP，不得以 TASKS覆蓋更高層 project authority。
 
 **Validation / completion gate：**
 - Deterministic host tests cover admitted projection + Matter-originated command mappings, unknown/unsupported handling, non-optimistic observed-state ownership, and exact temperature semantics as applicable。
