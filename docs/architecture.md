@@ -121,3 +121,5 @@ WF-RAC 的本地控制需要 Wi-Fi/IP network，因此 Matter over Wi-Fi 是 pri
 Pinned `esp-matter` reference 支援 Room Air Conditioner device type `0x0072`、version `3`，包含 Descriptor、Identify、On/Off、Thermostat；On/Off 另有 `dead_front_behavior` feature。generated data model 在上游文件中標示 Experimental。完整 WF-RAC mapping 尚未完成。
 
 Fan speed、fan-only、dry、horizontal/vertical direction、3D Auto、outdoor temperature、energy、vacant-property mode、error code 的 Matter mapping 均為 `UNKNOWN / Phase 0.3 pending`。目前不決定 custom cluster、separate endpoint、Fan/Temperature Sensor device 或 vendor-specific cluster。
+
+`wfrac_matter_adapter` 是 SDK-free、software-only 的 project mapping boundary，dependency 僅 `Matter adapter → wfrac_device_model`，不成為 portable core 的反向 dependency。它以 available authoritative observed state 投影 On/Off、Off/Cool/Heat 與對應 setpoint，controller room input 作 explicit nullable temperature proxy；write 只形成單一 `CommandIntent`，交回既有 runtime admission／lifecycle，不自行 dispatch。Unknown／unsupported 不變成 fabricated attribute defaults，desired／pending 不作 optimistic observed truth。詳細 [mapping contract](references/topics/matter-rac-mapping.md)；完整 endpoint conformance、Matter SDK／commissioning／hardware 仍未開始。

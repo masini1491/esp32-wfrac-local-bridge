@@ -6,7 +6,7 @@
 - 0.1 Reference Deep Review — **Complete**
 - Software-only machine-readable foundation — **Complete**（contract、validator、66 個 targeted host tests 與 GitHub Actions software validation gate）
 - 0.2 — WF-RAC Protocol / State Map：研究基礎已建立；實機相關工作暫緩
-- 0.3 — Matter Room Air Conditioner Mapping：暫緩
+- 0.3 — Matter Room Air Conditioner Mapping：bounded software-only mapping／adapter contract **完成**（power、Off/Cool/Heat、exact temperature、unknown／unsupported 與單一 write intent）；完整 mapping、actual Matter runtime／commissioning 仍暫緩，見 [mapping topic](references/topics/matter-rac-mapping.md)
 - 0.4 — Local API Hardware Validation Plan：待未來恢復實作時進行
 
 ## 後續階段

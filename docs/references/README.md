@@ -21,6 +21,7 @@
 | ModelNrRaw / optional capabilities | [topics/capability-model.md](topics/capability-model.md) |
 | timestamp / expires / timezone | [topics/timestamp-time.md](topics/timestamp-time.md) |
 | temperature conversion | [topics/temperature-conversion.md](topics/temperature-conversion.md) |
+| Matter RAC mapping / adapter contract | [topics/matter-rac-mapping.md](topics/matter-rac-mapping.md) |
 
 ## Machine-readable
 

@@ -65,6 +65,15 @@ jobs:
           tests/host_cpp/test_device_model.cpp
           -o device-model-tests && ./device-model-tests
 
+      - name: Run C++ Matter mapping tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_device_model/include
+          -Icomponents/wfrac_matter_adapter/include
+          components/wfrac_matter_adapter/src/rac_mapping.cpp
+          tests/host_cpp/test_matter_mapping.cpp
+          -o matter-mapping-tests && ./matter-mapping-tests
+
       - name: Run C++ transport tests
         run: >-
           g++ -std=c++17 -Wall -Wextra -Werror

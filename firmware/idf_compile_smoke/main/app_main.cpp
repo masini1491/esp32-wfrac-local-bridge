@@ -8,6 +8,7 @@
 #include "wfrac_api/api_response.hpp"
 #include "wfrac_device_model/protocol_observation.hpp"
 #include "wfrac_time_espidf/esp_system_time_provider.hpp"
+#include "wfrac_matter_adapter/rac_mapping.hpp"
 
 using wfrac_transport::TransportError;
 using wfrac_transport_espidf::EspHttpFailureEvidence;
@@ -59,5 +60,19 @@ static_assert(sizeof(wfrac_api::ApiResponseEnvelopeView) >= sizeof(int64_t));
 static_assert(sizeof(wfrac_api::GetAirconStatContents) >= sizeof(std::size_t));
 static_assert(sizeof(wfrac_device_model::ObservationReconciliationResult) >= sizeof(std::size_t));
 static_assert(std::is_base_of_v<wfrac_api::ITimeProvider, wfrac_time_espidf::EspSystemTimeProvider>);
+
+static_assert(wfrac_matter_adapter::room_air_conditioner_device_type == 0x0072U);
+static_assert(wfrac_matter_adapter::room_air_conditioner_device_version == 3U);
+
+// Link coverage only; never called by the inert app_main, no Matter SDK/runtime.
+wfrac_matter_adapter::RacObservedAttributes matter_mapping_link_smoke() {
+  wfrac_device_model::DeviceState state{};
+  std::optional<wfrac_device_model::CommandIntent> intent;
+  wfrac_matter_adapter::map_on_off_write(false, &intent);
+  wfrac_matter_adapter::map_system_mode_write(0, state, &intent);
+  wfrac_matter_adapter::map_setpoint_write(
+      wfrac_matter_adapter::SetpointAttribute::occupied_cooling, 2350, state, &intent);
+  return wfrac_matter_adapter::project_observed_attributes(state);
+}
 
 extern "C" void app_main(void) {}

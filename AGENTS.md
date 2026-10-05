@@ -4,6 +4,8 @@
 
 上述 phase／capability 描述只界定 project technical boundary，不構成 execution authority；任何實作、runtime、hardware 或 coordination mutation 仍須有使用者當次明確授權。
 
+Software-only Matter exception：使用者明確授權的 Room Air Conditioner mapping／adapter contract 可實作與 host／compile 驗證，依賴方向僅為 adapter → Device Model，不引入 Matter SDK types 至 portable core。上述 Matter Adapter 禁止不適用於此 software-only contract；actual Matter stack/runtime、node/endpoint execution、commissioning、fabric、network/hardware 與未授權相鄰 scope 仍禁止。
+
 Diagnostic-only exception：`firmware/wfrac_bootstrap_probe` 可實作 default-off temporary SoftAP WebUI／APSTA、RAM-bound credentials 與每次 explicit submit 最多一次 bounded STA connect／read-only getDeviceInfo，僅限 implementation、offline host tests 與 compile/link validation。Production Provisioning/WebUI、persistent credential store、一般 Wi-Fi/network runtime 仍禁止；實際 Wi-Fi、HTTP/TLS、WF-RAC、flash／hardware execution 仍須獨立明確授權，不由此 exception 開啟。
 
 正式 framework 是 ESP-IDF；ESP32-C6 為 primary、ESP32-C3 為 compatibility target；Matter-over-Wi-Fi 是 primary transport。固定 layering：WF-RAC Transport → WF-RAC Protocol → WF-RAC Device Model → Matter Adapter → Matter over Wi-Fi。

@@ -22,7 +22,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 專案狀態
 
-目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable request executor、typed API request builders、response envelope／getDeviceInfo bootstrap parser，以及 getAirconStat contents → Base64 → AirconStat structural／dual-CRC integrity gate → RECEIVE semantic decode → DeviceState observation。Device Model boundary會再次檢查雙 CRC；availability 仍是 runtime-owned，observation convergence 不等於 transport confirmation。ESP-IDF `EspSystemTimeProvider` 以 explicit seed/adopt 將 POSIX system clock 提供給既有 64-bit TimeProvider path，初始 unavailable，沒有自動同步或 trust inference。response `airconId` 為 optional，unknown contents fields 可 bounded-skip，result semantics 保持 command-specific。ESP-IDF adapter 仍只提供 single-attempt HTTP POST source integration。`firmware/wfrac_bootstrap_probe` 已提供 default-inert、RAM-only、one-shot read-only `getDeviceInfo` diagnostic wiring，狀態為 **COMPILE-READY**，不是 hardware/network validated。actual bootstrap probe、mDNS、persistent identity、certificate trust acquisition、runtime 與 Matter mapping仍暫緩。
+目前是 **Phase 1C — WF-RAC Transport Abstraction**。Phase 1A Protocol Core #1–#6 與 Phase 1B Device Model foundations 已完成；目前另有 portable request executor、typed API request builders、response envelope／getDeviceInfo bootstrap parser，以及 getAirconStat contents → Base64 → AirconStat structural／dual-CRC integrity gate → RECEIVE semantic decode → DeviceState observation。Device Model boundary會再次檢查雙 CRC；availability 仍是 runtime-owned，observation convergence 不等於 transport confirmation。ESP-IDF `EspSystemTimeProvider` 以 explicit seed/adopt 將 POSIX system clock 提供給既有 64-bit TimeProvider path，初始 unavailable，沒有自動同步或 trust inference。response `airconId` 為 optional，unknown contents fields 可 bounded-skip，result semantics 保持 command-specific。ESP-IDF adapter 仍只提供 single-attempt HTTP POST source integration。`firmware/wfrac_bootstrap_probe` 已提供 default-inert、RAM-only、one-shot read-only `getDeviceInfo` diagnostic wiring，狀態為 **COMPILE-READY**，不是 hardware/network validated。actual bootstrap probe、mDNS、persistent identity、certificate trust acquisition 與 platform runtime 仍暫緩；bounded software-only Matter mapping／adapter contract 已建立，完整 Matter mapping、actual runtime／commissioning 仍暫緩。
 
 - Framework：ESP-IDF
 - Primary MCU：ESP32-C6
@@ -34,6 +34,8 @@ python -m unittest tests.host.test_validate_contracts
 `wfrac_client::RuntimeOrchestrator` 已提供 portable、caller-driven synchronous step core：bounded/coalescing command queue、poll/command serialization、read-only retry、explicit availability 與既有 post-write verifier整合。Monotonic clock 與 Unix TimeProvider 分離，所有 poll/settle/retry/deadline/baseline-age timing 由 caller policy 提供；不重送 write，不建立 production scheduler/thread，也沒有 hardware/network execution evidence。
 
 架構方向為 `WF-RAC Transport → WF-RAC Protocol → WF-RAC Device Model → Matter Adapter → Matter over Wi-Fi`。Matter Adapter 只使用高階 Device Model request，不直接處理 HTTP、JSON、Operator ID、retry、discovery 或 socket。
+
+`wfrac_matter_adapter` 提供 SDK-free、host-testable 的 [RAC mapping contract](docs/references/topics/matter-rac-mapping.md)：available observed power／Off/Cool/Heat／對應 setpoint與 nullable controller-temperature proxy；unknown／unsupported 不造預設，desired／pending 不做 optimistic projection。Write 只映射單一 Device Model intent，既有 runtime／protocol 仍負責 admission、dispatch 與 verification；Fan／Auto／Dry 等 unresolved mapping 不開啟，也未建立 Matter node／endpoint／commissioning。
 
 本專案的方向是 portable WF-RAC C++ library stack、ESP-IDF reference implementation 與 future Matter bridge firmware；目前維持 monorepo，library packaging、versioning 與外部 package distribution 尚未開始。
 
@@ -59,12 +61,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（components、diagnostic bootstrap firmware） | 4739 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4434 |
+| Firmware（components、diagnostic bootstrap firmware） | 4936 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4646 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 833 |
+| 技術文件（README、AGENTS、docs） | 874 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **10443** |
+| **合計** | **10893** |
 
 以上依 tracked Git content 統計實體行數（physical lines），包含空白與註解；不包含 TASKS／BACKLOG coordination、evidence staging、第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 包含 portable components、ESP-IDF adapters 與 diagnostic source，不代表已完成 network runtime 或 hardware validation。
 
