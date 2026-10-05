@@ -39,6 +39,8 @@ python -m unittest tests.host.test_validate_contracts
 
 本專案的方向是 portable WF-RAC C++ library stack、ESP-IDF reference implementation 與 future Matter bridge firmware；目前維持 monorepo，library packaging、versioning 與外部 package distribution 尚未開始。
 
+`wfrac_persistence` 與 `wfrac_persistence_espidf` 已建立 [typed persistence boundary](docs/references/topics/persistence-boundary.md)：bounded UTF-8 Operator ID、per-device confirmed scheme、64-bit historical checkpoint，typed load/store/erase與schema/corruption分類。NVS adapter僅source／compile-link，不自動initialize／recover partition或採用loaded values；checkpoint無trusted quality。Fake tests不是flash durability evidence，production secret-at-rest approval／encrypted storage／actual NVS與consumer integration仍pending。
+
 ## 範圍與證據
 
 Diagnostic firmware 另提供 default-off `WFRAC_PROBE_WEBUI_ENABLED`：embedded WebUI／temporary WPA2 SoftAP，只由 explicit bounded POST 觸發一次 APSTA connect 與 read-only getDeviceInfo，共用原 one-shot executor。需本地 unique AP passphrase，預設空值 fail closed；STA／WF-RAC inputs 不寫 NVS、不回顯／log，HTTPS 仍需 explicit PEM trust，不自動降級。詳細安全邊界見 [security](docs/security.md)。狀態為 **COMPILE-READY**，不是 production provisioning／hardware validated。[Remote six-cell CI](https://github.com/masini1491/esp32-wfrac-local-bridge/actions/runs/37227175448) 保留原四格 default gates，新增 WebUI-enabled C6／C3 full-link，均 PASS；[host CI](https://github.com/masini1491/esp32-wfrac-local-bridge/actions/runs/37227175431) 含 offline form regression 亦 PASS，tested revision `4b937eaf1a21fc86f3a9575be1431f750ad46554`。`webui.defaults` 是 synthetic compile-only fixture，不得 flash；實機必須另行明確授權並提供本地 unique configuration。本次 firmware network／hardware executions = 0。
@@ -61,12 +63,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（components、diagnostic bootstrap firmware） | 4936 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 4646 |
+| Firmware（components、diagnostic bootstrap firmware） | 5389 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 5016 |
 | Machine-readable protocol/spec contracts（specs） | 404 |
-| 技術文件（README、AGENTS、docs） | 874 |
+| 技術文件（README、AGENTS、docs） | 907 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **10893** |
+| **合計** | **11749** |
 
 以上依 tracked Git content 統計實體行數（physical lines），包含空白與註解；不包含 TASKS／BACKLOG coordination、evidence staging、第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 包含 portable components、ESP-IDF adapters 與 diagnostic source，不代表已完成 network runtime 或 hardware validation。
 

@@ -4,6 +4,8 @@
 
 不得在 Git、README、文件範例、log、serial output 或 crash report 中提交或暴露真實 credentials。目前 Phase 0 不實作 encrypted NVS、Secure Boot 或 Flash Encryption；這些列為未來 hardening roadmap 項目。Local-first 控制不得把 cloud credentials 變成日常 runtime dependency。
 
+Typed portable persistence／NVS adapter source 現為 software／compile-only boundary，僅 Operator ID、confirmed scheme 與 historical time checkpoint；不是 generic credential vault。Operator ID仍 sensitive；codec CRC不是 authentication／confidentiality，default NVS blob 不提供本專案已驗證的 at-rest secrecy。Compile-ready ≠ encrypted NVS／Flash Encryption／production secret persistence approval；erase 不宣稱 forensic secure deletion，commit failure 不宣稱 rollback。Tests／fixtures只用 synthetic values，adapter不記錄 payload；actual NVS execution、partition初始化／recovery、production secret-at-rest policy 與 consumer adoption仍需獨立授權／設計。
+
 Generic operation-data write 可能直接影響 AC main board；未知 code 禁止 exploratory write。`setNetworkInfo` 可修改 WF-RAC Wi-Fi provisioning，不屬於日常 runtime control，未來若使用需獨立安全設計。`updateFirmware` 本 project 不應自行操作，除非未來有明確需求與安全研究。
 
 HTTPS self-signed certificate 與 legacy TLS compatibility 需要明確 security policy。不同 firmware branch 的 TLS strategy 可能不同；hostname verification、certificate verification、TLS compatibility 或 OpenSSL security level workaround 都只是上游 implementation compatibility strategy，不是 universal protocol requirement。Production 不應在沒有文件化決策前永久停用 TLS verification。Operator ID 仍視為敏感設定。

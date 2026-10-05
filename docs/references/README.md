@@ -22,6 +22,7 @@
 | timestamp / expires / timezone | [topics/timestamp-time.md](topics/timestamp-time.md) |
 | temperature conversion | [topics/temperature-conversion.md](topics/temperature-conversion.md) |
 | Matter RAC mapping / adapter contract | [topics/matter-rac-mapping.md](topics/matter-rac-mapping.md) |
+| Typed persistence / NVS compile-only boundary | [topics/persistence-boundary.md](topics/persistence-boundary.md) |
 
 ## Machine-readable
 

@@ -74,6 +74,17 @@ jobs:
           tests/host_cpp/test_matter_mapping.cpp
           -o matter-mapping-tests && ./matter-mapping-tests
 
+      - name: Run C++ persistence tests (fake storage only)
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          -Icomponents/wfrac_persistence/include
+          -Icomponents/wfrac_protocol/include
+          -Icomponents/wfrac_transport/include
+          components/wfrac_protocol/src/crc16.cpp
+          components/wfrac_persistence/src/records.cpp
+          tests/host_cpp/test_persistence.cpp
+          -o persistence-tests && ./persistence-tests
+
       - name: Run C++ transport tests
         run: >-
           g++ -std=c++17 -Wall -Wextra -Werror

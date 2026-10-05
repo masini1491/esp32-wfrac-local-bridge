@@ -6,6 +6,8 @@
 
 Software-only Matter exception：使用者明確授權的 Room Air Conditioner mapping／adapter contract 可實作與 host／compile 驗證，依賴方向僅為 adapter → Device Model，不引入 Matter SDK types 至 portable core。上述 Matter Adapter 禁止不適用於此 software-only contract；actual Matter stack/runtime、node/endpoint execution、commissioning、fabric、network/hardware 與未授權相鄰 scope 仍禁止。
 
+Persistence compile-only exception：使用者明確授權的 typed portable persistence contract／ESP-IDF NVS adapter source 可做 fake host tests 與 C6/C3 compile/link；不受上述 generic NVS source 禁止限制。actual NVS runtime／hardware、production credential persistence、registration mutation、automatic time adoption 與未授權相鄰 scope 仍禁止；compile-ready 不代表 encrypted storage 或 secret-at-rest approval。
+
 Diagnostic-only exception：`firmware/wfrac_bootstrap_probe` 可實作 default-off temporary SoftAP WebUI／APSTA、RAM-bound credentials 與每次 explicit submit 最多一次 bounded STA connect／read-only getDeviceInfo，僅限 implementation、offline host tests 與 compile/link validation。Production Provisioning/WebUI、persistent credential store、一般 Wi-Fi/network runtime 仍禁止；實際 Wi-Fi、HTTP/TLS、WF-RAC、flash／hardware execution 仍須獨立明確授權，不由此 exception 開啟。
 
 正式 framework 是 ESP-IDF；ESP32-C6 為 primary、ESP32-C3 為 compatibility target；Matter-over-Wi-Fi 是 primary transport。固定 layering：WF-RAC Transport → WF-RAC Protocol → WF-RAC Device Model → Matter Adapter → Matter over Wi-Fi。
@@ -61,6 +63,6 @@ WFRAC、Wi-Fi、Matter credential 不得成為 scope expansion來源；真實 pa
 
 ## Portable library extraction invariant
 
-Repository 現階段維持 monorepo，不因未來 library 化而提前拆 repo、做 package distribution 或 semantic versioning。`wfrac_protocol`、`wfrac_device_model`、`wfrac_api`、`wfrac_transport`、`wfrac_client` 必須持續保持可抽離；platform/runtime concern 留在 adapter、runtime 或 firmware boundary，dependency direction 維持 `platform/runtime → portable core`。
+Repository 現階段維持 monorepo，不因未來 library 化而提前拆 repo、做 package distribution 或 semantic versioning。`wfrac_protocol`、`wfrac_device_model`、`wfrac_api`、`wfrac_transport`、`wfrac_client`、`wfrac_persistence` 必須持續保持可抽離；platform/runtime concern 留在 adapter、runtime 或 firmware boundary，dependency direction 維持 `platform/runtime → portable core`。
 
 Portable core 不得依賴 ESP-IDF、FreeRTOS、Wi-Fi、NVS、Matter 或 firmware runtime；portable public headers/API 不得洩漏 `esp_err_t`、ESP-IDF handles、FreeRTOS types、Wi-Fi/NVS/Matter types 或其他 platform-specific API。`wfrac_transport_espidf`、`wfrac_time_espidf` 及未來 Wi-Fi/NVS/Matter/firmware runtime 均屬 platform-specific，不屬 portable core。每次跨 component 修改都要確認 library readiness 為 `PRESERVED` 或 `ISSUE`。

@@ -9,6 +9,7 @@
 #include "wfrac_device_model/protocol_observation.hpp"
 #include "wfrac_time_espidf/esp_system_time_provider.hpp"
 #include "wfrac_matter_adapter/rac_mapping.hpp"
+#include "wfrac_persistence_espidf/nvs_persistence.hpp"
 
 using wfrac_transport::TransportError;
 using wfrac_transport_espidf::EspHttpFailureEvidence;
@@ -73,6 +74,27 @@ wfrac_matter_adapter::RacObservedAttributes matter_mapping_link_smoke() {
   wfrac_matter_adapter::map_setpoint_write(
       wfrac_matter_adapter::SetpointAttribute::occupied_cooling, 2350, state, &intent);
   return wfrac_matter_adapter::project_observed_attributes(state);
+}
+
+static_assert(std::is_base_of_v<wfrac_persistence::IPersistence, wfrac_persistence_espidf::NvsPersistence>);
+
+// Compile/link coverage only: NOT called, no initialization or actual NVS access.
+wfrac_persistence::PersistenceError persistence_link_smoke() {
+  wfrac_persistence_espidf::NvsPersistence store;
+  const wfrac_persistence::DeviceKey key{"synthetic"};
+  char id[wfrac_persistence::max_operator_id_size + 1U]{};
+  std::size_t size = 0;
+  auto scheme = wfrac_transport::SchemeKnowledge::unknown;
+  wfrac_persistence::TimeCheckpoint checkpoint{};
+  store.load_operator_id(key, id, sizeof(id), &size);
+  store.store_operator_id(key, {"synthetic", 9U});
+  store.erase_operator_id(key);
+  store.load_scheme(key, &scheme);
+  store.store_scheme(key, wfrac_transport::SchemeKnowledge::https_confirmed);
+  store.erase_scheme(key);
+  store.load_time_checkpoint(&checkpoint);
+  store.store_time_checkpoint({5000000000LL});
+  return store.erase_time_checkpoint();
 }
 
 extern "C" void app_main(void) {}
