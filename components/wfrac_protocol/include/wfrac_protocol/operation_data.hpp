@@ -50,6 +50,7 @@ enum class OperationValueQuality {
   special_extension,
   canonical_ambient_lookup,
   exact_current_run_energy,
+  inferred_diagnostic_candidate,
 };
 
 struct OperationData {
@@ -64,7 +65,7 @@ struct OperationData {
 bool operation_segment_at(const AirconBlockView& block, std::size_t index, OperationSegment* output);
 OperationData decode_operation_segment(const OperationSegment& raw);
 
-enum class OperationValueError { none, invalid_argument, unsupported_segment };
+enum class OperationValueError { none, invalid_argument, unsupported_segment, out_of_established_range };
 
 // WF-RAC network 0x80: OP1 0x10 outdoor / 0x20 indoor, OP2 lookup index.
 // Not controller room state or a direct CNS formula; OP3 is preserved, not used.
@@ -88,6 +89,34 @@ struct CurrentRunEnergy {
 // Allocation-free read-side decoders; no queries, writes, or consumer mutation.
 OperationValueError decode_ambient_temperature(const OperationSegment& raw, AmbientTemperature* output);
 OperationValueError decode_current_run_energy(const OperationSegment& raw, CurrentRunEnergy* output);
+
+// INFERRED outdoor diagnostic candidates, NOT calibrated physical truth.
+// Software arithmetic does not establish local hardware calibration/presence.
+// OP3 is retained but has no admitted conversion role. No consumer mutation.
+struct InferredCompressorFrequency {
+  OperationSegment raw{};
+  OperationValueQuality value_quality = OperationValueQuality::unknown_semantic;
+  uint16_t deci_hz = 0;
+};
+struct InferredOperatingCurrent {
+  OperationSegment raw{};
+  OperationValueQuality value_quality = OperationValueQuality::unknown_semantic;
+  uint16_t amperes_numerator = 0;
+  static constexpr uint16_t amperes_denominator = 51;
+};
+struct InferredDischargeTemperature {
+  OperationSegment raw{};
+  OperationValueQuality value_quality = OperationValueQuality::unknown_semantic;
+  uint16_t half_degrees_celsius = 0;
+};
+
+// Non-null outputs reset and preserve raw even on failure (including aliasing).
+// Candidate values/quality are usable ONLY on none; zero alone is not validity.
+// 0x11 accepts only OP1 0x10..0x1f; 0x90/0x85 accept only OP1 0x10.
+// 0x85 OP2 < 0x12 is out_of_established_range: no clamp/fabricated value.
+OperationValueError decode_inferred_compressor_frequency(const OperationSegment& raw, InferredCompressorFrequency* output);
+OperationValueError decode_inferred_operating_current(const OperationSegment& raw, InferredOperatingCurrent* output);
+OperationValueError decode_inferred_discharge_temperature(const OperationSegment& raw, InferredDischargeTemperature* output);
 
 enum class OperationQueryError {
   none,

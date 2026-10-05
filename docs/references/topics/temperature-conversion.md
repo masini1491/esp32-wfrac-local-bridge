@@ -2,7 +2,7 @@
 
 ## Scope
 
-R6 canonical temperature concepts、WF-RAC network lookup boundary、diagnostic sensor quality與 multi-split scope；包含software-only canonical ambient decoder，不包含其餘diagnostic curves或Matter mapping。
+R6 canonical temperature concepts、WF-RAC network lookup boundary、diagnostic sensor quality與 multi-split scope；包含software-only canonical ambient與bounded inferred discharge candidate，不包含thermistor curves或Matter mapping。
 
 ## Authoritative project conclusions
 
@@ -20,6 +20,8 @@ R6 canonical temperature concepts、WF-RAC network lookup boundary、diagnostic 
 `decode_ambient_temperature()` 的integer output不損失pinned一位decimal精度；all-index host fingerprints／endpoints／clamped low-end／midpoints驗證data integrity，不代表local calibration。Controller room state、direct CNS representation、0x81/0x87 curve與其他UNKNOWN boundaries不變；local validation仍 `HARDWARE_TEST_PENDING`。
 
 ## High-risk invariants
+
+Software-only `decode_inferred_discharge_temperature()` 只對 `0x85/OP1=0x10`、`OP2>=0x12` 回half-degree candidate=`OP2+64`（即raw/2+32°C）；even/odd保留0.5°C resolution。Low raw明確no-value，絕不採secondary30°C clamp。此 `inferred_diagnostic_candidate` 與canonical ambient lookup分離，不是calibrated Celsius／local hardware truth；完整raw保留。Frequency/current candidate與provenance見 [operation-data.md](operation-data.md)。
 
 不得把 state[5]、0x80 indoor ambient、或任何 diagnostic raw 合併成 generic temperature；不得把 direct CNS formula 套到 WF-RAC OP2；不得宣稱 0x81/0x87 precision calibration、0x82 indoor curve、0xB1 Celsius 或 0x85 raw zero fixed 32 °C。
 

@@ -233,6 +233,7 @@
     "remaining_unknowns": ["bytes 1, 13, 14, 16, 17", "CoolHotJudge and command byte 8 full semantics", "self-clean command/state differences", "external temperature write safety", "selective delta versus full re-encode across firmware", "model-specific fields", "all local hardware behavior"]
   },
   "operation_data_r3": {
+    "inferred_outdoor_candidate_decoders": {"evidence_level":"INFERRED", "local_validation":"HARDWARE_TEST_PENDING", "raw_preserved":true, "quality":"inferred_diagnostic_candidate", "frequency_0x11":{"op1_range":[16,31], "deci_hz":"(OP1-16)*256+OP2"}, "current_0x90":{"op1":16, "amperes_numerator":"OP2*14", "amperes_denominator":51}, "discharge_0x85":{"op1":16, "min_op2":18, "half_degrees_celsius":"OP2+64", "below_min":"out_of_established_range; no clamp"}, "calibrated":false, "consumer_integration":"PENDING"},
     "software_value_decoders": {"ambient_0x80":"decode_ambient_temperature: OP1 0x10 outdoor / 0x20 indoor, exact integer deci-Celsius network lookup", "energy_0x94":"decode_current_run_energy: OP1 0x10 only, OP2 low / OP3 high uint16 quarter-kWh; exact Wh=count*250; current-run per-indoor, not lifetime", "raw_preserved":true, "unsupported_selector":"no physical value", "consumer_integration":"PENDING", "local_validation":"HARDWARE_TEST_PENDING"},
     "visibility_classification_is_separate_from_evidence": true,
     "visibility_values": ["CONFIRMED_UNSOLICITED_PUSH", "CONFIRMED_QUERY_VALUE", "CONFIRMED_QUERY_RESPONSE_NO_VALUE", "CONFIRMED_QUERY_RESPONSE_UNKNOWN_SEMANTIC", "SPECIAL_APP_EXTENSION", "NO_WF_RAC_HTTP_EVIDENCE"],

@@ -103,6 +103,12 @@ extern "C" void app_main(void) {}
 wfrac_protocol::OperationValueError operation_value_link_smoke() {
   wfrac_protocol::AmbientTemperature ambient{};
   wfrac_protocol::CurrentRunEnergy energy{};
+  wfrac_protocol::InferredCompressorFrequency frequency{};
+  wfrac_protocol::InferredOperatingCurrent current{};
+  wfrac_protocol::InferredDischargeTemperature temperature{};
+  wfrac_protocol::decode_inferred_compressor_frequency({0x11U, 0x10U, 0, 0}, &frequency);
+  wfrac_protocol::decode_inferred_operating_current({0x90U, 0x10U, 4U, 0}, &current);
+  wfrac_protocol::decode_inferred_discharge_temperature({0x85U, 0x10U, 0x12U, 0}, &temperature);
   wfrac_protocol::decode_ambient_temperature({0x80U, 0x10U, 128U, 0}, &ambient);
   return wfrac_protocol::decode_current_run_energy({0x94U, 0x10U, 1U, 0}, &energy);
 }

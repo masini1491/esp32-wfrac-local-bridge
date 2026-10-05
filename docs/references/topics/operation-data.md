@@ -17,7 +17,17 @@ R3 WF-RAC-visible matrix、raw segment preservation、query transaction 與 CNS/
 
 `decode_ambient_temperature()` 現只對 `0x80/OP1=0x10` outdoor 與 `0x80/OP1=0x20` indoor 做完整256-entry network lookup，回傳 exact integer deci-Celsius、scope及完整raw。`decode_current_run_energy()` 現只接受 `0x94/OP1=0x10`，以OP2 low／OP3 high組成uint16 quarter-kWh count，exact Wh=count×250；不是 lifetime counter，不累加或推定reset fault。Unsupported selector/code不造physical value，raw仍保留，metadata reset；null output是invalid argument。
 
-僅上述classifier quality升為 `canonical_ambient_lookup`／`exact_current_run_energy`；非canonical `0x94` selector改為unknown。其餘diagnostic quality、query/write邊界不變，不接入Device Model／Matter。證據仍為 `CONFIRMED_UPSTREAM`＋software host validation；local hardware保持 `HARDWARE_TEST_PENDING`。
+上述canonical classifier quality為 `canonical_ambient_lookup`／`exact_current_run_energy`；非canonical `0x94` selector為unknown。Canonical scope與query/write邊界不變，不接入Device Model／Matter。證據仍為 `CONFIRMED_UPSTREAM`＋software host validation；local hardware保持 `HARDWARE_TEST_PENDING`。
+
+## Inferred outdoor diagnostic candidates
+
+`decode_inferred_compressor_frequency()` 僅接受 `0x11/OP1=0x10..0x1f`，回傳 exact integer candidate deci-Hz=`(OP1-0x10)*256+OP2`；拒絕其他high bits，不以mask接受未建立的selector。`decode_inferred_operating_current()` 僅接受 `0x90/OP1=0x10`，以numerator=`OP2*14`、denominator=51保存exact rational amperes candidate；不推導power/COP/energy。
+
+`decode_inferred_discharge_temperature()` 僅接受 `0x85/OP1=0x10` 且 `OP2>=0x12`，以half-degree count=`OP2+64`保存candidate（`OP2/2+32°C`）；低端回 `out_of_established_range`，沒有30°C clamp或fabricated32°C。Current/discharge的exact0x10是保守outdoor response-shape admission，不是universal OP1 marker。
+
+成功的value／classifier quality為 `inferred_diagnostic_candidate`，三者皆shared outdoor；typed names明示INFERRED。失敗時non-null output reset，完整raw仍保留，candidate metadata無效。OP3保留但不參與公式。Pinned `docs/wf-rac-module-reference.md` §5.4與 `rac_parser.py::_apply_service_data_segment()` 是WF-RAC provenance；兩個operating points不是calibration，secondary MHI-AC-Ctrl只是CNS/SPI cross-reference。Exact software arithmetic不把physical relation升級成canonical/calibrated或 `CONFIRMED_LOCAL`；local仍 `HARDWARE_TEST_PENDING`。
+
+`0x13`、`0x81/0x87`、`0x82`、`0xB1`、`0x7C`與其餘residual classifications不變；沒有Device Model／Matter／runtime consumer integration或operation write。
 
 ## High-risk invariants
 

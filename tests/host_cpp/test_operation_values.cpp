@@ -20,9 +20,114 @@ uint64_t fingerprint(uint64_t hash, int16_t value) {
   }
   return hash;
 }
+
+void test_inferred_outdoor_candidates() {
+  // Exact arithmetic tests validate software, NOT calibration of the INF formulas
+  // in pinned wf-rac-module-reference.md section 5.4 (928efd8637bc...).
+  InferredCompressorFrequency frequency{};
+  InferredOperatingCurrent current{};
+  InferredDischargeTemperature temperature{};
+  for (unsigned selector = 0; selector < 256U; ++selector) {
+    const auto op1 = static_cast<uint8_t>(selector);
+    const OperationSegment raw{0x11U, op1, 0xffU, 0xa5U};
+    frequency.deci_hz = 999U;
+    frequency.value_quality = OperationValueQuality::canonical_ambient_lookup;
+    const auto error = decode_inferred_compressor_frequency(raw, &frequency);
+    same_raw(frequency.raw, raw);
+    if (selector >= 0x10U && selector <= 0x1fU) {
+      assert(error == OperationValueError::none);
+      assert(frequency.deci_hz == (selector - 0x10U) * 256U + 255U);
+      assert(frequency.value_quality == OperationValueQuality::inferred_diagnostic_candidate);
+    } else {
+      assert(error == OperationValueError::unsupported_segment);
+      assert(frequency.deci_hz == 0 && frequency.value_quality == OperationValueQuality::unknown_semantic);
+    }
+    if (selector != 0x10U) {
+      current.amperes_numerator = 999U;
+      temperature.half_degrees_celsius = 999U;
+      current.value_quality = temperature.value_quality = OperationValueQuality::canonical_ambient_lookup;
+      const OperationSegment cur{0x90U, op1, 0xffU, 0xa5U}, temp{0x85U, op1, 0xffU, 0xa5U};
+      assert(decode_inferred_operating_current(cur, &current) == OperationValueError::unsupported_segment);
+      assert(decode_inferred_discharge_temperature(temp, &temperature) == OperationValueError::unsupported_segment);
+      same_raw(current.raw, cur); same_raw(temperature.raw, temp);
+      assert(current.amperes_numerator == 0 && temperature.half_degrees_celsius == 0);
+      assert(current.value_quality == OperationValueQuality::unknown_semantic);
+      assert(temperature.value_quality == OperationValueQuality::unknown_semantic);
+    }
+  }
+  assert(decode_inferred_compressor_frequency({0x11U, 0x10U, 0, 0}, &frequency) == OperationValueError::none);
+  assert(frequency.deci_hz == 0);
+  assert(decode_inferred_compressor_frequency({0x11U, 0x10U, 0xe6U, 0xffU}, &frequency) == OperationValueError::none);
+  assert(frequency.deci_hz == 230U);
+  assert(decode_inferred_compressor_frequency({0x11U, 0x1fU, 0xffU, 0}, &frequency) == OperationValueError::none);
+  assert(frequency.deci_hz == 4095U);
+  for (unsigned value = 0; value < 256U; ++value) {
+    const auto byte = static_cast<uint8_t>(value);
+    const OperationSegment cur{0x90U, 0x10U, byte, 0x5aU}, temp{0x85U, 0x10U, byte, 0xa5U};
+    assert(decode_inferred_operating_current(cur, &current) == OperationValueError::none);
+    assert(current.amperes_numerator == value * 14U && current.amperes_denominator == 51U);
+    assert(current.value_quality == OperationValueQuality::inferred_diagnostic_candidate);
+    same_raw(current.raw, cur);
+    temperature.half_degrees_celsius = 999U;
+    temperature.value_quality = OperationValueQuality::inferred_diagnostic_candidate;
+    const auto error = decode_inferred_discharge_temperature(temp, &temperature);
+    same_raw(temperature.raw, temp);
+    if (value < 0x12U) {
+      assert(error == OperationValueError::out_of_established_range);
+      assert(temperature.half_degrees_celsius == 0); // no 30 C clamp (60), nor fabricated 32 C (64)
+      assert(temperature.value_quality == OperationValueQuality::unknown_semantic);
+      assert(decode_operation_segment(temp).value_quality != OperationValueQuality::inferred_diagnostic_candidate);
+    } else {
+      assert(error == OperationValueError::none && temperature.half_degrees_celsius == value + 64U);
+      assert(temperature.value_quality == OperationValueQuality::inferred_diagnostic_candidate);
+    }
+  }
+  assert(decode_inferred_operating_current({0x90U, 0x10U, 4U, 0}, &current) == OperationValueError::none);
+  assert(current.amperes_numerator == 56U); // exact 56/51, NOT rounded/truncated 1 A
+  assert(decode_inferred_discharge_temperature({0x85U, 0x10U, 0x12U, 0}, &temperature) == OperationValueError::none);
+  assert(temperature.half_degrees_celsius == 82U);
+  assert(decode_inferred_discharge_temperature({0x85U, 0x10U, 0x14U, 0}, &temperature) == OperationValueError::none);
+  assert(temperature.half_degrees_celsius == 84U);
+  assert(decode_inferred_discharge_temperature({0x85U, 0x10U, 0x17U, 0}, &temperature) == OperationValueError::none);
+  assert(temperature.half_degrees_celsius == 87U);
+  // Retained input may alias its output; reset must not corrupt it.
+  assert(decode_inferred_compressor_frequency(frequency.raw, &frequency) == OperationValueError::none);
+  assert(frequency.deci_hz == 4095U);
+  assert(decode_inferred_operating_current(current.raw, &current) == OperationValueError::none);
+  assert(current.amperes_numerator == 56U);
+  assert(decode_inferred_discharge_temperature(temperature.raw, &temperature) == OperationValueError::none);
+  assert(temperature.half_degrees_celsius == 87U);
+  for (unsigned code = 0; code < 256U; ++code) {
+    const OperationSegment raw{static_cast<uint8_t>(code), 0x10U, 0x12U, 0xffU};
+    if (code != 0x11U) {
+      assert(decode_inferred_compressor_frequency(raw, &frequency) == OperationValueError::unsupported_segment);
+      assert(frequency.deci_hz == 0 && frequency.value_quality == OperationValueQuality::unknown_semantic);
+      same_raw(frequency.raw, raw);
+    }
+    if (code != 0x90U) {
+      assert(decode_inferred_operating_current(raw, &current) == OperationValueError::unsupported_segment);
+      assert(current.amperes_numerator == 0 && current.value_quality == OperationValueQuality::unknown_semantic);
+      same_raw(current.raw, raw);
+    }
+    if (code != 0x85U) {
+      assert(decode_inferred_discharge_temperature(raw, &temperature) == OperationValueError::unsupported_segment);
+      assert(temperature.half_degrees_celsius == 0 && temperature.value_quality == OperationValueQuality::unknown_semantic);
+      same_raw(temperature.raw, raw);
+    }
+    if (code == 0x11U || code == 0x90U || code == 0x85U) {
+      const auto data = decode_operation_segment(raw);
+      assert(data.scope == OperationScope::shared_outdoor && !data.unit_relation_known);
+      assert(data.value_quality == OperationValueQuality::inferred_diagnostic_candidate);
+    }
+  }
+  assert(decode_inferred_compressor_frequency({}, nullptr) == OperationValueError::invalid_argument);
+  assert(decode_inferred_operating_current({}, nullptr) == OperationValueError::invalid_argument);
+  assert(decode_inferred_discharge_temperature({}, nullptr) == OperationValueError::invalid_argument);
+}
 }  // namespace
 
 void test_operation_values() {
+  test_inferred_outdoor_candidates();
   // Full-table fingerprint over LE16 deci-Celsius, independently fixed from
   // pinned utils.py numeric data (928efd8637bcb346a4945c545ab76733eae6245c).
   uint64_t outdoor_hash = UINT64_C(14695981039346656037);

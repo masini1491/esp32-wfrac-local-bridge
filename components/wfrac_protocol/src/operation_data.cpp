@@ -51,13 +51,17 @@ OperationData decode_operation_segment(const OperationSegment& raw) {
     }
     case 0x11U:
       return known_result(raw, OperationSemanticKind::compressor_frequency, OperationScope::shared_outdoor,
-                          OperationValueQuality::raw_only);
+                          raw.op1 >= 0x10U && raw.op1 <= 0x1fU
+                              ? OperationValueQuality::inferred_diagnostic_candidate : OperationValueQuality::raw_only);
     case 0x90U:
       return known_result(raw, OperationSemanticKind::operating_current, OperationScope::shared_outdoor,
-                          OperationValueQuality::raw_only);
+                          raw.op1 == 0x10U
+                              ? OperationValueQuality::inferred_diagnostic_candidate : OperationValueQuality::raw_only);
     case 0x85U:
       return known_result(raw, OperationSemanticKind::discharge_hot_gas_temperature, OperationScope::shared_outdoor,
-                          OperationValueQuality::bounded_derived_available_later);
+                          raw.op1 == 0x10U && raw.op2 >= 0x12U
+                              ? OperationValueQuality::inferred_diagnostic_candidate
+                              : OperationValueQuality::bounded_derived_available_later);
     case 0x13U:
       return known_result(raw, OperationSemanticKind::eev_raw, OperationScope::per_indoor,
                           OperationValueQuality::raw_only);
@@ -133,6 +137,48 @@ OperationValueError decode_current_run_energy(const OperationSegment& raw, Curre
     return OperationValueError::unsupported_segment;
   }
   output->quarter_kwh = static_cast<uint16_t>(static_cast<uint16_t>(saved.op3) << 8U) | saved.op2;
+  return OperationValueError::none;
+}
+
+OperationValueError decode_inferred_compressor_frequency(const OperationSegment& raw, InferredCompressorFrequency* output) {
+  if (output == nullptr) return OperationValueError::invalid_argument;
+  const auto saved = raw;
+  *output = {};
+  output->raw = saved;
+  const auto data = decode_operation_segment(saved);
+  if (data.kind != OperationSemanticKind::compressor_frequency ||
+      data.value_quality != OperationValueQuality::inferred_diagnostic_candidate) {
+    return OperationValueError::unsupported_segment;
+  }
+  output->deci_hz = static_cast<uint16_t>((static_cast<unsigned>(saved.op1) - 0x10U) * 256U + saved.op2);
+  output->value_quality = data.value_quality;
+  return OperationValueError::none;
+}
+
+OperationValueError decode_inferred_operating_current(const OperationSegment& raw, InferredOperatingCurrent* output) {
+  if (output == nullptr) return OperationValueError::invalid_argument;
+  const auto saved = raw;
+  *output = {};
+  output->raw = saved;
+  const auto data = decode_operation_segment(saved);
+  if (data.kind != OperationSemanticKind::operating_current ||
+      data.value_quality != OperationValueQuality::inferred_diagnostic_candidate) {
+    return OperationValueError::unsupported_segment;
+  }
+  output->amperes_numerator = static_cast<uint16_t>(static_cast<unsigned>(saved.op2) * 14U);
+  output->value_quality = data.value_quality;
+  return OperationValueError::none;
+}
+
+OperationValueError decode_inferred_discharge_temperature(const OperationSegment& raw, InferredDischargeTemperature* output) {
+  if (output == nullptr) return OperationValueError::invalid_argument;
+  const auto saved = raw;
+  *output = {};
+  output->raw = saved;
+  if (saved.code != 0x85U || saved.op1 != 0x10U) return OperationValueError::unsupported_segment;
+  if (saved.op2 < 0x12U) return OperationValueError::out_of_established_range;
+  output->half_degrees_celsius = static_cast<uint16_t>(saved.op2 + 64U);
+  output->value_quality = decode_operation_segment(saved).value_quality;
   return OperationValueError::none;
 }
 

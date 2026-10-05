@@ -45,6 +45,8 @@ python -m unittest tests.host.test_validate_contracts
 
 Portable operation-data已提供 canonical `0x80` indoor/outdoor network lookup（exact deci-Celsius）與 `0x94/OP1=0x10` current-run energy（quarter-kWh／exact Wh），保留raw bytes；[decoder boundary／provenance](docs/references/topics/operation-data.md) 限於software host／compile驗證，不升級其他diagnostic formulas、Device Model/Matter整合或local hardware evidence。
 
+另提供明確 `INFERRED` 的outdoor frequency（deci-Hz）、current（exact rational A）及bounded discharge（half-degree candidate）read-side conversions；raw保留，低端discharge no-value／無clamp，不代表calibration或local physical truth，未接入Device Model／Matter。
+
 Diagnostic firmware 另提供 default-off `WFRAC_PROBE_WEBUI_ENABLED`：embedded WebUI／temporary WPA2 SoftAP，只由 explicit bounded POST 觸發一次 APSTA connect 與 read-only getDeviceInfo，共用原 one-shot executor。需本地 unique AP passphrase，預設空值 fail closed；STA／WF-RAC inputs 不寫 NVS、不回顯／log，HTTPS 仍需 explicit PEM trust，不自動降級。詳細安全邊界見 [security](docs/security.md)。狀態為 **COMPILE-READY**，不是 production provisioning／hardware validated。[Remote six-cell CI](https://github.com/masini1491/esp32-wfrac-local-bridge/actions/runs/37227175448) 保留原四格 default gates，新增 WebUI-enabled C6／C3 full-link，均 PASS；[host CI](https://github.com/masini1491/esp32-wfrac-local-bridge/actions/runs/37227175431) 含 offline form regression 亦 PASS，tested revision `4b937eaf1a21fc86f3a9575be1431f750ad46554`。`webui.defaults` 是 synthetic compile-only fixture，不得 flash；實機必須另行明確授權並提供本地 unique configuration。本次 firmware network／hardware executions = 0。
 
 本階段只記錄研究、架構、硬體策略、安全與 roadmap。Reference facts 依 `CONFIRMED_UPSTREAM`、`CONFIRMED_LOCAL`、`INFERRED`、`UNKNOWN`、`HARDWARE_TEST_PENDING` 分級。WF-RAC 使用者硬體的 protocol/runtime validation 目前為 `HARDWARE_TEST_PENDING`。
@@ -65,12 +67,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（components、diagnostic bootstrap firmware） | 5524 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 5156 |
-| Machine-readable protocol/spec contracts（specs） | 405 |
-| 技術文件（README、AGENTS、docs） | 922 |
+| Firmware（components、diagnostic bootstrap firmware） | 5599 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 5267 |
+| Machine-readable protocol/spec contracts（specs） | 406 |
+| 技術文件（README、AGENTS、docs） | 937 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **12040** |
+| **合計** | **12242** |
 
 以上依 tracked Git content 統計實體行數（physical lines），包含空白與註解；不包含 TASKS／BACKLOG coordination、evidence staging、第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 包含 portable components、ESP-IDF adapters 與 diagnostic source，不代表已完成 network runtime 或 hardware validation。
 
