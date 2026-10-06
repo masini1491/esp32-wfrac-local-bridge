@@ -157,11 +157,71 @@ void test_eev_network_value() {
   assert(value.network_value == 0U && value.value_quality == OperationValueQuality::unknown_semantic);
   assert(decode_eev_network_value({}, nullptr) == OperationValueError::invalid_argument);
 }
+
+void test_inferred_indoor_coil_temperature() {
+  InferredIndoorCoilTemperature value{};
+  const struct Point { uint8_t raw; int16_t deci_celsius; } points[] = {
+      {47U, 55}, {75U, 170}, {129U, 341}, {170U, 458}, {186U, 504}, {252U, 721}};
+  for (const auto code : {uint8_t{0x81U}, uint8_t{0x87U}}) {
+    for (const auto point : points) {
+      const uint8_t selector = code == 0x81U ? 0x20U : 0x10U;
+      const OperationSegment raw{code, selector, point.raw, 0xA5U};
+      value.deci_celsius = -999;
+      assert(decode_inferred_indoor_coil_temperature(raw, &value) == OperationValueError::none);
+      same_raw(value.raw, raw);
+      assert(value.kind == (code == 0x81U ? OperationSemanticKind::thi_r1 : OperationSemanticKind::thi_r3));
+      assert(value.scope == OperationScope::per_indoor);
+      assert(value.value_quality == (point.raw <= 170U ? OperationValueQuality::inferred_diagnostic_candidate
+                                                        : OperationValueQuality::inferred_extrapolated_candidate));
+      assert(value.deci_celsius == point.deci_celsius);
+      const auto first = value.deci_celsius;
+      assert(decode_inferred_indoor_coil_temperature(raw, &value) == OperationValueError::none);
+      assert(value.deci_celsius == first);  // deterministic 0.1 C rounding
+      const auto classified = decode_operation_segment(raw);
+      assert(classified.scope == OperationScope::per_indoor);
+      assert(classified.value_quality == OperationValueQuality::bounded_derived_available_later);
+      assert(!classified.unit_relation_known);  // classifier is not a calibrated-value claim
+    }
+  }
+
+  // OP1 is retained, not treated as a universal selector; OP3 is retained and ignored.
+  assert(decode_inferred_indoor_coil_temperature({0x81U, 0xE2U, 75U, 0x11U}, &value) == OperationValueError::none);
+  assert(value.deci_celsius == 170 && value.raw.op1 == 0xE2U && value.raw.op3 == 0x11U);
+  assert(decode_inferred_indoor_coil_temperature({0x87U, 0xA9U, 75U, 0xFEU}, &value) == OperationValueError::none);
+  assert(value.deci_celsius == 170 && value.raw.op1 == 0xA9U && value.raw.op3 == 0xFEU);
+
+  for (const auto code : {uint8_t{0x81U}, uint8_t{0x87U}}) {
+    const OperationSegment no_value{code, 0x20U, 0U, 0xD4U};
+    value.kind = OperationSemanticKind::thi_r1;
+    value.scope = OperationScope::per_indoor;
+    value.value_quality = OperationValueQuality::inferred_diagnostic_candidate;
+    value.deci_celsius = 999;
+    assert(decode_inferred_indoor_coil_temperature(no_value, &value) == OperationValueError::out_of_established_range);
+    same_raw(value.raw, no_value);
+    assert(value.kind == OperationSemanticKind::unknown && value.scope == OperationScope::unknown);
+    assert(value.value_quality == OperationValueQuality::unknown_semantic && value.deci_celsius == 0);
+  }
+  const OperationSegment unsupported{0x82U, 0x20U, 75U, 0x5AU};
+  value.deci_celsius = 999;
+  assert(decode_inferred_indoor_coil_temperature(unsupported, &value) == OperationValueError::unsupported_segment);
+  same_raw(value.raw, unsupported);
+  assert(value.deci_celsius == 0 && value.scope == OperationScope::unknown);
+  assert(decode_inferred_indoor_coil_temperature({0x13U, 0x10U, 75U, 0}, &value) ==
+         OperationValueError::unsupported_segment);
+  assert(decode_inferred_indoor_coil_temperature({}, nullptr) == OperationValueError::invalid_argument);
+
+  value.raw = {0x81U, 0x20U, 170U, 0xC3U};
+  assert(decode_inferred_indoor_coil_temperature(value.raw, &value) == OperationValueError::none);
+  assert(value.deci_celsius == 458 && value.value_quality == OperationValueQuality::inferred_diagnostic_candidate);
+  assert(decode_inferred_indoor_coil_temperature({0x81U, 0x20U, 171U, 0xC3U}, &value) == OperationValueError::none);
+  assert(value.deci_celsius == 461 && value.value_quality == OperationValueQuality::inferred_extrapolated_candidate);
+}
 }  // namespace
 
 void test_operation_values() {
   test_inferred_outdoor_candidates();
   test_eev_network_value();
+  test_inferred_indoor_coil_temperature();
   // Full-table fingerprint over LE16 deci-Celsius, independently fixed from
   // pinned utils.py numeric data (928efd8637bcb346a4945c545ab76733eae6245c).
   uint64_t outdoor_hash = UINT64_C(14695981039346656037);

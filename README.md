@@ -43,7 +43,7 @@ python -m unittest tests.host.test_validate_contracts
 
 ## 範圍與證據
 
-Portable operation-data已提供 canonical `0x80` indoor/outdoor network lookup（exact deci-Celsius）、`0x94/OP1=0x10` current-run energy（quarter-kWh／exact Wh），以及 `0x13` EEV-related network OP2 raw pulse/value byte decoder；皆保留raw bytes。`0x13` 不代表百分比、校準閥門開度、full-open count或direct CNS counter等價；[decoder boundary／provenance](docs/references/topics/operation-data.md) 限於software host／compile驗證，不升級其他diagnostic formulas、Device Model/Matter整合或local hardware evidence。
+Portable operation-data已提供 canonical `0x80` indoor/outdoor network lookup（exact deci-Celsius）、`0x94/OP1=0x10` current-run energy（quarter-kWh／exact Wh），`0x13` EEV-related network OP2 raw pulse/value byte decoder，以及明確 `INFERRED` 的 `0x81/0x87` per-indoor coil-temperature curve candidates（deci-Celsius；raw>170 額外標示 extrapolated）。皆保留raw bytes；thermistor candidates不是 precision calibration或`CONFIRMED_LOCAL`，local hardware仍`HARDWARE_TEST_PENDING`。`0x13` 不代表百分比、校準閥門開度、full-open count或direct CNS counter等價；[decoder boundary／provenance](docs/references/topics/operation-data.md) 限於software host／compile驗證，不升級其他diagnostic formulas、Device Model/Matter整合或local hardware evidence。
 
 另提供明確 `INFERRED` 的outdoor frequency（deci-Hz）、current（exact rational A）及bounded discharge（half-degree candidate）read-side conversions；raw保留，低端discharge no-value／無clamp，不代表calibration或local physical truth，未接入Device Model／Matter。
 
@@ -67,12 +67,12 @@ AI 產生的程式、研究整理與設計建議不會直接視為完成品；�
 
 | 分類 | Physical lines |
 | --- | ---: |
-| Firmware（components、diagnostic bootstrap firmware） | 5623 |
-| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 5303 |
+| Firmware（components、diagnostic bootstrap firmware） | 5675 |
+| 開發／驗證工具（tools、tests、GitHub Actions、ESP-IDF compile harness） | 5365 |
 | Machine-readable protocol/spec contracts（specs） | 406 |
-| 技術文件（README、AGENTS、docs） | 937 |
+| 技術文件（README、AGENTS、docs） | 942 |
 | 其他必要 tracked project files（.gitignore、.gitattributes） | 33 |
-| **合計** | **12302** |
+| **合計** | **12421** |
 
 以上依 tracked Git content 統計實體行數（physical lines），包含空白與註解；不包含 TASKS／BACKLOG coordination、evidence staging、第三方函式庫、downloaded dependencies、build／cache 與 generated artifacts。Firmware 包含 portable components、ESP-IDF adapters 與 diagnostic source，不代表已完成 network runtime 或 hardware validation。
 

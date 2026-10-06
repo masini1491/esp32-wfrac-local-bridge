@@ -1,5 +1,7 @@
 #include "wfrac_protocol/operation_data.hpp"
 
+#include <cmath>
+
 #include "wfrac_protocol/aircon_block.hpp"
 #include "ambient_tables.hpp"
 
@@ -179,6 +181,39 @@ OperationValueError decode_inferred_discharge_temperature(const OperationSegment
   if (saved.op2 < 0x12U) return OperationValueError::out_of_established_range;
   output->half_degrees_celsius = static_cast<uint16_t>(saved.op2 + 64U);
   output->value_quality = decode_operation_segment(saved).value_quality;
+  return OperationValueError::none;
+}
+
+OperationValueError decode_inferred_indoor_coil_temperature(const OperationSegment& raw,
+                                                            InferredIndoorCoilTemperature* output) {
+  if (output == nullptr) return OperationValueError::invalid_argument;
+  const auto saved = raw;
+  *output = {};
+  output->raw = saved;
+  const auto data = decode_operation_segment(saved);
+  if (data.kind != OperationSemanticKind::thi_r1 && data.kind != OperationSemanticKind::thi_r3) {
+    return OperationValueError::unsupported_segment;
+  }
+  if (saved.op2 == 0U) return OperationValueError::out_of_established_range;
+
+  constexpr double kR25Ohms = 5200.0;
+  constexpr double kBetaKelvin = 3900.0;
+  constexpr double kReferenceKelvin = 298.15;
+  constexpr double kGain = 367.0;
+  constexpr double kSeriesResistanceOhms = 1912.0;
+  const double raw_value = static_cast<double>(saved.op2);
+  const double thermistor_ohms = kSeriesResistanceOhms * (kGain - raw_value) / raw_value;
+  const double inverse_kelvin = 1.0 / kReferenceKelvin + std::log(thermistor_ohms / kR25Ohms) / kBetaKelvin;
+  if (!(inverse_kelvin > 0.0)) return OperationValueError::out_of_established_range;
+  const double celsius = 1.0 / inverse_kelvin - 273.15;
+  const long deci_celsius = std::lround(celsius * 10.0);
+  if (deci_celsius < -32768L || deci_celsius > 32767L) return OperationValueError::out_of_established_range;
+
+  output->kind = data.kind;
+  output->scope = data.scope;
+  output->value_quality = saved.op2 <= 170U ? OperationValueQuality::inferred_diagnostic_candidate
+                                            : OperationValueQuality::inferred_extrapolated_candidate;
+  output->deci_celsius = static_cast<int16_t>(deci_celsius);
   return OperationValueError::none;
 }
 

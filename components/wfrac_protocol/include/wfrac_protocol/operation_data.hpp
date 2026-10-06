@@ -51,6 +51,7 @@ enum class OperationValueQuality {
   canonical_ambient_lookup,
   exact_current_run_energy,
   inferred_diagnostic_candidate,
+  inferred_extrapolated_candidate,
 };
 
 struct OperationData {
@@ -110,6 +111,18 @@ struct InferredDischargeTemperature {
   uint16_t half_degrees_celsius = 0;
 };
 
+// INFERRED thermistor-curve candidates for per-indoor THI-R1 (0x81) and
+// THI-R3 (0x87), not calibrated or CONFIRMED_LOCAL temperatures. raw OP2=0
+// has no value; raw OP2>170 is explicitly extrapolated. Output uses integer
+// deci-Celsius rounded to nearest 0.1 C, with halfway cases away from zero.
+struct InferredIndoorCoilTemperature {
+  OperationSegment raw{};
+  OperationSemanticKind kind = OperationSemanticKind::unknown;
+  OperationScope scope = OperationScope::unknown;
+  OperationValueQuality value_quality = OperationValueQuality::unknown_semantic;
+  int16_t deci_celsius = 0;
+};
+
 // 0x13 exposes only the exact WF-RAC network OP2 byte as an EEV-related
 // pulse/value. This is not a percentage, calibrated valve opening, or the
 // direct CNS 16-bit counter; OP1/OP3 are preserved without inferred meaning.
@@ -126,6 +139,10 @@ struct EevNetworkValue {
 OperationValueError decode_inferred_compressor_frequency(const OperationSegment& raw, InferredCompressorFrequency* output);
 OperationValueError decode_inferred_operating_current(const OperationSegment& raw, InferredOperatingCurrent* output);
 OperationValueError decode_inferred_discharge_temperature(const OperationSegment& raw, InferredDischargeTemperature* output);
+// OP1 and OP3 are preserved but do not gate or affect this candidate curve.
+// Non-null output resets at entry and preserves raw input on every failure.
+OperationValueError decode_inferred_indoor_coil_temperature(const OperationSegment& raw,
+                                                           InferredIndoorCoilTemperature* output);
 // Non-null output resets and preserves raw on failure (including aliasing).
 // network_value is meaningful only on none and equals raw OP2 exactly.
 OperationValueError decode_eev_network_value(const OperationSegment& raw, EevNetworkValue* output);

@@ -29,6 +29,8 @@ R3 WF-RAC-visible matrix、raw segment preservation、query transaction 與 CNS/
 
 `0x13` typed read-side decoder只回傳 per-indoor EEV-related WF-RAC network OP2 byte，並保留完整raw segment；它不是 OP2/255 percentage、校準閥門開度、full-open count或 direct CNS 16-bit counter。這只建立software decoder，不改 classifier、不接入consumer，也沒有operation write；local hardware仍 `HARDWARE_TEST_PENDING`。`0x81/0x87`、`0x82`、`0xB1`、`0x7C`與其餘residual classifications不變。
 
+`decode_inferred_indoor_coil_temperature()` accepts code `0x81` (THI-R1) and `0x87` (THI-R3), preserving `[code, OP1, OP2, OP3]` and per-indoor sensor identity/scope. OP1 is not a selector gate and OP3 has no conversion role. OP2=0 returns `out_of_established_range` without a candidate. OP2 1–170 yields integer deci-Celsius using the pinned R25=5200 Ω, B=3900 K, G=367, Rs=1912 Ω divider inversion; nearest-tenth rounding is half away from zero. Quality is `inferred_diagnostic_candidate` through raw 170 and `inferred_extrapolated_candidate` for 171–255. These are software curve candidates, not precision calibration or `CONFIRMED_LOCAL`; local hardware remains `HARDWARE_TEST_PENDING`. `0x82` remains shared-outdoor raw-only and is not decoded with this curve. No frost, superheat, delta-T, protection, Device Model, Matter or runtime conclusion is derived.
+
 ## High-risk invariants
 
 App capability flags 不等於 protocol presence；firmware constant zero 不等於 unsupported。Temperature 詳細 conversion 見 [temperature-conversion.md](temperature-conversion.md)。
