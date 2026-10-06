@@ -182,6 +182,18 @@ OperationValueError decode_inferred_discharge_temperature(const OperationSegment
   return OperationValueError::none;
 }
 
+OperationValueError decode_eev_network_value(const OperationSegment& raw, EevNetworkValue* output) {
+  if (output == nullptr) return OperationValueError::invalid_argument;
+  const auto saved = raw;
+  *output = {};
+  output->raw = saved;
+  const auto data = decode_operation_segment(saved);
+  if (data.kind != OperationSemanticKind::eev_raw) return OperationValueError::unsupported_segment;
+  output->network_value = saved.op2;
+  output->value_quality = data.value_quality;
+  return OperationValueError::none;
+}
+
 OperationSegment make_operation_query_segment(uint8_t code) { return {code, 0xFFU, 0xFFU, 0xFFU}; }
 
 bool is_known_safe_operation_query_code(uint8_t code) {

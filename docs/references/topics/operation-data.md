@@ -27,7 +27,7 @@ R3 WF-RAC-visible matrix、raw segment preservation、query transaction 與 CNS/
 
 成功的value／classifier quality為 `inferred_diagnostic_candidate`，三者皆shared outdoor；typed names明示INFERRED。失敗時non-null output reset，完整raw仍保留，candidate metadata無效。OP3保留但不參與公式。Pinned `docs/wf-rac-module-reference.md` §5.4與 `rac_parser.py::_apply_service_data_segment()` 是WF-RAC provenance；兩個operating points不是calibration，secondary MHI-AC-Ctrl只是CNS/SPI cross-reference。Exact software arithmetic不把physical relation升級成canonical/calibrated或 `CONFIRMED_LOCAL`；local仍 `HARDWARE_TEST_PENDING`。
 
-`0x13`、`0x81/0x87`、`0x82`、`0xB1`、`0x7C`與其餘residual classifications不變；沒有Device Model／Matter／runtime consumer integration或operation write。
+`0x13` typed read-side decoder只回傳 per-indoor EEV-related WF-RAC network OP2 byte，並保留完整raw segment；它不是 OP2/255 percentage、校準閥門開度、full-open count或 direct CNS 16-bit counter。這只建立software decoder，不改 classifier、不接入consumer，也沒有operation write；local hardware仍 `HARDWARE_TEST_PENDING`。`0x81/0x87`、`0x82`、`0xB1`、`0x7C`與其餘residual classifications不變。
 
 ## High-risk invariants
 

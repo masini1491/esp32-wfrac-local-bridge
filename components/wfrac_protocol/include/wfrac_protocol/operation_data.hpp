@@ -110,6 +110,15 @@ struct InferredDischargeTemperature {
   uint16_t half_degrees_celsius = 0;
 };
 
+// 0x13 exposes only the exact WF-RAC network OP2 byte as an EEV-related
+// pulse/value. This is not a percentage, calibrated valve opening, or the
+// direct CNS 16-bit counter; OP1/OP3 are preserved without inferred meaning.
+struct EevNetworkValue {
+  OperationSegment raw{};
+  OperationValueQuality value_quality = OperationValueQuality::unknown_semantic;
+  uint8_t network_value = 0;
+};
+
 // Non-null outputs reset and preserve raw even on failure (including aliasing).
 // Candidate values/quality are usable ONLY on none; zero alone is not validity.
 // 0x11 accepts only OP1 0x10..0x1f; 0x90/0x85 accept only OP1 0x10.
@@ -117,6 +126,9 @@ struct InferredDischargeTemperature {
 OperationValueError decode_inferred_compressor_frequency(const OperationSegment& raw, InferredCompressorFrequency* output);
 OperationValueError decode_inferred_operating_current(const OperationSegment& raw, InferredOperatingCurrent* output);
 OperationValueError decode_inferred_discharge_temperature(const OperationSegment& raw, InferredDischargeTemperature* output);
+// Non-null output resets and preserves raw on failure (including aliasing).
+// network_value is meaningful only on none and equals raw OP2 exactly.
+OperationValueError decode_eev_network_value(const OperationSegment& raw, EevNetworkValue* output);
 
 enum class OperationQueryError {
   none,

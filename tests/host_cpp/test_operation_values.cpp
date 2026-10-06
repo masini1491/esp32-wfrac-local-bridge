@@ -124,10 +124,44 @@ void test_inferred_outdoor_candidates() {
   assert(decode_inferred_operating_current({}, nullptr) == OperationValueError::invalid_argument);
   assert(decode_inferred_discharge_temperature({}, nullptr) == OperationValueError::invalid_argument);
 }
+
+void test_eev_network_value() {
+  EevNetworkValue value{};
+  const auto classified = decode_operation_segment({0x13U, 0xA7U, 102U, 0x5CU});
+  assert(classified.kind == OperationSemanticKind::eev_raw);
+  assert(classified.scope == OperationScope::per_indoor);
+  assert(classified.value_quality == OperationValueQuality::raw_only);
+  assert(classified.raw.code == 0x13U && classified.raw.op1 == 0xA7U &&
+         classified.raw.op2 == 102U && classified.raw.op3 == 0x5CU);
+  for (const uint8_t op2 : {uint8_t{0U}, uint8_t{57U}, uint8_t{95U}, uint8_t{102U}, uint8_t{200U}, uint8_t{255U}}) {
+    const OperationSegment raw{0x13U, 0xA7U, op2, 0x5CU};
+    value.network_value = 42U;
+    value.value_quality = OperationValueQuality::canonical_ambient_lookup;
+    assert(decode_eev_network_value(raw, &value) == OperationValueError::none);
+    same_raw(value.raw, raw);
+    assert(value.network_value == op2);
+    assert(value.value_quality == OperationValueQuality::raw_only);
+  }
+
+  // Input may alias the output's raw view; reset must preserve the whole segment.
+  value.raw = {0x13U, 0x11U, 102U, 0xE3U};
+  assert(decode_eev_network_value(value.raw, &value) == OperationValueError::none);
+  assert(value.network_value == 102U && value.value_quality == OperationValueQuality::raw_only);
+  same_raw(value.raw, {0x13U, 0x11U, 102U, 0xE3U});
+
+  const OperationSegment unsupported{0x12U, 0x11U, 102U, 0xE3U};
+  value.network_value = 99U;
+  value.value_quality = OperationValueQuality::inferred_diagnostic_candidate;
+  assert(decode_eev_network_value(unsupported, &value) == OperationValueError::unsupported_segment);
+  same_raw(value.raw, unsupported);
+  assert(value.network_value == 0U && value.value_quality == OperationValueQuality::unknown_semantic);
+  assert(decode_eev_network_value({}, nullptr) == OperationValueError::invalid_argument);
+}
 }  // namespace
 
 void test_operation_values() {
   test_inferred_outdoor_candidates();
+  test_eev_network_value();
   // Full-table fingerprint over LE16 deci-Celsius, independently fixed from
   // pinned utils.py numeric data (928efd8637bcb346a4945c545ab76733eae6245c).
   uint64_t outdoor_hash = UINT64_C(14695981039346656037);
