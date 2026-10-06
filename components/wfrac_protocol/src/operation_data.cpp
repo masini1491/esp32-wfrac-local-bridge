@@ -229,6 +229,20 @@ OperationValueError decode_eev_network_value(const OperationSegment& raw, EevNet
   return OperationValueError::none;
 }
 
+OperationValueError decode_outdoor_coil_raw_value(const OperationSegment& raw, OutdoorCoilRawValue* output) {
+  if (output == nullptr) return OperationValueError::invalid_argument;
+  const auto saved = raw;
+  *output = {};
+  output->raw = saved;
+  const auto data = decode_operation_segment(saved);
+  if (data.kind != OperationSemanticKind::tho_r1) return OperationValueError::unsupported_segment;
+  output->kind = data.kind;
+  output->scope = data.scope;
+  output->value_quality = data.value_quality;
+  output->network_value = saved.op2;
+  return OperationValueError::none;
+}
+
 OperationSegment make_operation_query_segment(uint8_t code) { return {code, 0xFFU, 0xFFU, 0xFFU}; }
 
 bool is_known_safe_operation_query_code(uint8_t code) {

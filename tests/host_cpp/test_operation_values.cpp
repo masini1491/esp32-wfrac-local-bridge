@@ -158,6 +158,49 @@ void test_eev_network_value() {
   assert(decode_eev_network_value({}, nullptr) == OperationValueError::invalid_argument);
 }
 
+void test_outdoor_coil_raw_value() {
+  OutdoorCoilRawValue value{};
+  for (const uint8_t op2 : {uint8_t{0U}, uint8_t{63U}, uint8_t{73U}, uint8_t{255U}}) {
+    const OperationSegment raw{0x82U, static_cast<uint8_t>(op2 ^ 0xA5U), op2,
+                               static_cast<uint8_t>(op2 ^ 0x5AU)};
+    value.network_value = 42U;
+    value.kind = OperationSemanticKind::thi_r1;
+    value.scope = OperationScope::per_indoor;
+    value.value_quality = OperationValueQuality::canonical_ambient_lookup;
+    assert(decode_outdoor_coil_raw_value(raw, &value) == OperationValueError::none);
+    same_raw(value.raw, raw);
+    assert(value.network_value == op2);
+    assert(value.kind == OperationSemanticKind::tho_r1);
+    assert(value.scope == OperationScope::shared_outdoor);
+    assert(value.value_quality == OperationValueQuality::raw_only);
+    const auto classified = decode_operation_segment(raw);
+    assert(classified.kind == OperationSemanticKind::tho_r1);
+    assert(classified.scope == OperationScope::shared_outdoor);
+    assert(classified.value_quality == OperationValueQuality::raw_only);
+    assert(!classified.unit_relation_known);
+    InferredIndoorCoilTemperature indoor{};
+    assert(decode_inferred_indoor_coil_temperature(raw, &indoor) == OperationValueError::unsupported_segment);
+  }
+
+  // OP1 is not a selector gate, OP3 is preserved, and input may alias output.
+  value.raw = {0x82U, 0xE1U, 0U, 0x7BU};
+  assert(decode_outdoor_coil_raw_value(value.raw, &value) == OperationValueError::none);
+  assert(value.network_value == 0U && value.raw.op1 == 0xE1U && value.raw.op3 == 0x7BU);
+  assert(value.kind == OperationSemanticKind::tho_r1 && value.scope == OperationScope::shared_outdoor);
+  assert(value.value_quality == OperationValueQuality::raw_only);
+
+  const OperationSegment unsupported{0x81U, 0xFFU, 73U, 0xFFU};
+  value.network_value = 99U;
+  value.kind = OperationSemanticKind::tho_r1;
+  value.scope = OperationScope::shared_outdoor;
+  value.value_quality = OperationValueQuality::inferred_diagnostic_candidate;
+  assert(decode_outdoor_coil_raw_value(unsupported, &value) == OperationValueError::unsupported_segment);
+  same_raw(value.raw, unsupported);
+  assert(value.network_value == 0U && value.kind == OperationSemanticKind::unknown);
+  assert(value.scope == OperationScope::unknown && value.value_quality == OperationValueQuality::unknown_semantic);
+  assert(decode_outdoor_coil_raw_value({}, nullptr) == OperationValueError::invalid_argument);
+}
+
 void test_inferred_indoor_coil_temperature() {
   InferredIndoorCoilTemperature value{};
   const struct Point { uint8_t raw; int16_t deci_celsius; } points[] = {
@@ -221,6 +264,7 @@ void test_inferred_indoor_coil_temperature() {
 void test_operation_values() {
   test_inferred_outdoor_candidates();
   test_eev_network_value();
+  test_outdoor_coil_raw_value();
   test_inferred_indoor_coil_temperature();
   // Full-table fingerprint over LE16 deci-Celsius, independently fixed from
   // pinned utils.py numeric data (928efd8637bcb346a4945c545ab76733eae6245c).
