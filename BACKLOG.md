@@ -4,9 +4,9 @@
 
 ## CANDIDATE — Remaining advanced protocol / diagnostic semantics
 
-- Goal：在已拆出的 canonical `0x80` ambient／`0x94` current-run energy，以及 current inferred `0x11`／`0x90`／bounded `0x85` tranche之外，繼續補齊 evidence足夠的 vane、advanced fixed-state、diagnostic physical conversions與其他 read-side semantics。
-- Residual scope：`0x13` EEV、`0x81/0x87` coil candidate curve、`0x82`、`0xB1`、`0x7C`、`0x1E/0x1F`、unknown semantic codes、vane／3D Auto、advanced fixed bytes與其他仍未 admission semantics；依 current evidence逐項分 tranche，UNKNOWN維持 UNKNOWN。
-- Trigger：current Hot decoder tranche完成後再 fresh-reconcile；不得把 upstream inferred formula或 direct CNS semantics直接升成 WF-RAC network production truth。
+- Goal：在已拆出的 canonical `0x80` ambient／`0x94` current-run energy、current inferred `0x11`／`0x90`／bounded `0x85`，以及 exact raw/network `0x13` EEV typed decoder之外，繼續補齊 evidence足夠的 vane、advanced fixed-state、diagnostic physical conversions與其他 read-side semantics。
+- Residual scope：`0x81/0x87` coil candidate curve、`0x82`、`0xB1`、`0x7C`、`0x1E/0x1F`、unknown semantic codes、vane／3D Auto、advanced fixed bytes與其他仍未 admission semantics；依 current evidence逐項分 tranche，UNKNOWN維持 UNKNOWN。
+- Trigger：下一次要 promotion advanced residual tranche前先 fresh-reconcile current authority/evidence；不得把 upstream inferred formula或 direct CNS semantics直接升成 WF-RAC network production truth。
 - Exclusions：不做 exploratory write、不從 CNS/SPI semantics直接宣稱 WF-RAC network write已驗證、不執行硬體/network。
 - Completion gate：每個後續 tranche都有 provenance、bounded machine/host tests與清楚 evidence level，沒有越過 evidence等級。
 
