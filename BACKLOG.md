@@ -4,7 +4,7 @@
 
 ## CANDIDATE — Remaining software-only protocol / diagnostic work
 
-`0x81/0x87` bounded indoor-coil temperature candidate decoder 已完成並從 Hot 收斂。Current Hot 已 promotion 為 `0x82` THO-R1 typed raw decoder，因此下列只保留其後尚未 admission 的 software-only residual。
+`0x81/0x87` bounded indoor-coil temperature candidate decoder 與 `0x82` THO-R1 typed raw decoder 均已完成並從 Hot 收斂；以下只保留尚未 admission 的 software-only residual。
 
 建議後續依下列順序逐項 fresh-reconcile、一次 promotion 一個 bounded tranche：
 
