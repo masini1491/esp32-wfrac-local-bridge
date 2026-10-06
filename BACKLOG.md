@@ -4,32 +4,27 @@
 
 ## CANDIDATE — Remaining software-only protocol / diagnostic work
 
-`0x81/0x87` bounded indoor-coil temperature candidate decoder 已完成並從 Hot 收斂；以下只保留尚未 admission 的 software-only residual。
+`0x81/0x87` bounded indoor-coil temperature candidate decoder 已完成並從 Hot 收斂。Current Hot 已 promotion 為 `0x82` THO-R1 typed raw decoder，因此下列只保留其後尚未 admission 的 software-only residual。
 
 建議後續依下列順序逐項 fresh-reconcile、一次 promotion 一個 bounded tranche：
 
-1. **`0x82` THO-R1 typed raw decoder**
-   - shared outdoor。
-   - 只暴露 exact raw/network byte與完整 raw segment。
-   - physical unit維持 UNKNOWN；不得重用 `0x81/0x87` indoor-coil curve。
-
-2. **`0xB1` TDSH-related typed raw decoder**
+1. **`0xB1` TDSH-related typed raw decoder**
    - shared outdoor。
    - 只暴露 exact raw/network byte與完整 raw segment。
    - Celsius conversion目前未建立；不得直接採 secondary direct-CNS/SPI formula。
 
-3. **Residual semantic tightening**
+2. **Residual semantic tightening**
    - `0x7C`：維持 UNKNOWN，不建模為 protection boolean。
    - `0x1E/0x1F`：維持 confirmed response-no-value / candidate semantics，不把 no-value誤判為 universally unsupported。
    - `0x0D/0x21/0x32/0x34/0x35` 等 unknown semantic codes：只有 current evidence足以縮小語意時才另分 tranche；UNKNOWN 維持 UNKNOWN。
    - 特別保留 `0x34` 使用 OP3 的 multi-byte evidence，不套單-byte慣例。
 
-4. **Vane / horizontal vane / 3D Auto / advanced fixed-state**
+3. **Vane / horizontal vane / 3D Auto / advanced fixed-state**
    - 功能價值高，但涉及 control/write semantics 與不同 completion gate。
    - 必須先 fresh-reconcile pinned evidence、command/receive encoding與安全邊界，再決定是否拆成一個或多個 Hot Stage。
    - 不得因 read-side evidence存在就推定 write semantics已驗證。
 
-5. **Other newly evidenced software-only residuals**
+4. **Other newly evidenced software-only residuals**
    - 只有出現新的 current upstream/local evidence，且能形成 bounded、可驗證 tranche時才 admission。
    - 不為完整度製造 speculative decoder／control。
 
