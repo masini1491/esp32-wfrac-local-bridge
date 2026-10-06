@@ -2,13 +2,38 @@
 
 本檔是 Cold coordination surface：ordinary bootstrap 預設不載入、不具 execution authority，也不是 architecture、protocol、security 或 evidence canonical truth。Cold item 必須先回到 current authority/evidence reconciliation，promotion 到 `TASKS.md` Hot coordination，並取得使用者明確 launch 才能執行；保存不提高 AI 建議的 recommendation authority。
 
-## CANDIDATE — Remaining advanced protocol / diagnostic semantics
+## CANDIDATE — Remaining software-only protocol / diagnostic work
 
-- Goal：在已拆出的 canonical `0x80` ambient／`0x94` current-run energy、current inferred `0x11`／`0x90`／bounded `0x85`，以及 exact raw/network `0x13` EEV typed decoder之外，繼續補齊 evidence足夠的 vane、advanced fixed-state、diagnostic physical conversions與其他 read-side semantics。
-- Residual scope：`0x81/0x87` coil candidate curve、`0x82`、`0xB1`、`0x7C`、`0x1E/0x1F`、unknown semantic codes、vane／3D Auto、advanced fixed bytes與其他仍未 admission semantics；依 current evidence逐項分 tranche，UNKNOWN維持 UNKNOWN。
-- Trigger：下一次要 promotion advanced residual tranche前先 fresh-reconcile current authority/evidence；不得把 upstream inferred formula或 direct CNS semantics直接升成 WF-RAC network production truth。
-- Exclusions：不做 exploratory write、不從 CNS/SPI semantics直接宣稱 WF-RAC network write已驗證、不執行硬體/network。
-- Completion gate：每個後續 tranche都有 provenance、bounded machine/host tests與清楚 evidence level，沒有越過 evidence等級。
+Current Hot 已 promotion 為 `0x81/0x87` bounded indoor-coil temperature candidate decoder，因此不在 Cold 重複列為待執行項。
+
+建議後續依下列順序逐項 fresh-reconcile、一次 promotion 一個 bounded tranche：
+
+1. **`0x82` THO-R1 typed raw decoder**
+   - shared outdoor。
+   - 只暴露 exact raw/network byte與完整 raw segment。
+   - physical unit維持 UNKNOWN；不得重用 `0x81/0x87` indoor-coil curve。
+
+2. **`0xB1` TDSH-related typed raw decoder**
+   - shared outdoor。
+   - 只暴露 exact raw/network byte與完整 raw segment。
+   - Celsius conversion目前未建立；不得直接採 secondary direct-CNS/SPI formula。
+
+3. **Residual semantic tightening**
+   - `0x7C`：維持 UNKNOWN，不建模為 protection boolean。
+   - `0x1E/0x1F`：維持 confirmed response-no-value / candidate semantics，不把 no-value誤判為 universally unsupported。
+   - `0x0D/0x21/0x32/0x34/0x35` 等 unknown semantic codes：只有 current evidence足以縮小語意時才另分 tranche；UNKNOWN 維持 UNKNOWN。
+   - 特別保留 `0x34` 使用 OP3 的 multi-byte evidence，不套單-byte慣例。
+
+4. **Vane / horizontal vane / 3D Auto / advanced fixed-state**
+   - 功能價值高，但涉及 control/write semantics 與不同 completion gate。
+   - 必須先 fresh-reconcile pinned evidence、command/receive encoding與安全邊界，再決定是否拆成一個或多個 Hot Stage。
+   - 不得因 read-side evidence存在就推定 write semantics已驗證。
+
+5. **Other newly evidenced software-only residuals**
+   - 只有出現新的 current upstream/local evidence，且能形成 bounded、可驗證 tranche時才 admission。
+   - 不為完整度製造 speculative decoder／control。
+
+共通 exclusions：不做 exploratory write、不把 direct CNS/SPI semantics直接升成 WF-RAC network truth、不執行硬體/network、不把 software test升級為 `CONFIRMED_LOCAL`。
 
 ## CANDIDATE — First real WF-RAC read-only probe / hardware validation
 
