@@ -202,6 +202,7 @@ class ContractValidatorTests(unittest.TestCase):
                 lambda c, code=code: entry(c, code).update(scope="per_indoor"),
                 lambda c, code=code: entry(c, code).update(value_quality="zero"),
                 lambda c, code=code: entry(c, code).update(universally_unsupported=True),
+                lambda c, code=code: entry(c, code).update(universal_sentinel=True),
                 lambda c, code=code: entry(c, code).update(no_value_cause="CONFIRMED_DB6_SELECTOR"),
                 lambda c, code=code: entry(c, code).update(cause_hypothesis="DB6 selector confirmed"),
                 lambda c, code=code: entry(c, code).update(local_validation="CONFIRMED_LOCAL"),

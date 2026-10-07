@@ -151,7 +151,7 @@ def check_operation_data_r3(contract: dict[str, Any]) -> None:
         require(no_value["semantic"] == semantic and no_value["scope"] == "UNKNOWN", f"operation_data_r3.{code}: candidate/scope boundary mismatch")
         require(no_value["response_shape"] == "FF FF FF", f"operation_data_r3.{code}: observed response shape mismatch")
         require(no_value["value_quality"] == "no_usable_value_established; not zero; universally unsupported not established", f"operation_data_r3.{code}: no-value semantics mismatch")
-        require(no_value["universally_unsupported"] is False and no_value["no_value_cause"] == "UNKNOWN", f"operation_data_r3.{code}: unsupported/cause boundary mismatch")
+        require(no_value["universally_unsupported"] is False and no_value["universal_sentinel"] is False and no_value["no_value_cause"] == "UNKNOWN", f"operation_data_r3.{code}: unsupported/sentinel/cause boundary mismatch")
         require(no_value["cause_hypothesis"] == "DB6 unit selector is not exposed by the WF-RAC bridge; INFERRED and untested", f"operation_data_r3.{code}: DB6 hypothesis must remain inferred and untested")
         require(no_value["evidence_level"] == "CONFIRMED_UPSTREAM" and no_value["local_validation"] == "HARDWARE_TEST_PENDING", f"operation_data_r3.{code}: evidence boundary mismatch")
     protection = entries["0x7C"]
