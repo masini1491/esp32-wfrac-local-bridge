@@ -10,7 +10,8 @@ R3 WF-RAC-visible matrix、raw segment preservation、query transaction 與 CNS/
 - Generic query 使用 `setAirconStat` no-op COMMAND block 加 query segment，response 必須由同一 transaction 解析；不得改用稍後 `getAirconStat`。Query command：set bits clear、byte 5=`0xFF`、OP1=`0xFF`，batch 只作 small/bounded 方向。
 - Project full query request composition 使用最新 CRC-valid RECEIVE raw state 作 compatibility baseline，COMMAND 只 carry byte 8 bit `0x08`；RECEIVE 固定使用 no-request sentinel，且不複製 observation response segments。完整 request batch bound 為 project policy 的 1–3 個 codes，仍為 `HARDWARE_TEST_PENDING`。
 - Matrix：unsolicited `0x80/0x10` outdoor temp、`0x80/0x20` indoor temp、`0x94` current-run energy（0.25 kWh/count）；query values `0x11` frequency、`0x90` current、`0x85` discharge、`0x13` EEV raw、`0x81/0x87` indoor coils、`0x82` outdoor coil、`0xB1` TDSH-related、`0x7C` unresolved；`0x1E/0x1F` no-value；`0x0D/0x21/0x32/0x34/0x35` unknown semantic；`0xF8` special app extension。
-- `0x7C` 不可建模為 protection boolean；`0x13` 不可升級為 calibrated percentage。`0x0C`／`0x05` 只有 direct CNS evidence，WF-RAC HTTP visibility UNKNOWN，不是 confirmed unsupported。Generic operation-data write 維持 OUT_OF_SCOPE。
+- `0x7C` 是 known query code，但 semantic、scope 與 value meaning 均維持 UNKNOWN：OP2=0 不代表 protection inactive／false，non-zero meaning 未建立；不得當作 general protection-active、overload-clamp、speed-limit、frost/defrost 或 generic-fault boolean。`0x13` 不可升級為 calibrated percentage。`0x0C`／`0x05` 只有 direct CNS evidence，WF-RAC HTTP visibility UNKNOWN，不是 confirmed unsupported。Generic operation-data write 維持 OUT_OF_SCOPE。
+- Pinned upstream 在三台測試機觀察到 `0x7C` response 值為 0；controlled overload-clamp test 中 `0x7C` 仍為 0，而 compressor-frequency floor 行為已改變。這只支持不得把該值等同一般 overload/protection-clamp activity，不建立 non-zero mapping 或跨 firmware／機型的 universal semantics。
 - Per-indoor：demand、EEV、indoor coils、energy；shared outdoor：frequency、current、discharge、outdoor coil。Scope 不直接轉成 Matter endpoint。
 
 ## Software decoder boundary

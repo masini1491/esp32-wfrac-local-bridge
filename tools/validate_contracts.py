@@ -145,7 +145,18 @@ def check_operation_data_r3(contract: dict[str, Any]) -> None:
     require(entries["0x80" + "0x10"]["visibility"] == "CONFIRMED_UNSOLICITED_PUSH", "operation_data_r3.0x80/0x10: visibility mismatch")
     require(entries["0x0C"]["visibility"] == "NO_WF_RAC_HTTP_EVIDENCE" and entries["0x05"]["visibility"] == "NO_WF_RAC_HTTP_EVIDENCE", "operation_data_r3: direct CNS visibility boundary missing")
     require(entries["0x13"]["value_quality"].find("calibrated_open_percentage=false") >= 0, "operation_data_r3.0x13: calibrated percentage boundary missing")
-    require("UNKNOWN" in entries["0x7C"]["semantic"] and "compressorProtectionActive" in entries["0x7C"]["semantic"], "operation_data_r3.0x7C: unresolved meaning boundary missing")
+    protection = entries["0x7C"]
+    protection_guards = {
+        "zero_does_not_mean_protection_inactive_or_false",
+        "nonzero_meaning_unknown",
+        "not_general_protection_active_boolean",
+        "not_overload_clamp_boolean",
+        "not_speed_limit_frost_defrost_or_generic_fault_boolean",
+    }
+    require(protection["visibility"] == "CONFIRMED_QUERY_VALUE", "operation_data_r3.0x7C: known query presence missing")
+    require(protection["semantic"] == "protection_diagnostic_unknown" and protection["scope"] == "UNKNOWN" and protection["value_quality"] == "unknown_semantic", "operation_data_r3.0x7C: unknown semantic/scope/value guard missing")
+    require(set(protection["interpretation_guards"]) == protection_guards, "operation_data_r3.0x7C: negative interpretation guards mismatch")
+    require(protection["evidence_level"] == "CONFIRMED_UPSTREAM" and protection["local_validation"] == "HARDWARE_TEST_PENDING", "operation_data_r3.0x7C: evidence boundary mismatch")
     require(entries["0x34"]["semantic"].find("OP3") >= 0, "operation_data_r3.0x34: OP3 preservation missing")
     for entry in r3["entries"]:
         check_evidence(entry["evidence_level"], f"operation_data_r3.entries[{entry['code']}].evidence_level")

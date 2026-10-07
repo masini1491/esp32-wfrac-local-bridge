@@ -170,6 +170,26 @@ class ContractValidatorTests(unittest.TestCase):
     def test_operation_data_7c_remains_unresolved(self) -> None:
         self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x7C").update(semantic="compressorProtectionActive"))
 
+    def test_operation_data_7c_negative_semantic_guards_are_required(self) -> None:
+        def entry(contract):
+            return next(e for e in contract["operation_data_r3"]["entries"] if e["code"] == "0x7C")
+
+        mutations = (
+            lambda c: entry(c).update(visibility="NO_WF_RAC_HTTP_EVIDENCE"),
+            lambda c: entry(c).update(scope="shared_outdoor"),
+            lambda c: entry(c).update(value_quality="raw_only"),
+            lambda c: entry(c).update(evidence_level="INFERRED"),
+            lambda c: entry(c).update(local_validation="CONFIRMED_LOCAL"),
+            lambda c: entry(c)["interpretation_guards"].remove("zero_does_not_mean_protection_inactive_or_false"),
+            lambda c: entry(c)["interpretation_guards"].remove("nonzero_meaning_unknown"),
+            lambda c: entry(c)["interpretation_guards"].remove("not_general_protection_active_boolean"),
+            lambda c: entry(c)["interpretation_guards"].remove("not_overload_clamp_boolean"),
+            lambda c: entry(c)["interpretation_guards"].remove("not_speed_limit_frost_defrost_or_generic_fault_boolean"),
+        )
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                self.assert_rejected(mutation)
+
     def test_operation_data_13_is_not_calibrated_percentage(self) -> None:
         self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13").update(value_quality="calibrated_open_percentage=true"))
 

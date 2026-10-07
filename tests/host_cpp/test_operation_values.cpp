@@ -242,6 +242,33 @@ void test_tdsh_raw_value() {
   assert(decode_tdsh_raw_value({}, nullptr) == OperationValueError::invalid_argument);
 }
 
+void test_protection_diagnostic_unknown_guards() {
+  const OperationSegment protection_zero{0x7CU, 0xA5U, 0x00U, 0x5AU};
+  const OperationSegment protection_nonzero{0x7CU, 0x02U, 0xD3U, 0xFEU};
+  for (const OperationSegment raw : {protection_zero, protection_nonzero}) {
+    const OperationData classified = decode_operation_segment(raw);
+    same_raw(classified.raw, raw);
+    assert(classified.kind == OperationSemanticKind::protection_diagnostic_unknown);
+    assert(classified.scope == OperationScope::unknown);
+    assert(classified.value_quality == OperationValueQuality::unknown_semantic);
+    assert(classified.code_known && !classified.unit_relation_known);
+    assert(is_known_safe_operation_query_code(raw.code));
+  }
+
+  const auto tdsh = decode_operation_segment({0xB1U, 0x13U, 0x00U, 0x12U});
+  assert(tdsh.kind == OperationSemanticKind::tdsh_raw && tdsh.scope == OperationScope::shared_outdoor);
+  assert(tdsh.value_quality == OperationValueQuality::raw_only);
+  const auto no_run_value = decode_operation_segment({0x1EU, 0x15U, 0x00U, 0x17U});
+  assert(no_run_value.kind == OperationSemanticKind::run_hours_candidate);
+  assert(no_run_value.value_quality == OperationValueQuality::no_usable_value_established);
+  const auto no_fan_value = decode_operation_segment({0x1FU, 0x18U, 0x00U, 0x1AU});
+  assert(no_fan_value.kind == OperationSemanticKind::fan_speed_candidate);
+  assert(no_fan_value.value_quality == OperationValueQuality::no_usable_value_established);
+  const auto unknown = decode_operation_segment({0xFEU, 0x29U, 0x00U, 0x2BU});
+  assert(unknown.kind == OperationSemanticKind::unknown && !unknown.code_known);
+  assert(unknown.scope == OperationScope::unknown && unknown.value_quality == OperationValueQuality::unknown_semantic);
+}
+
 void test_inferred_indoor_coil_temperature() {
   InferredIndoorCoilTemperature value{};
   const struct Point { uint8_t raw; int16_t deci_celsius; } points[] = {
@@ -307,6 +334,7 @@ void test_operation_values() {
   test_eev_network_value();
   test_outdoor_coil_raw_value();
   test_tdsh_raw_value();
+  test_protection_diagnostic_unknown_guards();
   test_inferred_indoor_coil_temperature();
   // Full-table fingerprint over LE16 deci-Celsius, independently fixed from
   // pinned utils.py numeric data (928efd8637bcb346a4945c545ab76733eae6245c).
