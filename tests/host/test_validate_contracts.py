@@ -211,6 +211,29 @@ class ContractValidatorTests(unittest.TestCase):
                 with self.subTest(code=code, mutation=mutation):
                     self.assert_rejected(mutation)
 
+    def test_unknown_operation_data_response_shapes_are_not_generalized(self) -> None:
+        def entry(contract, code):
+            return next(e for e in contract["operation_data_r3"]["entries"] if e["code"] == code)
+
+        for code in ("0x0D", "0x21", "0x32", "0x34", "0x35"):
+            mutations = (
+                lambda c, code=code: entry(c, code).update(semantic="temperature"),
+                lambda c, code=code: entry(c, code).update(scope="shared outdoor"),
+                lambda c, code=code: entry(c, code).update(value_quality="raw_only"),
+                lambda c, code=code: entry(c, code).update(response_shape="00 00 00"),
+                lambda c, code=code: entry(c, code).update(op1_is_universal_fixed_0x10=True),
+                lambda c, code=code: entry(c, code).update(observed_shape_is_universal_constant=True),
+                lambda c, code=code: entry(c, code).update(ff_is_universal_sentinel=True),
+                lambda c, code=code: entry(c, code).update(raw_preserved_fields=["code", "OP1", "OP2"]),
+                lambda c, code=code: entry(c, code).update(local_validation="CONFIRMED_LOCAL"),
+            )
+            for mutation in mutations:
+                with self.subTest(code=code, mutation=mutation):
+                    self.assert_rejected(mutation)
+
+        self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x34").update(single_byte_only_interpretation=True))
+        self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x34").update(op3_participates_in_observed_shape=False))
+
     def test_operation_data_13_is_not_calibrated_percentage(self) -> None:
         self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13").update(value_quality="calibrated_open_percentage=true"))
 

@@ -154,6 +154,21 @@ def check_operation_data_r3(contract: dict[str, Any]) -> None:
         require(no_value["universally_unsupported"] is False and no_value["universal_sentinel"] is False and no_value["no_value_cause"] == "UNKNOWN", f"operation_data_r3.{code}: unsupported/sentinel/cause boundary mismatch")
         require(no_value["cause_hypothesis"] == "DB6 unit selector is not exposed by the WF-RAC bridge; INFERRED and untested", f"operation_data_r3.{code}: DB6 hypothesis must remain inferred and untested")
         require(no_value["evidence_level"] == "CONFIRMED_UPSTREAM" and no_value["local_validation"] == "HARDWARE_TEST_PENDING", f"operation_data_r3.{code}: evidence boundary mismatch")
+    unknown_shapes = {
+        "0x0D": "00 FF FF",
+        "0x21": "10 FF FF",
+        "0x32": "2E 04 FF",
+        "0x34": "11 01 04",
+        "0x35": "10 00 FF",
+    }
+    for code, shape in unknown_shapes.items():
+        unknown = entries[code]
+        require(unknown["visibility"] == "CONFIRMED_QUERY_RESPONSE_UNKNOWN_SEMANTIC", f"operation_data_r3.{code}: query-response visibility mismatch")
+        require(unknown["semantic"].startswith("UNKNOWN") and unknown["scope"] == "UNKNOWN" and unknown["value_quality"] == "unknown_semantic", f"operation_data_r3.{code}: unknown semantic/scope/value boundary mismatch")
+        require(unknown["response_shape"] == shape and unknown["raw_preserved_fields"] == ["code", "OP1", "OP2", "OP3"], f"operation_data_r3.{code}: observed raw shape/preservation mismatch")
+        require(unknown["op1_is_universal_fixed_0x10"] is False and unknown["observed_shape_is_universal_constant"] is False and unknown["ff_is_universal_sentinel"] is False, f"operation_data_r3.{code}: observation was generalized")
+        require(unknown["evidence_level"] == "CONFIRMED_UPSTREAM" and unknown["local_validation"] == "HARDWARE_TEST_PENDING", f"operation_data_r3.{code}: evidence boundary mismatch")
+    require(entries["0x34"]["op3_participates_in_observed_shape"] is True and entries["0x34"]["single_byte_only_interpretation"] is False, "operation_data_r3.0x34: OP3/multi-byte evidence boundary missing")
     protection = entries["0x7C"]
     protection_guards = {
         "zero_does_not_mean_protection_inactive_or_false",

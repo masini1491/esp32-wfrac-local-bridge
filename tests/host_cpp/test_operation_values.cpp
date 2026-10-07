@@ -290,6 +290,30 @@ void test_response_no_value_semantics() {
   }
 }
 
+void test_unknown_response_shapes_remain_raw() {
+  const struct Fixture {
+    OperationSegment raw;
+    OperationSemanticKind kind;
+  } fixtures[] = {
+      {{0x0DU, 0x00U, 0xFFU, 0xFFU}, OperationSemanticKind::unknown_semantic_0d},
+      {{0x21U, 0x10U, 0xFFU, 0xFFU}, OperationSemanticKind::unknown_semantic_21},
+      {{0x32U, 0x2EU, 0x04U, 0xFFU}, OperationSemanticKind::unknown_semantic_32},
+      {{0x34U, 0x11U, 0x01U, 0x04U}, OperationSemanticKind::unknown_semantic_34},
+      {{0x35U, 0x10U, 0x00U, 0xFFU}, OperationSemanticKind::unknown_semantic_35},
+  };
+  for (const auto& fixture : fixtures) {
+    const auto value = decode_operation_segment(fixture.raw);
+    same_raw(value.raw, fixture.raw);
+    assert(value.kind == fixture.kind);
+    assert(value.scope == OperationScope::unknown);
+    assert(value.value_quality == OperationValueQuality::unknown_semantic);
+    assert(value.code_known && !value.unit_relation_known);
+    assert(is_known_safe_operation_query_code(fixture.raw.code));
+  }
+  const auto code_34 = decode_operation_segment(fixtures[3].raw);
+  assert(code_34.raw.op2 == 0x01U && code_34.raw.op3 == 0x04U);
+}
+
 void test_inferred_indoor_coil_temperature() {
   InferredIndoorCoilTemperature value{};
   const struct Point { uint8_t raw; int16_t deci_celsius; } points[] = {
@@ -357,6 +381,7 @@ void test_operation_values() {
   test_tdsh_raw_value();
   test_protection_diagnostic_unknown_guards();
   test_response_no_value_semantics();
+  test_unknown_response_shapes_remain_raw();
   test_inferred_indoor_coil_temperature();
   // Full-table fingerprint over LE16 deci-Celsius, independently fixed from
   // pinned utils.py numeric data (928efd8637bcb346a4945c545ab76733eae6245c).
