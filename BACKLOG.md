@@ -2,22 +2,42 @@
 
 本檔是 Cold coordination surface：ordinary bootstrap 預設不載入、不具 execution authority，也不是 architecture、protocol、security 或 evidence canonical truth。Cold item 必須先回到 current authority/evidence reconciliation，promotion 到 `TASKS.md` Hot coordination，並取得使用者明確 launch 才能執行；保存不提高 AI 建議的 recommendation authority。
 
-## CANDIDATE — Remaining software-only protocol / diagnostic work
+## COMMITTED — Software-only continuation sequence
 
-`0x81/0x87` bounded indoor-coil temperature candidate decoder、`0x82` THO-R1 typed raw decoder、`0xB1` TDSH-related typed raw decoder、`0x7C` protection-diagnostic semantic guard tightening、`0x1E/0x1F` response-no-value semantic tightening，以及 `0x0D/0x21/0x32/0x34/0x35` unknown-semantic response-shape tightening 均已完成並從 Hot 收斂；以下只保留尚未 admission 的 software-only residual。
+下列工作已由使用者明確選定為後續不碰硬體／network 的 continuation sequence。它們目前都不是 Hot，不具 execution authority；每次只可對下一個 bounded Stage 做 fresh authority/evidence reconciliation，promotion 到 `TASKS.md`，再依 current authorization 執行。
 
-建議後續依下列順序逐項 fresh-reconcile、一次 promotion 一個 bounded tranche：
+1. **Docs reconciliation**
+   - Reconcile stale README／roadmap status and validation-count drift against current canonical source/tests/CI.
+   - Keep this documentation/bookkeeping only; do not use it to broaden technical scope.
 
-1. **Vane / horizontal vane / 3D Auto / advanced fixed-state**
-   - 功能價值高，但涉及 control/write semantics 與不同 completion gate。
-   - 必須先 fresh-reconcile pinned evidence、command/receive encoding與安全邊界，再決定是否拆成一個或多個 Hot Stage。
-   - 不得因 read-side evidence存在就推定 write semantics已驗證。
+2. **Vertical vane protocol core**
+   - Fresh-reconcile pinned WF-RAC evidence for vertical vane position / up-down swing receive + command set-bit semantics.
+   - Admit only the bounded portable protocol / request-composition / regression surface that current evidence supports.
+   - Hardware actuation remains `HARDWARE_TEST_PENDING`.
 
-2. **Other newly evidenced software-only residuals**
-   - 只有出現新的 current upstream/local evidence，且能形成 bounded、可驗證 tranche時才 admission。
-   - 不為完整度製造 speculative decoder／control。
+3. **Horizontal vane / 3D Auto read-side**
+   - Prefer read-side semantic/typed observation work first for `state[11]` / `state[12]`.
+   - Do not infer or admit write semantics unless fresh evidence is independently sufficient.
+   - Preserve model/capability gating and `HARDWARE_TEST_PENDING`.
 
-共通 exclusions：不做 exploratory write、不把 direct CNS/SPI semantics直接升成 WF-RAC network truth、不執行硬體/network、不把 software test升級為 `CONFIRMED_LOCAL`。
+4. **Advanced fixed-state guards**
+   - Reconcile bounded read-side semantics / negative guards for remaining advanced fixed-state fields such as Vacant, CoolHotJudge, error/self-clean-related observations where evidence is sufficient.
+   - Do not turn unreliable/status-only evidence into control support.
+
+5. **Device Model / Matter mapping**
+   - Only after lower protocol/read-side semantics are stable, reconcile bounded software-only Device Model and SDK-free Matter adapter mappings.
+   - Actual Matter runtime, node/endpoint execution, commissioning, interoperability, hardware/network remain out of scope.
+
+Common rules:
+- Sequence is durable future work, not a batch launch.
+- One bounded tranche at a time: `Cold → fresh reconcile → Hot promotion → explicit launch → validation → closure`.
+- Do not perform exploratory write, real Wi-Fi/HTTP/TLS/WF-RAC/hardware execution, or promote software evidence to `CONFIRMED_LOCAL`.
+- Do not invent semantics for completeness; unresolved evidence remains UNKNOWN / unsupported / pending as applicable.
+
+## CANDIDATE — Other newly evidenced software-only residuals
+
+- Only admit when new current upstream/local evidence creates a separate bounded, verifiable software-only tranche.
+- Do not manufacture speculative decoder/control work for completeness.
 
 ## CANDIDATE — First real WF-RAC read-only probe / hardware validation
 
