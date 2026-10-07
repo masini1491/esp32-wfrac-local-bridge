@@ -261,7 +261,7 @@ int main() {
   assert_operation({0x82U, 0x12U, 0x0FU, 0x10U}, wfrac_protocol::OperationSemanticKind::tho_r1,
                     wfrac_protocol::OperationScope::shared_outdoor, wfrac_protocol::OperationValueQuality::raw_only);
   assert_operation({0xB1U, 0x13U, 0x11U, 0x12U}, wfrac_protocol::OperationSemanticKind::tdsh_raw,
-                    wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::raw_only);
+                    wfrac_protocol::OperationScope::shared_outdoor, wfrac_protocol::OperationValueQuality::raw_only);
   assert_operation({0x7CU, 0x14U, 0x13U, 0x14U}, wfrac_protocol::OperationSemanticKind::protection_diagnostic_unknown,
                     wfrac_protocol::OperationScope::unknown, wfrac_protocol::OperationValueQuality::unknown_semantic);
   assert_operation({0x1EU, 0x15U, 0x16U, 0x17U}, wfrac_protocol::OperationSemanticKind::run_hours_candidate,

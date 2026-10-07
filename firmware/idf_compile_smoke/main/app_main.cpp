@@ -109,12 +109,14 @@ wfrac_protocol::OperationValueError operation_value_link_smoke() {
   wfrac_protocol::InferredIndoorCoilTemperature indoor_coil{};
   wfrac_protocol::EevNetworkValue eev{};
   wfrac_protocol::OutdoorCoilRawValue outdoor_coil{};
+  wfrac_protocol::TdshRawValue tdsh{};
   wfrac_protocol::decode_inferred_compressor_frequency({0x11U, 0x10U, 0, 0}, &frequency);
   wfrac_protocol::decode_inferred_operating_current({0x90U, 0x10U, 4U, 0}, &current);
   wfrac_protocol::decode_inferred_discharge_temperature({0x85U, 0x10U, 0x12U, 0}, &temperature);
   wfrac_protocol::decode_inferred_indoor_coil_temperature({0x81U, 0x20U, 170U, 0xA5U}, &indoor_coil);
   wfrac_protocol::decode_eev_network_value({0x13U, 0xA7U, 102U, 0x5CU}, &eev);
   wfrac_protocol::decode_outdoor_coil_raw_value({0x82U, 0xA5U, 0U, 0x5AU}, &outdoor_coil);
+  wfrac_protocol::decode_tdsh_raw_value({0xB1U, 0xA5U, 0U, 0x5AU}, &tdsh);
   wfrac_protocol::decode_ambient_temperature({0x80U, 0x10U, 128U, 0}, &ambient);
   return wfrac_protocol::decode_current_run_energy({0x94U, 0x10U, 1U, 0}, &energy);
 }

@@ -33,6 +33,8 @@ R3 WF-RAC-visible matrix、raw segment preservation、query transaction 與 CNS/
 
 `decode_outdoor_coil_raw_value()` accepts `0x82` (THO-R1) by semantic code and returns only its exact OP2 network byte with `shared_outdoor` scope and `raw_only` quality; the complete `[code, OP1, OP2, OP3]` remains available. OP1/OP3 are preserved without inferred roles. OP2=0 is an ordinary raw byte, not 0°C, no-value, sensor absence, compressor/frost/defrost state. Physical unit remains `UNKNOWN`: no temperature, resistance, thermistor, delta-T, protection or other physical conversion is performed. The tentative upstream Rs≈1230 Ω is not adopted, and the `0x81/0x87` curve is not reused. Software-only; local hardware remains `HARDWARE_TEST_PENDING`.
 
+`decode_tdsh_raw_value()` accepts `0xB1` and returns only its exact OP2 network byte as a shared-outdoor TDSH-related diagnostic raw value, preserving all `[code, OP1, OP2, OP3]` bytes. OP1/OP3 have no admitted role; OP2=0 is not assigned special meaning. Physical unit remains `UNKNOWN`; no Celsius, superheat, discharge-temperature, protection, fault, compressor or other physical inference is performed. The upstream `OP2 / 2` context is not an established or adopted conversion. Software-only; local hardware remains `HARDWARE_TEST_PENDING`.
+
 ## High-risk invariants
 
 App capability flags 不等於 protocol presence；firmware constant zero 不等於 unsupported。Temperature 詳細 conversion 見 [temperature-conversion.md](temperature-conversion.md)。

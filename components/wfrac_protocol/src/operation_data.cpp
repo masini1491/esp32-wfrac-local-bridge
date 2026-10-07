@@ -77,7 +77,7 @@ OperationData decode_operation_segment(const OperationSegment& raw) {
       return known_result(raw, OperationSemanticKind::tho_r1, OperationScope::shared_outdoor,
                           OperationValueQuality::raw_only);
     case 0xB1U:
-      return known_result(raw, OperationSemanticKind::tdsh_raw, OperationScope::unknown,
+      return known_result(raw, OperationSemanticKind::tdsh_raw, OperationScope::shared_outdoor,
                           OperationValueQuality::raw_only);
     case 0x7CU:
       return known_result(raw, OperationSemanticKind::protection_diagnostic_unknown, OperationScope::unknown,
@@ -236,6 +236,20 @@ OperationValueError decode_outdoor_coil_raw_value(const OperationSegment& raw, O
   output->raw = saved;
   const auto data = decode_operation_segment(saved);
   if (data.kind != OperationSemanticKind::tho_r1) return OperationValueError::unsupported_segment;
+  output->kind = data.kind;
+  output->scope = data.scope;
+  output->value_quality = data.value_quality;
+  output->network_value = saved.op2;
+  return OperationValueError::none;
+}
+
+OperationValueError decode_tdsh_raw_value(const OperationSegment& raw, TdshRawValue* output) {
+  if (output == nullptr) return OperationValueError::invalid_argument;
+  const auto saved = raw;
+  *output = {};
+  output->raw = saved;
+  const auto data = decode_operation_segment(saved);
+  if (data.kind != OperationSemanticKind::tdsh_raw) return OperationValueError::unsupported_segment;
   output->kind = data.kind;
   output->scope = data.scope;
   output->value_quality = data.value_quality;

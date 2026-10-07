@@ -142,6 +142,16 @@ struct OutdoorCoilRawValue {
   uint8_t network_value = 0;
 };
 
+// 0xB1 exposes only the exact WF-RAC network OP2 byte for the TDSH-related
+// shared-outdoor diagnostic channel. Physical unit remains UNKNOWN.
+struct TdshRawValue {
+  OperationSegment raw{};
+  OperationSemanticKind kind = OperationSemanticKind::unknown;
+  OperationScope scope = OperationScope::unknown;
+  OperationValueQuality value_quality = OperationValueQuality::unknown_semantic;
+  uint8_t network_value = 0;
+};
+
 // Non-null outputs reset and preserve raw even on failure (including aliasing).
 // Candidate values/quality are usable ONLY on none; zero alone is not validity.
 // 0x11 accepts only OP1 0x10..0x1f; 0x90/0x85 accept only OP1 0x10.
@@ -158,6 +168,8 @@ OperationValueError decode_inferred_indoor_coil_temperature(const OperationSegme
 OperationValueError decode_eev_network_value(const OperationSegment& raw, EevNetworkValue* output);
 // OP2=0 remains an ordinary raw byte; this decoder assigns no physical meaning.
 OperationValueError decode_outdoor_coil_raw_value(const OperationSegment& raw, OutdoorCoilRawValue* output);
+// OP2=0 is an ordinary raw byte; no temperature or other physical meaning is assigned.
+OperationValueError decode_tdsh_raw_value(const OperationSegment& raw, TdshRawValue* output);
 
 enum class OperationQueryError {
   none,
