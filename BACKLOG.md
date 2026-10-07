@@ -4,12 +4,11 @@
 
 ## CANDIDATE — Remaining software-only protocol / diagnostic work
 
-`0x81/0x87` bounded indoor-coil temperature candidate decoder、`0x82` THO-R1 typed raw decoder與 `0xB1` TDSH-related typed raw decoder均已完成並從 Hot 收斂；以下只保留尚未 admission 的 software-only residual。
+`0x81/0x87` bounded indoor-coil temperature candidate decoder、`0x82` THO-R1 typed raw decoder與 `0xB1` TDSH-related typed raw decoder均已完成並從 Hot 收斂。Current Hot 已 promotion 為 `0x7C` protection-diagnostic semantic guard tightening，因此下列只保留其後尚未 admission 的 software-only residual。
 
 建議後續依下列順序逐項 fresh-reconcile、一次 promotion 一個 bounded tranche：
 
 1. **Residual semantic tightening**
-   - `0x7C`：維持 UNKNOWN，不建模為 protection boolean。
    - `0x1E/0x1F`：維持 confirmed response-no-value / candidate semantics，不把 no-value誤判為 universally unsupported。
    - `0x0D/0x21/0x32/0x34/0x35` 等 unknown semantic codes：只有 current evidence足以縮小語意時才另分 tranche；UNKNOWN 維持 UNKNOWN。
    - 特別保留 `0x34` 使用 OP3 的 multi-byte evidence，不套單-byte慣例。
