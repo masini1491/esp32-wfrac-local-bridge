@@ -269,6 +269,27 @@ void test_protection_diagnostic_unknown_guards() {
   assert(unknown.scope == OperationScope::unknown && unknown.value_quality == OperationValueQuality::unknown_semantic);
 }
 
+void test_response_no_value_semantics() {
+  const OperationSegment responses[] = {
+      {0x1EU, 0xFFU, 0xFFU, 0xFFU},
+      {0x1FU, 0xFFU, 0xFFU, 0xFFU},
+  };
+  const OperationSemanticKind kinds[] = {
+      OperationSemanticKind::run_hours_candidate,
+      OperationSemanticKind::fan_speed_candidate,
+  };
+  for (unsigned i = 0; i < 2U; ++i) {
+    const auto& raw = responses[i];
+    const auto value = decode_operation_segment(raw);
+    same_raw(value.raw, raw);
+    assert(value.kind == kinds[i]);
+    assert(value.scope == OperationScope::unknown);
+    assert(value.value_quality == OperationValueQuality::no_usable_value_established);
+    assert(value.code_known && !value.unit_relation_known);
+    assert(is_known_safe_operation_query_code(raw.code));
+  }
+}
+
 void test_inferred_indoor_coil_temperature() {
   InferredIndoorCoilTemperature value{};
   const struct Point { uint8_t raw; int16_t deci_celsius; } points[] = {
@@ -335,6 +356,7 @@ void test_operation_values() {
   test_outdoor_coil_raw_value();
   test_tdsh_raw_value();
   test_protection_diagnostic_unknown_guards();
+  test_response_no_value_semantics();
   test_inferred_indoor_coil_temperature();
   // Full-table fingerprint over LE16 deci-Celsius, independently fixed from
   // pinned utils.py numeric data (928efd8637bcb346a4945c545ab76733eae6245c).

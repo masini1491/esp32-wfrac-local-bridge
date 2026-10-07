@@ -190,6 +190,26 @@ class ContractValidatorTests(unittest.TestCase):
             with self.subTest(mutation=mutation):
                 self.assert_rejected(mutation)
 
+    def test_operation_data_1e_1f_response_no_value_guards(self) -> None:
+        def entry(contract, code):
+            return next(e for e in contract["operation_data_r3"]["entries"] if e["code"] == code)
+
+        for code in ("0x1E", "0x1F"):
+            mutations = (
+                lambda c, code=code: entry(c, code).update(visibility="CONFIRMED_QUERY_VALUE"),
+                lambda c, code=code: entry(c, code).update(response_shape="00 00 00"),
+                lambda c, code=code: entry(c, code).update(semantic="universally unsupported"),
+                lambda c, code=code: entry(c, code).update(scope="per_indoor"),
+                lambda c, code=code: entry(c, code).update(value_quality="zero"),
+                lambda c, code=code: entry(c, code).update(universally_unsupported=True),
+                lambda c, code=code: entry(c, code).update(no_value_cause="CONFIRMED_DB6_SELECTOR"),
+                lambda c, code=code: entry(c, code).update(cause_hypothesis="DB6 selector confirmed"),
+                lambda c, code=code: entry(c, code).update(local_validation="CONFIRMED_LOCAL"),
+            )
+            for mutation in mutations:
+                with self.subTest(code=code, mutation=mutation):
+                    self.assert_rejected(mutation)
+
     def test_operation_data_13_is_not_calibrated_percentage(self) -> None:
         self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13").update(value_quality="calibrated_open_percentage=true"))
 

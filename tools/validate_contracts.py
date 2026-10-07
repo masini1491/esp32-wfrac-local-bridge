@@ -145,6 +145,15 @@ def check_operation_data_r3(contract: dict[str, Any]) -> None:
     require(entries["0x80" + "0x10"]["visibility"] == "CONFIRMED_UNSOLICITED_PUSH", "operation_data_r3.0x80/0x10: visibility mismatch")
     require(entries["0x0C"]["visibility"] == "NO_WF_RAC_HTTP_EVIDENCE" and entries["0x05"]["visibility"] == "NO_WF_RAC_HTTP_EVIDENCE", "operation_data_r3: direct CNS visibility boundary missing")
     require(entries["0x13"]["value_quality"].find("calibrated_open_percentage=false") >= 0, "operation_data_r3.0x13: calibrated percentage boundary missing")
+    for code, semantic in (("0x1E", "candidate run hours only"), ("0x1F", "candidate fan speed only")):
+        no_value = entries[code]
+        require(no_value["visibility"] == "CONFIRMED_QUERY_RESPONSE_NO_VALUE", f"operation_data_r3.{code}: response visibility mismatch")
+        require(no_value["semantic"] == semantic and no_value["scope"] == "UNKNOWN", f"operation_data_r3.{code}: candidate/scope boundary mismatch")
+        require(no_value["response_shape"] == "FF FF FF", f"operation_data_r3.{code}: observed response shape mismatch")
+        require(no_value["value_quality"] == "no_usable_value_established; not zero; universally unsupported not established", f"operation_data_r3.{code}: no-value semantics mismatch")
+        require(no_value["universally_unsupported"] is False and no_value["no_value_cause"] == "UNKNOWN", f"operation_data_r3.{code}: unsupported/cause boundary mismatch")
+        require(no_value["cause_hypothesis"] == "DB6 unit selector is not exposed by the WF-RAC bridge; INFERRED and untested", f"operation_data_r3.{code}: DB6 hypothesis must remain inferred and untested")
+        require(no_value["evidence_level"] == "CONFIRMED_UPSTREAM" and no_value["local_validation"] == "HARDWARE_TEST_PENDING", f"operation_data_r3.{code}: evidence boundary mismatch")
     protection = entries["0x7C"]
     protection_guards = {
         "zero_does_not_mean_protection_inactive_or_false",
