@@ -143,7 +143,7 @@ void extended_observation_tests() {
     assert(extended.error.code == (pair.second == ErrorFamily::m_family ? (pair.first & 0x7FU) : pair.first));
   }
   frame.receive.state[6] = 0x00U;
-  frame.receive.state[2] = 0x02U;
+  frame.receive.state[2] = 0x00U;
   frame.receive.state[8] = 0x10U;
   frame.receive.state[9] = 0x02U;
   frame.receive.state[10] = 0xA0U;
