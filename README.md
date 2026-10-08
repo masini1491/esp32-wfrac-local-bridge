@@ -6,7 +6,7 @@
 
 Phase 0 的 machine-readable software foundation 已建立於 [`specs/wf-rac-contracts.json`](specs/wf-rac-contracts.json)，僅整理研究 contract，不包含 runtime implementation。
 
-目前 software-only validation 流程為：`specs/wf-rac-contracts.json` → `tools/validate_contracts.py` → `tests/host/test_validate_contracts.py`，並新增 `components/wfrac_protocol/` 的 C++17 CRC16／AirconStat structural framing、basic fixed-state decoder、四個 safe command intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe query builder、standard Base64 codec 與 generic full AirconStat composer host tests，皆由 GitHub Actions 執行。Python host tests 目前為 69 個；C++ protocol core tests 為 1 個 executable；`CONFIRMED_LOCAL = 0`，hardware/runtime validation 仍為 `HARDWARE_TEST_PENDING`。
+目前 software-only validation 流程為：`specs/wf-rac-contracts.json` → `tools/validate_contracts.py` → `tests/host/test_validate_contracts.py`，並新增 `components/wfrac_protocol/` 的 C++17 CRC16／AirconStat structural framing、basic fixed-state decoder、四個 safe command intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe query builder、standard Base64 codec 與 generic full AirconStat composer host tests，皆由 GitHub Actions 執行。Python host tests 由 `unittest` gate 執行（數量隨測試演進）；C++ protocol core tests 為 1 個 executable；`CONFIRMED_LOCAL = 0`，hardware/runtime validation 仍為 `HARDWARE_TEST_PENDING`。
 
 最小 host validation commands：
 
@@ -18,7 +18,7 @@ python -m unittest tests.host.test_validate_contracts
 
 本地開發驗證需要 Python 3、支援 C++17 的 MSYS2 UCRT64 GCC/G++ 與 ESP-IDF v6.0.2；ESP32-C6 為 primary target，ESP32-C3 為 compatibility target。Windows interactive/local development 使用 PowerShell 7（`pwsh`、`PSEdition Core`）；Windows PowerShell 5.1（`powershell.exe`）不屬正式 PowerShell validation runtime。這不取代既有 Python/C++/ESP-IDF tooling，也不要求 GitHub Actions 改用 Windows。
 
-獨立的 [ESP-IDF compile/link workflow](.github/workflows/esp-idf-compile.yml) 使用官方 `espressif/idf:v6.0.2` image，在相關 `main` push／PR 持續編譯 `idf_compile_smoke` 與 default-inert `wfrac_bootstrap_probe`，各涵蓋 ESP32-C6／ESP32-C3；亦可手動觸發。此四格 gate 只提供遠端 compile/link evidence，不執行 firmware、flash、Wi-Fi 或 WF-RAC request；既有 Python／host C++ CI 保持獨立。初次四格 [remote validation run](https://github.com/masini1491/esp32-wfrac-local-bridge/actions/runs/37220534600) 已 PASS。
+獨立的 [ESP-IDF compile/link workflow](.github/workflows/esp-idf-compile.yml) 使用官方 `espressif/idf:v6.0.2` image，在相關 `main` push／PR 持續編譯 `idf_compile_smoke` 與 default-inert `wfrac_bootstrap_probe`，各涵蓋 ESP32-C6／ESP32-C3；亦可手動觸發。現行 matrix 為六格：四格 default gates 加上 WebUI-enabled bootstrap probe 的 C6／C3 full-link；此 gate 只提供遠端 compile/link evidence，不執行 firmware、flash、Wi-Fi 或 WF-RAC request。歷史 [四格 run](https://github.com/masini1491/esp32-wfrac-local-bridge/actions/runs/37220534600) 僅代表當時的四格範圍；既有 Python／host C++ CI 保持獨立。
 
 ## 專案狀態
 

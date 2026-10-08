@@ -54,6 +54,14 @@ class ContractValidatorTests(unittest.TestCase):
 
         extended = self.canonical["device_model_extended_observation"]
         self.assertTrue(extended["implemented"])
+        self.assertEqual(
+            extended["input"],
+            "structurally_valid_dual_crc_AirconFrame_RECEIVE_only",
+        )
+        self.assertEqual(
+            extended["fields"],
+            validate_contracts.EXTENDED_OBSERVATION_FIELDS,
+        )
         self.assertTrue(extended["capability_hints_are_separate"])
         self.assertFalse(extended["mutates_basic_hvac_state_or_device_state"])
         self.assertEqual(extended["matter_projection"], "unsupported")
@@ -63,6 +71,77 @@ class ContractValidatorTests(unittest.TestCase):
             self.canonical["aircon_stat_r2"]["horizontal_receive_observation"]["write_admission"],
             "OUT_OF_SCOPE",
         )
+
+    def test_extended_observation_section_is_required_and_exactly_typed(self) -> None:
+        mutations = (
+            ("missing section", lambda c: c.pop("device_model_extended_observation")),
+            ("null section", lambda c: c.update(device_model_extended_observation=None)),
+            ("list section", lambda c: c.update(device_model_extended_observation=[])),
+            (
+                "extra section key",
+                lambda c: c["device_model_extended_observation"].update(unreviewed_semantics=True),
+            ),
+            (
+                "wrong input type",
+                lambda c: c["device_model_extended_observation"].update(input=True),
+            ),
+            (
+                "wrong input value",
+                lambda c: c["device_model_extended_observation"].update(input="any_frame"),
+            ),
+            (
+                "fields not a list",
+                lambda c: c["device_model_extended_observation"].update(fields="model_nr_raw"),
+            ),
+            (
+                "fields contain non-string",
+                lambda c: c["device_model_extended_observation"]["fields"].__setitem__(0, 1),
+            ),
+            (
+                "field omitted",
+                lambda c: c["device_model_extended_observation"]["fields"].pop(),
+            ),
+            (
+                "field reordered",
+                lambda c: c["device_model_extended_observation"]["fields"].reverse(),
+            ),
+            (
+                "field added",
+                lambda c: c["device_model_extended_observation"]["fields"].append("physical_state"),
+            ),
+        )
+        for label, mutation in mutations:
+            with self.subTest(case=label):
+                self.assert_rejected(mutation)
+
+    def test_extended_observation_boolean_safety_guards_are_exact(self) -> None:
+        for key, expected in validate_contracts.EXTENDED_OBSERVATION_BOOLEAN_GUARDS.items():
+            with self.subTest(field=key, case="inverted"):
+                self.assert_rejected(
+                    lambda c, field=key, value=expected: c[
+                        "device_model_extended_observation"
+                    ].update({field: not value})
+                )
+            with self.subTest(field=key, case="wrong type"):
+                self.assert_rejected(
+                    lambda c, field=key, value=expected: c[
+                        "device_model_extended_observation"
+                    ].update({field: str(value)})
+                )
+
+    def test_extended_observation_cannot_promote_matter_or_physical_semantics(self) -> None:
+        mutations = (
+            lambda c: c["device_model_extended_observation"].update(matter_projection="supported"),
+            lambda c: c["device_model_extended_observation"].update(matter_projection=True),
+            lambda c: c["device_model_extended_observation"].update(adds_matter_attributes_or_clusters=True),
+            lambda c: c["device_model_extended_observation"].update(adds_writable_intents=True),
+            lambda c: c["device_model_extended_observation"].update(infers_physical_actuation_or_occupancy=True),
+            lambda c: c["device_model_extended_observation"].update(local_validation_status="CONFIRMED_LOCAL"),
+            lambda c: c["device_model_extended_observation"].update(local_validation_status=1),
+        )
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                self.assert_rejected(mutation)
 
     def test_invalid_evidence_value_is_rejected(self) -> None:
         self.assert_rejected(lambda c: c["references"][0].update(evidence_role="NOT_EVIDENCE"))
