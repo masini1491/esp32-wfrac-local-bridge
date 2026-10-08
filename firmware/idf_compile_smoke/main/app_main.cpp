@@ -7,6 +7,7 @@
 #include "wfrac_client/runtime_orchestrator.hpp"
 #include "wfrac_api/api_response.hpp"
 #include "wfrac_device_model/protocol_observation.hpp"
+#include "wfrac_device_model/extended_observation.hpp"
 #include "wfrac_time_espidf/esp_system_time_provider.hpp"
 #include "wfrac_matter_adapter/rac_mapping.hpp"
 #include "wfrac_persistence_espidf/nvs_persistence.hpp"
@@ -62,6 +63,7 @@ static_assert(wfrac_client::RuntimeOrchestrator::max_queue_capacity == 4U);
 static_assert(sizeof(wfrac_api::ApiResponseEnvelopeView) >= sizeof(int64_t));
 static_assert(sizeof(wfrac_api::GetAirconStatContents) >= sizeof(std::size_t));
 static_assert(sizeof(wfrac_device_model::ObservationReconciliationResult) >= sizeof(std::size_t));
+static_assert(sizeof(wfrac_device_model::ExtendedHvacObservation) >= sizeof(uint8_t));
 static_assert(std::is_base_of_v<wfrac_api::ITimeProvider, wfrac_time_espidf::EspSystemTimeProvider>);
 
 static_assert(wfrac_matter_adapter::room_air_conditioner_device_type == 0x0072U);
@@ -100,6 +102,13 @@ wfrac_persistence::PersistenceError persistence_link_smoke() {
 }
 
 extern "C" void app_main(void) {}
+
+// Compile/link coverage only; never called by app_main.
+wfrac_device_model::ObservationMappingError extended_observation_link_smoke(
+    const wfrac_protocol::AirconFrameView& frame,
+    wfrac_device_model::ExtendedHvacObservation* observation) {
+  return wfrac_device_model::map_aircon_frame_extended_observation(frame, observation);
+}
 // Pure decoder compile/link coverage; never called by the inert app_main.
 wfrac_protocol::OperationValueError operation_value_link_smoke() {
   wfrac_protocol::AmbientTemperature ambient{};

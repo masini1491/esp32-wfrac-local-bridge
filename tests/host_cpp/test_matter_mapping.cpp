@@ -3,9 +3,14 @@
 #include <iostream>
 #include <limits>
 #include <optional>
+#include <type_traits>
 #include <variant>
 
 #include "wfrac_matter_adapter/rac_mapping.hpp"
+
+namespace wfrac_device_model {
+struct ExtendedHvacObservation;
+}  // namespace wfrac_device_model
 
 namespace dm = wfrac_device_model;
 namespace ma = wfrac_matter_adapter;
@@ -182,6 +187,15 @@ int main() {
   static_assert(ma::room_air_conditioner_device_version == 3U);
   static_assert(sizeof(ma::required_clusters) / sizeof(ma::required_clusters[0]) == 4U);
   static_assert(ma::requires_dead_front_behavior);
+  // Extended protocol observations are intentionally not a Matter projection input.
+  static_assert(!std::is_invocable_v<decltype(&ma::project_observed_attributes),
+                                     const dm::ExtendedHvacObservation&>);
+  // The current write surface remains exactly the admitted basic intents; no vane/diagnostic intent exists.
+  static_assert(std::variant_size_v<dm::CommandIntent> == 4U);
+  static_assert(std::is_same_v<std::variant_alternative_t<0U, dm::CommandIntent>, dm::SetPowerIntent>);
+  static_assert(std::is_same_v<std::variant_alternative_t<1U, dm::CommandIntent>, dm::SetModeIntent>);
+  static_assert(std::is_same_v<std::variant_alternative_t<2U, dm::CommandIntent>, dm::SetTargetTemperatureIntent>);
+  static_assert(std::is_same_v<std::variant_alternative_t<3U, dm::CommandIntent>, dm::SetFanIntent>);
   projection_tests();
   command_tests();
   std::cout << "Matter RAC software mapping tests passed\n";

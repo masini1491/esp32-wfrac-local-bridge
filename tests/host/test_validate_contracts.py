@@ -38,8 +38,9 @@ class ContractValidatorTests(unittest.TestCase):
             item["canonical_name"]: item
             for item in self.canonical["device_model_fields"]
         }
-        self.assertEqual(fields["horizontal_direction"]["access"], "unresolved")
-        self.assertEqual(fields["three_d_auto_entrust"]["access"], "unresolved")
+        self.assertEqual(fields["horizontal_direction"]["access"], "read_only")
+        self.assertEqual(fields["three_d_auto_entrust"]["access"], "read_only")
+        self.assertEqual(fields["vacant_property_mode"]["access"], "read_only")
         self.assertTrue(self.canonical["capability_detection_r4"]["app_flags_are_not_wire_presence_proof"])
 
         affected_fields = {
@@ -49,6 +50,15 @@ class ContractValidatorTests(unittest.TestCase):
         }
         self.assertNotIn("horizontal_direction", affected_fields)
         self.assertNotIn("three_d_auto_entrust", affected_fields)
+        self.assertNotIn("vacant_property_mode", affected_fields)
+
+        extended = self.canonical["device_model_extended_observation"]
+        self.assertTrue(extended["implemented"])
+        self.assertTrue(extended["capability_hints_are_separate"])
+        self.assertFalse(extended["mutates_basic_hvac_state_or_device_state"])
+        self.assertEqual(extended["matter_projection"], "unsupported")
+        self.assertFalse(extended["adds_matter_attributes_or_clusters"])
+        self.assertFalse(extended["adds_writable_intents"])
         self.assertEqual(
             self.canonical["aircon_stat_r2"]["horizontal_receive_observation"]["write_admission"],
             "OUT_OF_SCOPE",
