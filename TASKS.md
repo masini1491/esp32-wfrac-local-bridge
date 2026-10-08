@@ -1,3 +1,30 @@
 # Unfinished work queue
 
-EMPTY
+## Hot — Device Model extended observation / SDK-free Matter mapping guards
+
+**Goal:** Finish the fifth and final user-authorized software-only continuation stage by projecting already-evidenced portable Protocol RECEIVE observations into a conservative, read-only Device Model extended observation contract, then reconcile existing SDK-free Matter Room Air Conditioner mapping with explicit unsupported/write-exclusion guards. No new Matter attribute, cluster, control intent, network or runtime execution.
+
+**Sequence / authorization (2026-10-08):** Docs reconciliation, vertical vane, horizontal vane / Entrust and advanced fixed-state guards have passed canonical closure. This is the sole current Hot. The durable future sequence has been fully promoted; unrelated evidence-dependent and hardware work remain Cold candidates.
+
+**Current authority:**
+- Current `AGENTS.md`, `docs/architecture.md`, `docs/security.md`, `docs/references/README.md`, `docs/references/topics/airconstat-fixed-state.md`, `docs/references/topics/capability-model.md`, `docs/references/topics/matter-rac-mapping.md`, and `specs/wf-rac-contracts.json`.
+- Current `wfrac_protocol::ReceiveState` already provides typed vertical vane (swing/positions 1–4), horizontal vane (swing/positions 1–7), Entrust/3D Auto raw/UNKNOWN, error family/code, CoolHotJudge observed bit, per-indoor demand, Vacant-related bit, and self-clean raw-only. Do not reimplement protocol decoders or upgrade evidence.
+- Existing `BasicHvacState`, `DeviceState`, `CommandIntent` and `wfrac_matter_adapter::rac_mapping` are canonical basic state/write/mapping boundaries.
+- Pinned esp-matter/connectedhomeip device type and cluster source references from current Matter topic remain unchanged. Optional enum availability is not authorization to claim hardware or expose optional Matter features.
+
+**Bounded implementation:**
+1. Introduce a distinct read-only **extended observation** DTO in portable `wfrac_device_model`, preserving protocol-derived raw and typed semantics, explicit UNKNOWN/reserved cases, capability-hint separation, and self-clean raw-only. Prefer a focused diagnostic/extended observation owner; do not alter `BasicHvacState` layout or existing `CommandIntent`/desired/pending control semantics.
+2. Add a deterministic validated AirconFrame RECEIVE → extended observation mapper (or equivalent narrow projection). Apply only after the existing structural and both-block CRC gate succeeds, with fail-closed behavior on malformed/CRC-invalid frames. Preserve original `DeviceState` observed/desired/pending and availability semantics, or add only an independently read-only observation member with clear atomicity/retention semantics justified by tests. Do not infer physical actuation, occupied/vacant persons, outdoor compressor-running, cooling/heating direction from CoolHotJudge, error fault diagnosis, self-clean active/idle or writable vane commands.
+3. Existing Matter SDK-free adapter currently admits On/Off, Off/Cool/Heat and selected Thermostat setpoints/room temperature only. Keep this published projection/write contract unchanged unless directly required for safe negative boundaries. Document/test that extended vane, Entrust, diagnostics, Vacant, CoolHotJudge, demand, self-clean and optional features are **not Matter attributes, supported clusters or writable intents** in this Stage. No FanControl/custom cluster, Auto/Dry/FanOnly enrollment, bidirectional vane commands or invented multi-field writes.
+4. Scope documentation/contract changes to reflect read-only extended Device Model surface and explicitly unsupported Matter consumer mapping; maintain existing current `CONFIRMED_UPSTREAM` / `UNKNOWN` / `HARDWARE_TEST_PENDING` evidence boundaries and library readiness `PRESERVED`.
+5. No new portable dependency on ESP-IDF, FreeRTOS, Matter SDK, Wi-Fi/NVS/transport/runtime; direction remains Matter adapter → Device Model → Protocol. No further scopes admitted by completing this five-stage list.
+
+**Required host/CI evidence:**
+- Protocol→extended mapping tests cover vertical/horizontal fixed/swing/invalid, Entrust UNKNOWN patterns, error 00/E/M precedence including M00, CoolHotJudge raw polarity, indoor-only demand, Vacant raw and self-clean raw-only; capability flags do not manufacture feature support.
+- Validated full frame: structural/CRC failure rejects extended mapping, never partially applies/mutates DeviceState; successful update does not overwrite desired/pending, readiness/availability or basic-state reconciliation. If the implementation keeps extended observation as independent DTO only, test absence of unintended DeviceState changes.
+- Matter regression: the established basic On/Off/Thermostat mappings/write translations remain identical; unavailable/unknown/unsupported still fail closed; advanced fields cannot surface as fabricated attributes/intents or physical-state confirmations.
+- Python syntax/contract validation/targeted tests, C++ protocol, Device Model, Matter host regressions; `git diff --check`; materially affected ESP32-C6/C3 compile/link matrix. For locally blocked Windows toolchain use an isolated candidate PR/worktree and existing GitHub Actions. Associate runs/jobs with exact tested candidate SHA, verify source participation; CI PASS is compile/link evidence only.
+- No actual network, Matter SDK/node/endpoint, commission, flash, Wi-Fi, WF-RAC device execution, credentials, or hardware test. Keep `CONFIRMED_LOCAL` unpromoted, physical actuation `HARDWARE_TEST_PENDING`, library readiness `PRESERVED`.
+- On all gates PASS: legal integration, `TASKS.md` → minimal `EMPTY`, canonical exact-SHA GitHub read-back. If blocked preserve candidate and STOP; do not start any new Cold candidate.
+
+**Hard exclusions:** Any modification to basic command admission, protocol COMMAND encoding, API request composition, runtime orchestration, Matter SDK/runtime/commissioning, optional device capability enablement, physical diagnostics inference, or adjacent future work.
