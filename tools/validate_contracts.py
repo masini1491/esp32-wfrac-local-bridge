@@ -28,6 +28,25 @@ CONFIDENCE_ANNOTATIONS = {
     "EVIDENCE_CONFLICT",
 }
 FLOATING_REVISIONS = {"main", "master", "HEAD", "latest", "trunk", "develop"}
+EEV_0X13_IDLE_BOOLEAN_GUARDS = {
+    "no_indoor_demand_implies_op2_zero": False,
+    "op2_zero_implies_universal_valve_closed": False,
+    "op2_nonzero_implies_indoor_demand": False,
+    "universal_idle_raw_value_established": False,
+    "model_or_firmware_wide_idle_rule_established": False,
+    "calibrated_opening_percentage_established": False,
+    "full_open_value_established": False,
+    "sibling_system_direction_reported_to_affect_idle_op2": True,
+    "raw_segment_preserved": True,
+}
+EEV_0X13_IDLE_PROVENANCE = {
+    "evidence_role": "SUPPLEMENTAL_USER_REPORT",
+    "repository": "blues-sechseck/Mitsubishi-WF-RAC-Integration",
+    "revision": "966cedaa731b4d28b648f6ab58a1b0a16714c3e3",
+    "source": "docs/wf-rac-module-reference.md#54-operation-data-codes",
+    "pull_request": 399,
+    "discussion": 328,
+}
 EXTENDED_OBSERVATION_FIELDS = [
     "model_nr_raw",
     "vertical_direction_raw_and_typed",
@@ -175,7 +194,25 @@ def check_operation_data_r3(contract: dict[str, Any]) -> None:
     entries = {entry["code"] + entry.get("selector", ""): entry for entry in r3["entries"]}
     require(entries["0x80" + "0x10"]["visibility"] == "CONFIRMED_UNSOLICITED_PUSH", "operation_data_r3.0x80/0x10: visibility mismatch")
     require(entries["0x0C"]["visibility"] == "NO_WF_RAC_HTTP_EVIDENCE" and entries["0x05"]["visibility"] == "NO_WF_RAC_HTTP_EVIDENCE", "operation_data_r3: direct CNS visibility boundary missing")
-    require(entries["0x13"]["value_quality"].find("calibrated_open_percentage=false") >= 0, "operation_data_r3.0x13: calibrated percentage boundary missing")
+    require(entries["0x13"]["value_quality"] == "calibrated_open_percentage=false; raw/255 is not calibrated physical percentage", "operation_data_r3.0x13: calibrated percentage boundary mismatch")
+    eev_idle = entries["0x13"].get("idle_context_guards")
+    require(type(eev_idle) is dict, "operation_data_r3.0x13.idle_context_guards: expected object")
+    expected_idle_keys = {
+        *EEV_0X13_IDLE_BOOLEAN_GUARDS,
+        "scope",
+        "local_validation",
+        "provenance",
+    }
+    require(set(eev_idle) == expected_idle_keys, "operation_data_r3.0x13.idle_context_guards: keys mismatch")
+    for key, expected in EEV_0X13_IDLE_BOOLEAN_GUARDS.items():
+        require(type(eev_idle[key]) is bool, f"operation_data_r3.0x13.idle_context_guards.{key}: expected boolean")
+        require(eev_idle[key] is expected, f"operation_data_r3.0x13.idle_context_guards.{key}: mismatch")
+    require(type(eev_idle["scope"]) is str and eev_idle["scope"] == "per-indoor", "operation_data_r3.0x13.idle_context_guards.scope: mismatch")
+    require(type(eev_idle["local_validation"]) is str and eev_idle["local_validation"] == "HARDWARE_TEST_PENDING", "operation_data_r3.0x13.idle_context_guards.local_validation: mismatch")
+    provenance = eev_idle["provenance"]
+    require(type(provenance) is dict and set(provenance) == set(EEV_0X13_IDLE_PROVENANCE), "operation_data_r3.0x13.idle_context_guards.provenance: keys mismatch")
+    for key, expected in EEV_0X13_IDLE_PROVENANCE.items():
+        require(type(provenance[key]) is type(expected) and provenance[key] == expected, f"operation_data_r3.0x13.idle_context_guards.provenance.{key}: mismatch")
     for code, semantic in (("0x1E", "candidate run hours only"), ("0x1F", "candidate fan speed only")):
         no_value = entries[code]
         require(no_value["visibility"] == "CONFIRMED_QUERY_RESPONSE_NO_VALUE", f"operation_data_r3.{code}: response visibility mismatch")
