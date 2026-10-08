@@ -4,7 +4,7 @@
 
 - 0.0 — 專案初始化：**完成**
 - 0.1 Reference Deep Review — **Complete**
-- Software-only machine-readable foundation — **Complete**（contract、validator、66 個 targeted host tests 與 GitHub Actions software validation gate）
+- Software-only machine-readable foundation — **Complete**（contract、validator、69 個 targeted host tests 與 GitHub Actions software validation gate）
 - 0.2 — WF-RAC Protocol / State Map：研究基礎已建立；實機相關工作暫緩
 - 0.3 — Matter Room Air Conditioner Mapping：bounded software-only mapping／adapter contract **完成**（power、Off/Cool/Heat、exact temperature、unknown／unsupported 與單一 write intent）；完整 mapping、actual Matter runtime／commissioning 仍暫緩，見 [mapping topic](references/topics/matter-rac-mapping.md)
 - 0.4 — Local API Hardware Validation Plan：待未來恢復實作時進行
@@ -23,7 +23,7 @@
 - CRC16-CCITT core：**完成**
 - AirconStat structural framing：**完成**
 - Basic fixed-state decoder、Power/Mode/Target Temperature/Fan command intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe operation-data query builder、bounded project query batch 1–3、standard Base64 codec 與 generic full AirconStat composition：**完成**
-- Vane、diagnostics、request RECEIVE policy、query transaction runtime、diagnostic physical conversions、advanced fixed-state fields、Device Model、JSON、transport/runtime 與 hardware validation：尚未實作
+- 本階段仍待完成：vane semantics/control、advanced fixed-state semantics、尚未確立的 diagnostic meanings／consumer projection，以及實機／hardware validation。後續已完成的 software foundations 包含 RECEIVE-aware request composition、bounded query orchestration、selected operation-data decoders、Device Model、API/JSON/Base64、portable transport contracts／single-attempt adapter source 與 caller-driven orchestration core；實際 network/runtime 與未解 residual semantics 仍依各階段標示 pending。
 
 目前狀態：**Phase 1A protocol core 已完成；Reference Deep Review 已完成；實機驗證仍暫緩。**
 
@@ -36,7 +36,7 @@
 - Observed-baseline control request composition、official no-request sentinel、RECEIVE compatibility projection 與 command byte8 carry：**完成**
 - Full safe operation-data query request composition（1–3 bounded query、RECEIVE compatibility baseline 與 no-request sentinel）：**完成**
 - Portable TimeProvider/timestamp boundary 與 ESP-IDF system-time adapter 已於 Phase 1C 完成；trusted／estimated acquisition、persistence、power-loss recovery 與 production runtime integration仍 pending。
-- Advanced protocol fields、diagnostics projection、Base64/API envelope、Operator ID、automatic command dispatch、queue、transport ACK semantics、retry、timeout clock、polling、availability policy、transport/runtime、完整 Matter mapping 與 hardware validation：尚未實作
+- 仍待完成：advanced protocol semantics／超出 `BasicHvacState` 的 extended diagnostic projection、Operator ID lifecycle/persistence、production command dispatch 與 platform scheduler/network runtime、hardware-validated transport/actuation behavior、完整 Matter mapping/runtime 及 hardware validation。Base64/API envelope、bounded queue／poll-command coordination、retry decisions、monotonic deadlines 與 explicit availability transition foundations 已有 portable implementation；這不代表 production runtime、physical timing 或 hardware behavior 已驗證。
 
 ## Phase 1C — WF-RAC Transport Abstraction
 

@@ -6,7 +6,7 @@
 
 Phase 0 的 machine-readable software foundation 已建立於 [`specs/wf-rac-contracts.json`](specs/wf-rac-contracts.json)，僅整理研究 contract，不包含 runtime implementation。
 
-目前 software-only validation 流程為：`specs/wf-rac-contracts.json` → `tools/validate_contracts.py` → `tests/host/test_validate_contracts.py`，並新增 `components/wfrac_protocol/` 的 C++17 CRC16／AirconStat structural framing、basic fixed-state decoder、四個 safe command intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe query builder、standard Base64 codec 與 generic full AirconStat composer host tests，皆由 GitHub Actions 執行。Python host tests 目前為 66 個；C++ protocol core tests 為 1 個 executable；`CONFIRMED_LOCAL = 0`，hardware/runtime validation 仍為 `HARDWARE_TEST_PENDING`。
+目前 software-only validation 流程為：`specs/wf-rac-contracts.json` → `tools/validate_contracts.py` → `tests/host/test_validate_contracts.py`，並新增 `components/wfrac_protocol/` 的 C++17 CRC16／AirconStat structural framing、basic fixed-state decoder、四個 safe command intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe query builder、standard Base64 codec 與 generic full AirconStat composer host tests，皆由 GitHub Actions 執行。Python host tests 目前為 69 個；C++ protocol core tests 為 1 個 executable；`CONFIRMED_LOCAL = 0`，hardware/runtime validation 仍為 `HARDWARE_TEST_PENDING`。
 
 最小 host validation commands：
 
