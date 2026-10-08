@@ -142,6 +142,37 @@ int main() {
   assert(semantic.controller_room_temperature_raw == 154U);
   assert(semantic.controller_room_temperature_quarter_degrees == 93);
 
+  for (const auto& pair : {std::pair<uint8_t, wfrac_protocol::VerticalVanePosition>{0x00U, wfrac_protocol::VerticalVanePosition::position1},
+                          {0x10U, wfrac_protocol::VerticalVanePosition::position2},
+                          {0x20U, wfrac_protocol::VerticalVanePosition::position3},
+                          {0x30U, wfrac_protocol::VerticalVanePosition::position4}}) {
+    const auto vertical = wfrac_protocol::decode_vertical_direction(0x00U, static_cast<uint8_t>(pair.first | 0x07U));
+    assert(vertical.swing == wfrac_protocol::VerticalSwingState::fixed);
+    assert(vertical.position == pair.second);
+    assert(vertical.direction_raw == 0x00U && vertical.vane_raw == static_cast<uint8_t>(pair.first | 0x07U));
+  }
+  const auto swinging = wfrac_protocol::decode_vertical_direction(0x40U, 0x37U);
+  assert(swinging.swing == wfrac_protocol::VerticalSwingState::swinging);
+  assert(swinging.position == wfrac_protocol::VerticalVanePosition::ignored_while_swinging);
+  assert(swinging.vane_raw == 0x37U);
+  for (const uint8_t reserved : {0x80U, 0xC0U}) {
+    const auto unknown = wfrac_protocol::decode_vertical_direction(reserved, 0x00U);
+    assert(unknown.swing == wfrac_protocol::VerticalSwingState::unknown);
+    assert(unknown.position == wfrac_protocol::VerticalVanePosition::unknown);
+    assert(unknown.direction_raw == reserved);
+  }
+  for (const uint8_t invalid_position : {0x40U, 0x50U, 0xF0U}) {
+    const auto unknown = wfrac_protocol::decode_vertical_direction(0x00U, invalid_position);
+    assert(unknown.swing == wfrac_protocol::VerticalSwingState::fixed);
+    assert(unknown.position == wfrac_protocol::VerticalVanePosition::unknown);
+  }
+  receive_state[2] = 0x40U;
+  receive_state[3] = 0x37U;
+  semantic = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(semantic.vertical_direction.swing == wfrac_protocol::VerticalSwingState::swinging);
+  assert(semantic.vertical_direction.position == wfrac_protocol::VerticalVanePosition::ignored_while_swinging);
+  assert(semantic.fan == wfrac_protocol::FanMode::auto_mode);
+
   wfrac_protocol::CommandState command{};
   assert(wfrac_protocol::encode_set_power(wfrac_protocol::PowerState::off, &command) == wfrac_protocol::EncodeError::none);
   assert(command[2] == 0x02U); assert_safe_baseline(command, 2);
@@ -170,6 +201,43 @@ int main() {
     assert(command[3] == pair.second); assert_safe_baseline(command, 3);
   }
   assert(wfrac_protocol::encode_set_fan(wfrac_protocol::FanMode::unknown, &command) == wfrac_protocol::EncodeError::invalid_fan);
+
+  const std::array<std::pair<wfrac_protocol::VerticalVaneCommand, std::pair<uint8_t, uint8_t>>, 5> vertical_commands{{
+      {wfrac_protocol::VerticalVaneCommand::swing, {0xC0U, 0x80U}},
+      {wfrac_protocol::VerticalVaneCommand::position1, {0x80U, 0x80U}},
+      {wfrac_protocol::VerticalVaneCommand::position2, {0x80U, 0x90U}},
+      {wfrac_protocol::VerticalVaneCommand::position3, {0x80U, 0xA0U}},
+      {wfrac_protocol::VerticalVaneCommand::position4, {0x80U, 0xB0U}},
+  }};
+  for (const auto& pair : vertical_commands) {
+    assert(wfrac_protocol::encode_set_vertical_vane(pair.first, &command) == wfrac_protocol::EncodeError::none);
+    assert(command[2] == pair.second.first && command[3] == pair.second.second);
+    assert(command[5] == 0xFFU);
+    for (std::size_t index = 0U; index < command.size(); ++index) {
+      if (index != 2U && index != 3U && index != 5U) assert(command[index] == 0U);
+    }
+
+    wfrac_protocol::CommandState receive_for_compose = wfrac_protocol::make_safe_command_state();
+    const wfrac_protocol::AirconBlockInput command_input{&command, nullptr, 0U};
+    const wfrac_protocol::AirconBlockInput receive_input{&receive_for_compose, nullptr, 0U};
+    std::array<uint8_t, 2U * (wfrac_protocol::kAirconStateBytes + 1U + wfrac_protocol::kAirconCrcBytes)> composed{};
+    std::size_t composed_size = 0U;
+    assert(wfrac_protocol::serialize_aircon_stat(command_input, receive_input, {composed.data(), composed.size()},
+                                                  &composed_size) == wfrac_protocol::AirconStatEncodeError::none);
+    wfrac_protocol::AirconFrameView round_trip{};
+    assert(wfrac_protocol::parse_aircon_stat({composed.data(), composed_size}, &round_trip) ==
+           wfrac_protocol::FrameError::none);
+    assert(round_trip.command.crc_valid && round_trip.receive.crc_valid);
+    assert(round_trip.command.state[2] == pair.second.first);
+    assert(round_trip.command.state[3] == pair.second.second);
+    assert(round_trip.command.state[5] == 0xFFU);
+  }
+  command.fill(0x55U);
+  assert(wfrac_protocol::encode_set_vertical_vane(wfrac_protocol::VerticalVaneCommand::unknown, &command) ==
+         wfrac_protocol::EncodeError::invalid_vertical_vane);
+  assert(command == wfrac_protocol::make_safe_command_state());
+  assert(wfrac_protocol::encode_set_vertical_vane(wfrac_protocol::VerticalVaneCommand::swing, nullptr) ==
+         wfrac_protocol::EncodeError::invalid_vertical_vane);
 
   const auto assert_flags = [](const wfrac_protocol::CapabilityFlags& actual,
                                const wfrac_protocol::CapabilityFlags& expected) {

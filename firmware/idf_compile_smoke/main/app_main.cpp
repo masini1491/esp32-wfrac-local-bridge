@@ -10,6 +10,7 @@
 #include "wfrac_time_espidf/esp_system_time_provider.hpp"
 #include "wfrac_matter_adapter/rac_mapping.hpp"
 #include "wfrac_persistence_espidf/nvs_persistence.hpp"
+#include "wfrac_protocol/aircon_state.hpp"
 #include "wfrac_protocol/operation_data.hpp"
 
 using wfrac_transport::TransportError;
@@ -119,4 +120,16 @@ wfrac_protocol::OperationValueError operation_value_link_smoke() {
   wfrac_protocol::decode_tdsh_raw_value({0xB1U, 0xA5U, 0U, 0x5AU}, &tdsh);
   wfrac_protocol::decode_ambient_temperature({0x80U, 0x10U, 128U, 0}, &ambient);
   return wfrac_protocol::decode_current_run_energy({0x94U, 0x10U, 1U, 0}, &energy);
+}
+
+// Compile/link coverage only: never called by app_main; no protocol/runtime action.
+wfrac_protocol::EncodeError vertical_vane_protocol_link_smoke() {
+  wfrac_protocol::CommandState command{};
+  const auto error = wfrac_protocol::encode_set_vertical_vane(
+      wfrac_protocol::VerticalVaneCommand::position4, &command);
+  const auto receive = wfrac_protocol::decode_vertical_direction(0x40U, 0x30U);
+  return error == wfrac_protocol::EncodeError::none &&
+                 receive.swing == wfrac_protocol::VerticalSwingState::swinging
+             ? error
+             : wfrac_protocol::EncodeError::invalid_vertical_vane;
 }

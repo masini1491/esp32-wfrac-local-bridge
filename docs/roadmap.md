@@ -23,7 +23,7 @@
 - CRC16-CCITT core：**完成**
 - AirconStat structural framing：**完成**
 - Basic fixed-state decoder、Power/Mode/Target Temperature/Fan command intents、capability profile decoder、operation-data raw segment parser/classifier、Aircon block serializer、safe operation-data query builder、bounded project query batch 1–3、standard Base64 codec 與 generic full AirconStat composition：**完成**
-- 本階段仍待完成：vane semantics/control、advanced fixed-state semantics、尚未確立的 diagnostic meanings／consumer projection，以及實機／hardware validation。後續已完成的 software foundations 包含 RECEIVE-aware request composition、bounded query orchestration、selected operation-data decoders、Device Model、API/JSON/Base64、portable transport contracts／single-attempt adapter source 與 caller-driven orchestration core；實際 network/runtime 與未解 residual semantics 仍依各階段標示 pending。
+- 本階段仍待完成：horizontal vane／3D Auto 與 advanced fixed-state semantics、尚未確立的 diagnostic meanings／consumer projection，以及實機／hardware validation。Vertical vane RECEIVE decode 與 paired COMMAND codec 已完成 portable protocol implementation；model capability與實際 actuation仍 `HARDWARE_TEST_PENDING`。後續已完成的 software foundations 包含 RECEIVE-aware request composition、bounded query orchestration、selected operation-data decoders、Device Model、API/JSON/Base64、portable transport contracts／single-attempt adapter source 與 caller-driven orchestration core；實際 network/runtime 與未解 residual semantics 仍依各階段標示 pending。
 
 目前狀態：**Phase 1A protocol core 已完成；Reference Deep Review 已完成；實機驗證仍暫緩。**
 

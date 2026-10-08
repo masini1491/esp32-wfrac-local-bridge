@@ -33,6 +33,30 @@ FanMode decode_fan(uint8_t raw) {
 
 }  // namespace
 
+VerticalDirectionState decode_vertical_direction(uint8_t direction_raw, uint8_t vane_raw) {
+  VerticalDirectionState result{};
+  result.direction_raw = direction_raw;
+  result.vane_raw = vane_raw;
+
+  const uint8_t direction_kind = static_cast<uint8_t>(direction_raw & 0xC0U);
+  if (direction_kind == 0x40U) {
+    result.swing = VerticalSwingState::swinging;
+    result.position = VerticalVanePosition::ignored_while_swinging;
+    return result;
+  }
+  if (direction_kind != 0U) return result;
+
+  result.swing = VerticalSwingState::fixed;
+  switch (static_cast<uint8_t>((vane_raw & 0xF0U) >> 4U)) {
+    case 0U: result.position = VerticalVanePosition::position1; break;
+    case 1U: result.position = VerticalVanePosition::position2; break;
+    case 2U: result.position = VerticalVanePosition::position3; break;
+    case 3U: result.position = VerticalVanePosition::position4; break;
+    default: result.position = VerticalVanePosition::unknown; break;
+  }
+  return result;
+}
+
 ReceiveState decode_receive_state(const AirconBlockView& receive) {
   ReceiveState result{};
   result.model_nr_raw = static_cast<uint8_t>(receive.state[0] & 0x7FU);
@@ -45,6 +69,7 @@ ReceiveState decode_receive_state(const AirconBlockView& receive) {
   result.fan = decode_fan(result.fan_raw);
   result.controller_room_temperature_raw = receive.state[5];
   result.controller_room_temperature_quarter_degrees = static_cast<int16_t>(receive.state[5]) - 61;
+  result.vertical_direction = decode_vertical_direction(receive.state[2], receive.state[3]);
   return result;
 }
 
@@ -98,6 +123,35 @@ EncodeError encode_set_fan(FanMode fan, CommandState* output) {
     case FanMode::speed3: (*output)[3] = 0x0AU; return EncodeError::none;
     case FanMode::speed4: (*output)[3] = 0x0EU; return EncodeError::none;
     default: return EncodeError::invalid_fan;
+  }
+}
+
+EncodeError encode_set_vertical_vane(VerticalVaneCommand command, CommandState* output) {
+  if (output == nullptr) return EncodeError::invalid_vertical_vane;
+  *output = make_safe_command_state();
+  switch (command) {
+    case VerticalVaneCommand::swing:
+      (*output)[2] = 0xC0U;
+      (*output)[3] = 0x80U;
+      return EncodeError::none;
+    case VerticalVaneCommand::position1:
+      (*output)[2] = 0x80U;
+      (*output)[3] = 0x80U;
+      return EncodeError::none;
+    case VerticalVaneCommand::position2:
+      (*output)[2] = 0x80U;
+      (*output)[3] = 0x90U;
+      return EncodeError::none;
+    case VerticalVaneCommand::position3:
+      (*output)[2] = 0x80U;
+      (*output)[3] = 0xA0U;
+      return EncodeError::none;
+    case VerticalVaneCommand::position4:
+      (*output)[2] = 0x80U;
+      (*output)[3] = 0xB0U;
+      return EncodeError::none;
+    default:
+      return EncodeError::invalid_vertical_vane;
   }
 }
 
