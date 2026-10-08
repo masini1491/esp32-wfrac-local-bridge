@@ -2,20 +2,6 @@
 
 本檔是 Cold coordination surface：ordinary bootstrap 預設不載入、不具 execution authority，也不是 architecture、protocol、security 或 evidence canonical truth。Cold item 必須先回到 current authority/evidence reconciliation，promotion 到 `TASKS.md` Hot coordination，並取得使用者明確 launch 才能執行；保存不提高 AI 建議的 recommendation authority。
 
-## COMMITTED — Remaining software-only continuation sequence
-
-使用者已授權依序執行整體 software-only sequence；此處只保存尚未 promotion 的後續 Stage。Current Hot 以 `TASKS.md` 為準，完成歷史依 Git history；本 Cold 不複製 active/completed status。每次只 promotion 一個 bounded tranche，完成 validation 與 canonical closure 後才進下一項。
-
-1. **Device Model / Matter mapping**
-   - Only after lower protocol/read-side semantics are stable, reconcile bounded software-only Device Model and SDK-free Matter adapter mappings.
-   - Actual Matter runtime, node/endpoint execution, commissioning, interoperability, hardware/network remain out of scope.
-
-Common rules:
-- Sequence is durable future work, not a batch launch.
-- One bounded tranche at a time: `Cold → fresh reconcile → Hot promotion → authorized launch → validation → closure`.
-- Do not perform exploratory write, real Wi-Fi/HTTP/TLS/WF-RAC/hardware execution, or promote software evidence to `CONFIRMED_LOCAL`.
-- Do not invent semantics for completeness; unresolved evidence remains UNKNOWN / unsupported / pending as applicable.
-
 ## CANDIDATE — Other newly evidenced software-only residuals
 
 - Only admit when new current upstream/local evidence creates a separate bounded, verifiable software-only tranche.
