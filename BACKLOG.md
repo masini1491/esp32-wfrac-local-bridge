@@ -4,13 +4,9 @@
 
 ## COMMITTED — Remaining software-only continuation sequence
 
-使用者已授權依序執行整體 software-only sequence；本節只保留**尚未 promotion** 的後續階段。Current Hot 以 `TASKS.md` 為準，完成歷史依 Git history；Cold 不複製 active/completed status。每次只 promotion 一個 bounded tranche，完成 validation 與 canonical closure 後，才 fresh-reconcile 下一項。
+使用者已授權依序執行整體 software-only sequence；此處只保存尚未 promotion 的後續 Stage。Current Hot 以 `TASKS.md` 為準，完成歷史依 Git history；本 Cold 不複製 active/completed status。每次只 promotion 一個 bounded tranche，完成 validation 與 canonical closure 後才進下一項。
 
-1. **Advanced fixed-state guards**
-   - Reconcile bounded read-side semantics / negative guards for remaining advanced fixed-state fields such as Vacant, CoolHotJudge, error/self-clean-related observations where evidence is sufficient.
-   - Do not turn unreliable/status-only evidence into control support.
-
-2. **Device Model / Matter mapping**
+1. **Device Model / Matter mapping**
    - Only after lower protocol/read-side semantics are stable, reconcile bounded software-only Device Model and SDK-free Matter adapter mappings.
    - Actual Matter runtime, node/endpoint execution, commissioning, interoperability, hardware/network remain out of scope.
 
