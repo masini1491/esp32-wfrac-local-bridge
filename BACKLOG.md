@@ -2,31 +2,26 @@
 
 本檔是 Cold coordination surface：ordinary bootstrap 預設不載入、不具 execution authority，也不是 architecture、protocol、security 或 evidence canonical truth。Cold item 必須先回到 current authority/evidence reconciliation，promotion 到 `TASKS.md` Hot coordination，並取得使用者明確 launch 才能執行；保存不提高 AI 建議的 recommendation authority。
 
-## COMMITTED — Software-only continuation sequence
+## COMMITTED — Remaining software-only continuation sequence
 
-使用者已明確要求依序執行本 sequence。**Docs reconciliation 已 promotion 為 current Hot**；本 Cold 只保留其後尚未 promotion 的 committed stages。每次仍只可對下一個 bounded Stage 做 fresh authority/evidence reconciliation，promotion 到 `TASKS.md`，完成 validation/closure 後才進下一項。
+使用者已授權依序執行整體 software-only sequence；本節**只保留尚未 promotion 的後續階段**。Current Hot 以 `TASKS.md` 為準，已完成歷史以 Git history 為準；本 Cold 不複製 active/completed status。每次仍限一個 bounded tranche，完成驗證與 canonical closure 後，才 fresh-reconcile 下一個並 promotion。
 
-1. **Vertical vane protocol core**
-   - Fresh-reconcile pinned WF-RAC evidence for vertical vane position / up-down swing receive + command set-bit semantics.
-   - Admit only the bounded portable protocol / request-composition / regression surface that current evidence supports.
-   - Hardware actuation remains `HARDWARE_TEST_PENDING`.
-
-2. **Horizontal vane / 3D Auto read-side**
+1. **Horizontal vane / 3D Auto read-side**
    - Prefer read-side semantic/typed observation work first for `state[11]` / `state[12]`.
    - Do not infer or admit write semantics unless fresh evidence is independently sufficient.
    - Preserve model/capability gating and `HARDWARE_TEST_PENDING`.
 
-3. **Advanced fixed-state guards**
+2. **Advanced fixed-state guards**
    - Reconcile bounded read-side semantics / negative guards for remaining advanced fixed-state fields such as Vacant, CoolHotJudge, error/self-clean-related observations where evidence is sufficient.
    - Do not turn unreliable/status-only evidence into control support.
 
-4. **Device Model / Matter mapping**
+3. **Device Model / Matter mapping**
    - Only after lower protocol/read-side semantics are stable, reconcile bounded software-only Device Model and SDK-free Matter adapter mappings.
    - Actual Matter runtime, node/endpoint execution, commissioning, interoperability, hardware/network remain out of scope.
 
 Common rules:
 - Sequence is durable future work, not a batch launch.
-- One bounded tranche at a time: `Cold → fresh reconcile → Hot promotion → explicit launch → validation → closure`.
+- One bounded tranche at a time: `Cold → fresh reconcile → Hot promotion → authorized launch → validation → closure`.
 - Do not perform exploratory write, real Wi-Fi/HTTP/TLS/WF-RAC/hardware execution, or promote software evidence to `CONFIRMED_LOCAL`.
 - Do not invent semantics for completeness; unresolved evidence remains UNKNOWN / unsupported / pending as applicable.
 
