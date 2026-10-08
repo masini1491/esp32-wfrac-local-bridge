@@ -6,8 +6,11 @@
 #include <type_traits>
 #include <variant>
 
-#include "wfrac_device_model/extended_observation.hpp"
 #include "wfrac_matter_adapter/rac_mapping.hpp"
+
+namespace wfrac_device_model {
+struct ExtendedHvacObservation;
+}  // namespace wfrac_device_model
 
 namespace dm = wfrac_device_model;
 namespace ma = wfrac_matter_adapter;
