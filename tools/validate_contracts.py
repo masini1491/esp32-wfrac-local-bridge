@@ -28,6 +28,25 @@ CONFIDENCE_ANNOTATIONS = {
     "EVIDENCE_CONFLICT",
 }
 FLOATING_REVISIONS = {"main", "master", "HEAD", "latest", "trunk", "develop"}
+EXTENDED_OBSERVATION_FIELDS = [
+    "model_nr_raw",
+    "vertical_direction_raw_and_typed",
+    "horizontal_direction_raw_and_typed",
+    "entrust_typed",
+    "error_raw_family_code",
+    "cool_hot_judge_raw_and_bit",
+    "per_indoor_demand_raw_and_bit",
+    "vacant_related_raw_and_bit",
+    "self_clean_raw_only",
+]
+EXTENDED_OBSERVATION_BOOLEAN_GUARDS = {
+    "implemented": True,
+    "capability_hints_are_separate": True,
+    "mutates_basic_hvac_state_or_device_state": False,
+    "infers_physical_actuation_or_occupancy": False,
+    "adds_matter_attributes_or_clusters": False,
+    "adds_writable_intents": False,
+}
 
 
 class ContractError(Exception):
@@ -297,6 +316,48 @@ def check_transport_security_r7(contract: dict[str, Any]) -> None:
     require(r7["local_validation_status"] == "HARDWARE_TEST_PENDING", "transport_security_r7: local validation must remain pending")
 
 
+def check_device_model_extended_observation(contract: dict[str, Any]) -> None:
+    location = "device_model_extended_observation"
+    observation = contract.get(location)
+    require(type(observation) is dict, f"{location}: expected object")
+
+    expected_keys = {
+        *EXTENDED_OBSERVATION_BOOLEAN_GUARDS,
+        "input",
+        "fields",
+        "matter_projection",
+        "local_validation_status",
+    }
+    require(set(observation) == expected_keys, f"{location}: keys mismatch")
+
+    for key, expected in EXTENDED_OBSERVATION_BOOLEAN_GUARDS.items():
+        require(type(observation[key]) is bool, f"{location}.{key}: expected boolean")
+        require(observation[key] is expected, f"{location}.{key}: mismatch")
+
+    require(
+        type(observation["input"]) is str
+        and observation["input"] == "structurally_valid_dual_crc_AirconFrame_RECEIVE_only",
+        f"{location}.input: mismatch",
+    )
+    fields = observation["fields"]
+    require(
+        type(fields) is list
+        and all(type(field) is str for field in fields)
+        and fields == EXTENDED_OBSERVATION_FIELDS,
+        f"{location}.fields: mismatch",
+    )
+    require(
+        type(observation["matter_projection"]) is str
+        and observation["matter_projection"] == "unsupported",
+        f"{location}.matter_projection: mismatch",
+    )
+    require(
+        type(observation["local_validation_status"]) is str
+        and observation["local_validation_status"] == "HARDWARE_TEST_PENDING",
+        f"{location}.local_validation_status: mismatch",
+    )
+
+
 def validate(contract: dict[str, Any]) -> None:
     required_sections = {
         "schema_version",
@@ -307,6 +368,7 @@ def validate(contract: dict[str, Any]) -> None:
         "api_envelope",
         "identity_and_registration",
         "device_model_fields",
+        "device_model_extended_observation",
         "command_intents",
         "command_intent_boundaries",
         "result_and_error_taxonomy",
@@ -337,6 +399,7 @@ def validate(contract: dict[str, Any]) -> None:
     require(identity["operator_id_generation_or_persistence_implemented"] is False, "identity: runtime persistence is forbidden")
 
     check_fields(contract)
+    check_device_model_extended_observation(contract)
     check_aircon_stat_r2(contract)
     check_operation_data_r3(contract)
     check_capability_detection_r4(contract)

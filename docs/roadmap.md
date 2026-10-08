@@ -4,7 +4,7 @@
 
 - 0.0 — 專案初始化：**完成**
 - 0.1 Reference Deep Review — **Complete**
-- Software-only machine-readable foundation — **Complete**（contract、validator、69 個 targeted host tests 與 GitHub Actions software validation gate）
+- Software-only machine-readable foundation — **Complete**（contract、validator、`unittest` host gate 與 GitHub Actions software validation gate）
 - 0.2 — WF-RAC Protocol / State Map：研究基礎已建立；實機相關工作暫緩
 - 0.3 — Matter Room Air Conditioner Mapping：bounded software-only mapping／adapter contract **完成**（power、Off/Cool/Heat、exact temperature、unknown／unsupported 與單一 write intent）；完整 mapping、actual Matter runtime／commissioning 仍暫緩，見 [mapping topic](references/topics/matter-rac-mapping.md)
 - 0.4 — Local API Hardware Validation Plan：待未來恢復實作時進行
@@ -45,7 +45,7 @@
 - Portable TimeProvider（trusted／estimated／unavailable）、64-bit Unix timestamp、五個 typed local API request builders、JSON escaping、AirconStat CRC validation／Base64 wrapping、`accountId=operatorId` 與 compatibility `remote=0` serialization：**完成**
 - HTTPS-first portable scheme policy、caller-owned per-device in-memory cache、sticky HTTPS／HTTP、explicit `scheme_mismatch`-only HTTP compatibility fallback decision，以及 TLS identity failure taxonomy：**完成**
 - ESP-IDF v6.0.2 local toolchain baseline、platform-specific HTTP/TLS error classifier，以及 ESP32-C6／ESP32-C3 repository compile harness／local firmware compile gate：**完成**
-- Continuous ESP-IDF v6.0.2 GitHub Actions compile/link gate：**完成（四格 remote CI PASS）**；獨立 workflow 覆蓋 C6／C3 × compile smoke／default-inert bootstrap probe 四格；與既有 host CI 分離，只驗證 buildability，不代表 runtime／hardware／network validation。
+- Continuous ESP-IDF v6.0.2 GitHub Actions compile/link gate：**完成**；獨立 workflow 現行六格涵蓋 C6／C3 × compile smoke／default-inert bootstrap probe，以及 WebUI-enabled bootstrap probe C6／C3 full-link。歷史四格 run 只代表當時範圍；workflow 與既有 host CI 分離，只驗證 buildability，不代表 runtime／hardware／network validation。現行六格與 host evidence pointers 見 README。
 - EspHttpTransport single-attempt HTTP POST adapter、HTTPS trust-certificate configuration、caller-owned response collection 與 C6／C3 compile/link validation：**完成**
 - Portable `wfrac_client` request executor、exact SchemePolicy-driven compatibility fallback、same-body retry 與最多兩次 attempts：**完成**
 - Portable post-write verification step API：`setAirconStat` accepted 後以 caller-scheduled bounded `getAirconStat` readback、既有 parser 與 Device Model reconciliation 判定 confirmed／not-confirmed；沒有 write retry、無自動 polling，physical actuation／settle timing 仍 pending：**完成**
