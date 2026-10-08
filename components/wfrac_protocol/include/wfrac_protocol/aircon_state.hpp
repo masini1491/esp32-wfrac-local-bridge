@@ -13,6 +13,19 @@ enum class FanMode { auto_mode, speed1, speed2, speed3, speed4, unknown };
 enum class VerticalSwingState { fixed, swinging, unknown };
 enum class VerticalVanePosition { position1, position2, position3, position4, unknown, ignored_while_swinging };
 enum class VerticalVaneCommand { swing, position1, position2, position3, position4, unknown };
+enum class HorizontalSwingState { fixed, swinging, unknown };
+enum class HorizontalVanePosition {
+  position1,
+  position2,
+  position3,
+  position4,
+  position5,
+  position6,
+  position7,
+  unknown,
+  ignored_while_swinging,
+};
+enum class EntrustState { inactive, active, unknown };
 enum class EncodeError {
   none,
   invalid_power,
@@ -29,6 +42,14 @@ struct VerticalDirectionState {
   VerticalVanePosition position = VerticalVanePosition::unknown;
 };
 
+struct HorizontalDirectionState {
+  uint8_t state11_raw = 0;
+  uint8_t state12_raw = 0;
+  HorizontalSwingState swing = HorizontalSwingState::unknown;
+  HorizontalVanePosition position = HorizontalVanePosition::unknown;
+  EntrustState entrust = EntrustState::unknown;
+};
+
 struct ReceiveState {
   uint8_t model_nr_raw = 0;
   uint8_t power_raw = 0;
@@ -41,12 +62,14 @@ struct ReceiveState {
   uint8_t controller_room_temperature_raw = 0;
   int16_t controller_room_temperature_quarter_degrees = 0;
   VerticalDirectionState vertical_direction{};
+  HorizontalDirectionState horizontal_direction{};
 };
 
 using CommandState = std::array<uint8_t, kAirconStateBytes>;
 
 ReceiveState decode_receive_state(const AirconBlockView& receive);
 VerticalDirectionState decode_vertical_direction(uint8_t direction_raw, uint8_t vane_raw);
+HorizontalDirectionState decode_horizontal_direction(uint8_t state11_raw, uint8_t state12_raw);
 CommandState make_safe_command_state();
 EncodeError encode_set_power(PowerState power, CommandState* output);
 EncodeError encode_set_mode(OperationMode mode, CommandState* output);

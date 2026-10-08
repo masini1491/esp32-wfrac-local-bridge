@@ -173,6 +173,66 @@ int main() {
   assert(semantic.vertical_direction.position == wfrac_protocol::VerticalVanePosition::ignored_while_swinging);
   assert(semantic.fan == wfrac_protocol::FanMode::auto_mode);
 
+  for (uint8_t index = 0U; index <= 6U; ++index) {
+    const auto horizontal = wfrac_protocol::decode_horizontal_direction(
+        static_cast<uint8_t>(0xA0U | index), 0x00U);
+    assert(horizontal.swing == wfrac_protocol::HorizontalSwingState::fixed);
+    assert(horizontal.position == static_cast<wfrac_protocol::HorizontalVanePosition>(index));
+    assert(horizontal.entrust == wfrac_protocol::EntrustState::inactive);
+    assert(horizontal.state11_raw == static_cast<uint8_t>(0xA0U | index));
+    assert(horizontal.state12_raw == 0x00U);
+  }
+  for (uint8_t index = 7U; index <= 31U; ++index) {
+    const auto horizontal = wfrac_protocol::decode_horizontal_direction(index, 0x00U);
+    assert(horizontal.swing == wfrac_protocol::HorizontalSwingState::fixed);
+    assert(horizontal.position == wfrac_protocol::HorizontalVanePosition::unknown);
+    assert(horizontal.state11_raw == index);
+  }
+  const auto horizontal_swing = wfrac_protocol::decode_horizontal_direction(0xE6U, 0x01U);
+  assert(horizontal_swing.swing == wfrac_protocol::HorizontalSwingState::swinging);
+  assert(horizontal_swing.position == wfrac_protocol::HorizontalVanePosition::ignored_while_swinging);
+  assert(horizontal_swing.state11_raw == 0xE6U && horizontal_swing.state12_raw == 0x01U);
+  for (uint8_t selector : {0x02U, 0x03U}) {
+    const auto horizontal = wfrac_protocol::decode_horizontal_direction(0x00U, selector);
+    assert(horizontal.swing == wfrac_protocol::HorizontalSwingState::unknown);
+    assert(horizontal.position == wfrac_protocol::HorizontalVanePosition::unknown);
+  }
+  for (const auto& pair : {std::pair<uint8_t, wfrac_protocol::EntrustState>{0x00U, wfrac_protocol::EntrustState::inactive},
+                           {0x04U, wfrac_protocol::EntrustState::active},
+                           {0x08U, wfrac_protocol::EntrustState::unknown},
+                           {0x0CU, wfrac_protocol::EntrustState::unknown}}) {
+    const auto horizontal = wfrac_protocol::decode_horizontal_direction(0x02U, pair.first);
+    assert(horizontal.entrust == pair.second);
+    assert(horizontal.state12_raw == pair.first);
+  }
+
+  receive_state[11] = 0xA6U;
+  receive_state[12] = 0x04U;
+  receive_state[2] = 0x00U;
+  receive_state[3] = 0x00U;
+  semantic = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(semantic.horizontal_direction.position == wfrac_protocol::HorizontalVanePosition::position7);
+  assert(semantic.horizontal_direction.entrust == wfrac_protocol::EntrustState::active);
+  assert(semantic.horizontal_direction.state11_raw == 0xA6U);
+  assert(semantic.horizontal_direction.state12_raw == 0x04U);
+  assert(semantic.vertical_direction.position == wfrac_protocol::VerticalVanePosition::position1);
+  assert(semantic.power == wfrac_protocol::PowerState::off);
+  receive_state[2] = 0x40U;
+  receive_state[3] = 0x37U;
+  const auto independent_horizontal = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(independent_horizontal.horizontal_direction.position == semantic.horizontal_direction.position);
+  assert(independent_horizontal.horizontal_direction.entrust == semantic.horizontal_direction.entrust);
+  assert(independent_horizontal.vertical_direction.swing == wfrac_protocol::VerticalSwingState::swinging);
+
+  receive_state[0] = 0x00U;
+  const auto supported_model_hint = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  receive_state[0] = 0x40U;
+  const auto unsupported_model_hint = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(wfrac_protocol::decode_capabilities(64U).profile_known);
+  assert(!wfrac_protocol::decode_capabilities(64U).flags.wind_direction_lr);
+  assert(supported_model_hint.horizontal_direction.position == unsupported_model_hint.horizontal_direction.position);
+  assert(supported_model_hint.horizontal_direction.entrust == unsupported_model_hint.horizontal_direction.entrust);
+
   wfrac_protocol::CommandState command{};
   assert(wfrac_protocol::encode_set_power(wfrac_protocol::PowerState::off, &command) == wfrac_protocol::EncodeError::none);
   assert(command[2] == 0x02U); assert_safe_baseline(command, 2);
