@@ -33,6 +33,27 @@ class ContractValidatorTests(unittest.TestCase):
     def test_canonical_contract_is_accepted(self) -> None:
         validate_contracts.validate(copy.deepcopy(self.canonical))
 
+    def test_horizontal_receive_observation_does_not_admit_control(self) -> None:
+        fields = {
+            item["canonical_name"]: item
+            for item in self.canonical["device_model_fields"]
+        }
+        self.assertEqual(fields["horizontal_direction"]["access"], "unresolved")
+        self.assertEqual(fields["three_d_auto_entrust"]["access"], "unresolved")
+        self.assertTrue(self.canonical["capability_detection_r4"]["app_flags_are_not_wire_presence_proof"])
+
+        affected_fields = {
+            field
+            for intent in self.canonical["command_intents"]
+            for field in intent["affected_state"]
+        }
+        self.assertNotIn("horizontal_direction", affected_fields)
+        self.assertNotIn("three_d_auto_entrust", affected_fields)
+        self.assertEqual(
+            self.canonical["aircon_stat_r2"]["horizontal_receive_observation"]["write_admission"],
+            "OUT_OF_SCOPE",
+        )
+
     def test_invalid_evidence_value_is_rejected(self) -> None:
         self.assert_rejected(lambda c: c["references"][0].update(evidence_role="NOT_EVIDENCE"))
 

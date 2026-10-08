@@ -162,8 +162,8 @@
     { "canonical_name": "target_temperature", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "setAirconStat uses a full writable state representation." },
     { "canonical_name": "fan_mode", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Extended fan semantics may involve operation-data and DB6." },
     { "canonical_name": "vertical_direction", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Protocol codec: RECEIVE byte 2 upper bits 01 means swing and byte 3 position is ignored; upper bits 00 plus byte 3 upper nibble 0..3 means fixed positions 1..4. Reserved encodings stay unknown. COMMAND is a paired byte-2/byte-3 selection; model capability and physical actuation remain unvalidated." },
-    { "canonical_name": "horizontal_direction", "category": "control", "access": "writable", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Cross-reference points to extended DB16/DB17 semantics." },
-    { "canonical_name": "three_d_auto_entrust", "category": "control", "access": "unresolved", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Matter mapping is UNKNOWN / Phase 0.3 pending." },
+    { "canonical_name": "horizontal_direction", "category": "control", "access": "unresolved", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Typed protocol RECEIVE observation only; no Device Model or write admission. Model capability and physical actuation remain unresolved." },
+    { "canonical_name": "three_d_auto_entrust", "category": "control", "access": "unresolved", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Typed protocol RECEIVE observation only; no Device Model or write admission. Model capability and physical behavior remain unresolved; Matter mapping is UNKNOWN." },
     { "canonical_name": "indoor_temperature", "category": "measurement", "access": "read_only", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Separate controller room state[5]/DB3 from WF-RAC 0x80 selector 0x20 indoor ambient; neither is a universal alias." },
     { "canonical_name": "outdoor_temperature", "category": "measurement", "access": "read_only", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "WF-RAC network OP2 uses Smart M-Air nonlinear lookup; direct CNS formula is cross-layer only." },
     { "canonical_name": "error", "category": "diagnostic", "access": "read_only", "evidence_level": "CONFIRMED_UPSTREAM", "validation_status": "HARDWARE_TEST_PENDING", "caveat": "Exact code semantics vary by context/model." },
@@ -201,6 +201,16 @@
       "set_bits_reconstructable_from_receive": false
     },
     "codec_boundary": { "decode_receive": "decode_receive_state", "encode_command": "encode_command" },
+    "horizontal_receive_observation": {
+      "raw_state_bytes": [11, 12],
+      "raw_bytes_preserved": true,
+      "swing_selector": { "mask": "state[12] & 0x03", "swing_value": "0x01", "fixed_value": "0x00", "reserved_values": ["0x02", "0x03"] },
+      "fixed_position": { "raw": "state[11] & 0x1F", "mapping": { "0": 1, "1": 2, "2": 3, "3": 4, "4": 5, "5": 6, "6": 7 }, "other_values": "UNKNOWN" },
+      "swing_overrides_position": true,
+      "entrust": { "mask": "state[12] & 0x0C", "patterns": { "0x00": "inactive", "0x04": "active", "0x08": "UNKNOWN", "0x0C": "UNKNOWN" } },
+      "capability_and_physical_actuation": "UNKNOWN / HARDWARE_TEST_PENDING",
+      "write_admission": "OUT_OF_SCOPE"
+    },
     "fixed_state_map": [
       {"index": 0, "receive": "model number low 7 bits", "command": "not ordinary writable; safe default 0", "safe_command_default": 0, "copy_receive": false},
       {"index": 1, "receive": "observed 0x04 constant; function UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
@@ -284,7 +294,7 @@
     },
     "official_app_unknown_fallback": "separate_2021",
     "unknown_model_policy": "conservative; preserve raw, status UNKNOWN, do not optimistically enable optional writable features",
-    "optional_feature_gates": {"vertical_vane":"paired protocol encoding implemented; model capability and physical actuation HARDWARE_TEST_PENDING","horizontal_vane":"wind_direction_lr + protocol encoding + local validation pending","entrust_3d_auto":"entrust + local validation pending","vacant_property":"vacant_property; access remains unresolved","home_leave":"home_leave_mode; tag 248 subcodes 27-32; local validation pending","self_clean":"self_clean_operation does not establish remote start/status/control","led":"led_light does not prove JSON presence or writable semantics","energy":"app hint plus observed 0x94 plus local validation","preset_temp_range":"preset_temp_range_2; accepted range HARDWARE_TEST_PENDING"},
+    "optional_feature_gates": {"vertical_vane":"paired protocol encoding implemented; model capability and physical actuation HARDWARE_TEST_PENDING","horizontal_vane":"wind_direction_lr is an app hint; typed protocol RECEIVE observation implemented; model capability and physical actuation HARDWARE_TEST_PENDING; no write admission","entrust_3d_auto":"entrust is an app hint; typed protocol RECEIVE observation implemented; model capability and physical behavior HARDWARE_TEST_PENDING; no write admission","vacant_property":"vacant_property; access remains unresolved","home_leave":"home_leave_mode; tag 248 subcodes 27-32; local validation pending","self_clean":"self_clean_operation does not establish remote start/status/control","led":"led_light does not prove JSON presence or writable semantics","energy":"app hint plus observed 0x94 plus local validation","preset_temp_range":"preset_temp_range_2; accepted range HARDWARE_TEST_PENDING"},
     "firmware_metadata_role": "compatibility_and_quirk_context_only",
     "retail_model_derivable_from_wire": false,
     "known_protocol_modes": ["auto","cool","heat","fan","dry"],

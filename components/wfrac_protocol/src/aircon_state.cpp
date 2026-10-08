@@ -57,6 +57,43 @@ VerticalDirectionState decode_vertical_direction(uint8_t direction_raw, uint8_t 
   return result;
 }
 
+HorizontalDirectionState decode_horizontal_direction(uint8_t state11_raw, uint8_t state12_raw) {
+  HorizontalDirectionState result{};
+  result.state11_raw = state11_raw;
+  result.state12_raw = state12_raw;
+
+  switch (static_cast<uint8_t>(state12_raw & 0x03U)) {
+    case 0U:
+      result.swing = HorizontalSwingState::fixed;
+      switch (static_cast<uint8_t>(state11_raw & 0x1FU)) {
+        case 0U: result.position = HorizontalVanePosition::position1; break;
+        case 1U: result.position = HorizontalVanePosition::position2; break;
+        case 2U: result.position = HorizontalVanePosition::position3; break;
+        case 3U: result.position = HorizontalVanePosition::position4; break;
+        case 4U: result.position = HorizontalVanePosition::position5; break;
+        case 5U: result.position = HorizontalVanePosition::position6; break;
+        case 6U: result.position = HorizontalVanePosition::position7; break;
+        default: result.position = HorizontalVanePosition::unknown; break;
+      }
+      break;
+    case 1U:
+      result.swing = HorizontalSwingState::swinging;
+      result.position = HorizontalVanePosition::ignored_while_swinging;
+      break;
+    default:
+      result.swing = HorizontalSwingState::unknown;
+      result.position = HorizontalVanePosition::unknown;
+      break;
+  }
+
+  switch (static_cast<uint8_t>(state12_raw & 0x0CU)) {
+    case 0x00U: result.entrust = EntrustState::inactive; break;
+    case 0x04U: result.entrust = EntrustState::active; break;
+    default: result.entrust = EntrustState::unknown; break;
+  }
+  return result;
+}
+
 ReceiveState decode_receive_state(const AirconBlockView& receive) {
   ReceiveState result{};
   result.model_nr_raw = static_cast<uint8_t>(receive.state[0] & 0x7FU);
@@ -70,6 +107,7 @@ ReceiveState decode_receive_state(const AirconBlockView& receive) {
   result.controller_room_temperature_raw = receive.state[5];
   result.controller_room_temperature_quarter_degrees = static_cast<int16_t>(receive.state[5]) - 61;
   result.vertical_direction = decode_vertical_direction(receive.state[2], receive.state[3]);
+  result.horizontal_direction = decode_horizontal_direction(receive.state[11], receive.state[12]);
   return result;
 }
 
