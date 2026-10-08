@@ -35,8 +35,9 @@
 - Device Model command intent → Protocol safe command mapping，含 lossless 0.5°C target-temperature boundary：**完成**
 - Observed-baseline control request composition、official no-request sentinel、RECEIVE compatibility projection 與 command byte8 carry：**完成**
 - Full safe operation-data query request composition（1–3 bounded query、RECEIVE compatibility baseline 與 no-request sentinel）：**完成**
+- Extended Device Model read-only observation projection（validated AirconFrame RECEIVE → Protocol-derived raw/typed vane、Entrust、error、CoolHotJudge、per-indoor demand、Vacant-related、self-clean raw-only）：**software/host validation 完成**；不改 BasicHvacState／DeviceState lifecycle／capability hints，不推論 physical actuation。
 - Portable TimeProvider/timestamp boundary 與 ESP-IDF system-time adapter 已於 Phase 1C 完成；trusted／estimated acquisition、persistence、power-loss recovery 與 production runtime integration仍 pending。
-- 仍待完成：advanced protocol semantics／超出 `BasicHvacState` 的 extended diagnostic projection、Operator ID lifecycle/persistence、production command dispatch 與 platform scheduler/network runtime、hardware-validated transport/actuation behavior、完整 Matter mapping/runtime 及 hardware validation。Base64/API envelope、bounded queue／poll-command coordination、retry decisions、monotonic deadlines 與 explicit availability transition foundations 已有 portable implementation；這不代表 production runtime、physical timing 或 hardware behavior 已驗證。
+- 仍待完成：Operator ID lifecycle/persistence、production command dispatch 與 platform scheduler/network runtime、hardware-validated transport/actuation behavior、完整 Matter mapping/runtime 及 hardware validation。Extended observation 不加入 Matter attributes、clusters 或 writable intents；Base64/API envelope、bounded queue／poll-command coordination、retry decisions、monotonic deadlines 與 explicit availability transition foundations 已有 portable implementation；這不代表 production runtime、physical timing 或 hardware behavior 已驗證。
 
 ## Phase 1C — WF-RAC Transport Abstraction
 

@@ -21,6 +21,8 @@ Mapping 必須區分 upstream field semantics 與 project policy；尚無證據�
 | unavailable / unknown availability / no observed value | non-nullable On/Off／SystemMode／setpoints → withhold，不是 wire NULL 或預設 off/zero；nullable LocalTemperature → null。availability 只附診斷 metadata，不新增 Matter attribute。 |
 | fan | 所有 FanSetting → unsupported；不建立 FanControl／custom cluster，也不產生 Fan write intent。 |
 
+`ExtendedHvacObservation` 是獨立、read-only 的 Device Model 投影，不是 `RacObservedAttributes` 的輸入，也不會新增 Matter attribute／supported cluster／writable intent。Vertical/horizontal vane、Entrust/3D Auto、error family/code、CoolHotJudge、per-indoor demand、Vacant-related bit 與 self-clean raw byte 均不映射至 Matter；app capability hints 也不會開啟這些映射或 write。原有 On/Off／Thermostat projection、四個 required clusters 與 basic `CommandIntent` translation 保持不變。
+
 所有 projection 僅從 authoritative `observed` 取得資料，不讀取 optimistic desired／pending。`withhold`／`unsupported`／`invalid_value` 的 value storage 不可發布；未來 SDK adapter owner 必須處理 non-nullable attribute 初始化與 attribute write admission，不能把此 partial DTO 當完整 endpoint。
 
 溫度沿用 Device Model centi-Celsius，恆等轉換且不 round／clamp／float。這個 DTO 邊界接受 `-27315..32767`，不是 WF-RAC 可控制溫度範圍；WF protocol range／lossless 0.5°C grid 仍由 existing protocol／RuntimeOrchestrator admission 驗證。例如 2325 可精確形成 intent，但不因此宣稱 WF write admissible 或 SDK write success。沒有套用 Matter SDK default setpoint limits 為裝置硬體能力。
@@ -29,6 +31,6 @@ Desired／pending／verification／availability lifecycle 仍由 Device Model／
 
 ## Remaining evidence boundary
 
-Auto／fan-only／dry／fan speed／vane／3D Auto／outdoor temperature／energy／vacant-property／diagnostic／error-code mapping 仍 `UNKNOWN / unsupported`。Heating／Cooling feature advertisement、雙 setpoint lifecycle、完整 mandatory cluster implementation、actual SDK writes／Matter runtime／commissioning 與 interoperability 均 pending；不為填缺口建立 vendor cluster。
+Auto／fan-only／dry／fan speed／vane／3D Auto／outdoor temperature／energy／vacant-property／diagnostic／error-code mapping 仍 `UNKNOWN / unsupported`，包括上述已保存在 Device Model extended observation 的 read-only protocol facts。Heating／Cooling feature advertisement、雙 setpoint lifecycle、完整 mandatory cluster implementation、actual SDK writes／Matter runtime／commissioning 與 interoperability 均 pending；不為填缺口建立 vendor cluster。
 
 Tests：[`test_matter_mapping.cpp`](../../../tests/host_cpp/test_matter_mapping.cpp) 提供 deterministic software validation；ESP-IDF compile smoke 僅 compile/link，不執行 mapping runtime 或任何網路。

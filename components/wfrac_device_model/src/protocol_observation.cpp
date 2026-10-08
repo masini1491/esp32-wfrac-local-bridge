@@ -1,5 +1,6 @@
 #include "wfrac_device_model/protocol_observation.hpp"
 
+#include "wfrac_device_model/extended_observation.hpp"
 #include "wfrac_device_model/protocol_mapping.hpp"
 #include "wfrac_protocol/aircon_state.hpp"
 
@@ -36,6 +37,28 @@ ObservationMappingError map_aircon_frame_observation(
   const ObservationMappingError validation = validate_frame(frame);
   if (validation != ObservationMappingError::none) return validation;
   *observation = map_basic_hvac_state(wfrac_protocol::decode_receive_state(frame.receive));
+  return ObservationMappingError::none;
+}
+
+ObservationMappingError map_aircon_frame_extended_observation(
+    const wfrac_protocol::AirconFrameView& frame,
+    ExtendedHvacObservation* observation) {
+  if (observation == nullptr) return ObservationMappingError::invalid_argument;
+  *observation = {};
+  const ObservationMappingError validation = validate_frame(frame);
+  if (validation != ObservationMappingError::none) return validation;
+
+  const wfrac_protocol::ReceiveState receive = wfrac_protocol::decode_receive_state(frame.receive);
+  ExtendedHvacObservation mapped{};
+  mapped.model_nr_raw = receive.model_nr_raw;
+  mapped.vertical_direction = receive.vertical_direction;
+  mapped.horizontal_direction = receive.horizontal_direction;
+  mapped.error = receive.error;
+  mapped.cool_hot_judge = receive.cool_hot_judge;
+  mapped.per_indoor_compressor_demand = receive.per_indoor_compressor_demand;
+  mapped.vacant_related = receive.vacant_related;
+  mapped.self_clean_raw = receive.state15_raw;
+  *observation = mapped;
   return ObservationMappingError::none;
 }
 
