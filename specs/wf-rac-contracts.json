@@ -211,6 +211,16 @@
       "capability_and_physical_actuation": "UNKNOWN / HARDWARE_TEST_PENDING",
       "write_admission": "OUT_OF_SCOPE"
     },
+    "advanced_fixed_state_receive": {
+      "evidence_level": "CONFIRMED_UPSTREAM",
+      "local_validation": "HARDWARE_TEST_PENDING",
+      "read_only": true,
+      "error_state6": {"raw_preserved": true, "precedence": "high_bit_m_family_else_zero_none_else_e_family", "m_code_mask": "0x7F", "diagnosis": "not_universally_established"},
+      "cool_hot_judge_state8": {"raw_preserved": true, "observed_bit_mask": "0x08", "physical_heating_or_cooling": "UNKNOWN", "operation_mode_inference": false},
+      "per_indoor_compressor_demand_state9": {"raw_preserved": true, "observed_bit_mask": "0x02", "outdoor_running_inference": false, "operation_data_0x11_frequency_equivalence": false, "independent_of_power": true},
+      "vacant_related_state10": {"raw_preserved": true, "observed_bit_mask": "0x01", "physical_occupancy_inference": false, "capability_hint_proves_support": false},
+      "state15": {"raw_preserved": true, "typed_self_clean_cycle_state": false, "reset_or_start_control": false}
+    },
     "fixed_state_map": [
       {"index": 0, "receive": "model number low 7 bits", "command": "not ordinary writable; safe default 0", "safe_command_default": 0, "copy_receive": false},
       {"index": 1, "receive": "observed 0x04 constant; function UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
@@ -218,16 +228,16 @@
       {"index": 3, "receive": "fan low nibble; upper nibble 0..3 is vertical fixed position 1..4 unless swinging", "command": "paired vertical selection byte: swing 0x80 or fixed position 1..4 = 0x80/0x90/0xA0/0xB0", "safe_command_default": 0, "copy_receive": false},
       {"index": 4, "receive": "target temperature raw/2 C", "command": "target temperature times 2 plus set bit 0x80", "safe_command_default": 0, "copy_receive": false},
       {"index": 5, "receive": "controller room temperature", "command": "external room temperature injection; 0xFF means no injection", "safe_command_default": 255, "copy_receive": false},
-      {"index": 6, "receive": "error; read-only", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
+      {"index": 6, "receive": "error family/code; M-family high bit takes precedence; raw preserved; diagnostic meaning not universal", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
       {"index": 7, "receive": "0x10 echoes command byte 8; not independent compressor state", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
-      {"index": 8, "receive": "operation-data/CoolHotJudge; bit 0x08 observed", "command": "preserve/carry known value where required; full semantics UNKNOWN", "safe_command_default": 0, "copy_receive": false},
-      {"index": 9, "receive": "bit 0x02 per-indoor compressor demand; read-only", "command": "not universal outdoor compressor-running", "safe_command_default": 0, "copy_receive": false},
-      {"index": 10, "receive": "vacant/occupancy-related", "command": "model-dependent vacant/self-clean-reset semantics", "safe_command_default": 0, "copy_receive": false},
+      {"index": 8, "receive": "CoolHotJudge observed bit 0x08; raw preserved; no physical heating/cooling or mode inference; full semantics UNKNOWN", "command": "preserve/carry known value where required; full semantics UNKNOWN", "safe_command_default": 0, "copy_receive": false},
+      {"index": 9, "receive": "bit 0x02 per-indoor compressor demand; read-only; independent of power; not outdoor running or operation-data 0x11 frequency", "command": "not universal outdoor compressor-running", "safe_command_default": 0, "copy_receive": false},
+      {"index": 10, "receive": "Vacant-related observed bit 0x01; raw preserved; not physical occupancy inference or capability proof", "command": "model-dependent vacant/self-clean-reset semantics", "safe_command_default": 0, "copy_receive": false},
       {"index": 11, "receive": "horizontal vane with receive set-bit filtering", "command": "explicit horizontal vane set semantics", "safe_command_default": 0, "copy_receive": false},
       {"index": 12, "receive": "horizontal auto/swing and Entrust/3D Auto flags", "command": "explicit command set semantics", "safe_command_default": 0, "copy_receive": false},
       {"index": 13, "receive": "UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
       {"index": 14, "receive": "UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
-      {"index": 15, "receive": "self-clean-related bit 0; unreliable status", "command": "not reliable normal self-clean command", "safe_command_default": 0, "copy_receive": false},
+      {"index": 15, "receive": "raw preserved only; bit 0 is unreliable self-clean cycle evidence and not typed active/idle state", "command": "not reliable normal self-clean command; no reset/start control", "safe_command_default": 0, "copy_receive": false},
       {"index": 16, "receive": "UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false},
       {"index": 17, "receive": "UNKNOWN", "command": "safe default 0", "safe_command_default": 0, "copy_receive": false}
     ],

@@ -122,6 +122,18 @@ def check_aircon_stat_r2(contract: dict[str, Any]) -> None:
     require(mapping[5]["safe_command_default"] == 255, "aircon_stat_r2.byte5: safe command default must be 0xFF")
     require(mapping[9]["receive"].find("per-indoor compressor demand") >= 0, "aircon_stat_r2.byte9: compressor concept mismatch")
     require(mapping[15]["receive"].find("unreliable") >= 0, "aircon_stat_r2.byte15: self-clean reliability boundary missing")
+    fixed = r2["advanced_fixed_state_receive"]
+    require(fixed["evidence_level"] == "CONFIRMED_UPSTREAM" and fixed["local_validation"] == "HARDWARE_TEST_PENDING" and fixed["read_only"] is True, "aircon_stat_r2.advanced_fixed_state_receive: evidence/read-only boundary mismatch")
+    error = fixed["error_state6"]
+    require(error["raw_preserved"] is True and error["precedence"] == "high_bit_m_family_else_zero_none_else_e_family" and error["m_code_mask"] == "0x7F" and error["diagnosis"] == "not_universally_established", "aircon_stat_r2.state6: error-family guard mismatch")
+    judge = fixed["cool_hot_judge_state8"]
+    require(judge["raw_preserved"] is True and judge["observed_bit_mask"] == "0x08" and judge["physical_heating_or_cooling"] == "UNKNOWN" and judge["operation_mode_inference"] is False, "aircon_stat_r2.state8: CoolHotJudge semantic guard mismatch")
+    demand = fixed["per_indoor_compressor_demand_state9"]
+    require(demand["raw_preserved"] is True and demand["observed_bit_mask"] == "0x02" and demand["outdoor_running_inference"] is False and demand["operation_data_0x11_frequency_equivalence"] is False and demand["independent_of_power"] is True, "aircon_stat_r2.state9: compressor-demand semantic guard mismatch")
+    vacant = fixed["vacant_related_state10"]
+    require(vacant["raw_preserved"] is True and vacant["observed_bit_mask"] == "0x01" and vacant["physical_occupancy_inference"] is False and vacant["capability_hint_proves_support"] is False, "aircon_stat_r2.state10: Vacant semantic guard mismatch")
+    state15 = fixed["state15"]
+    require(state15["raw_preserved"] is True and state15["typed_self_clean_cycle_state"] is False and state15["reset_or_start_control"] is False, "aircon_stat_r2.state15: self-clean negative guard mismatch")
     require(r2["network_set_bit_mask_hex"] == "00 00 A2 88 80 00 00 00 00 00 00 10 0A 00 00 00 00 00", "aircon_stat_r2: network mask mismatch")
     require(r2["mode_encoding"]["receive"]["auto"] == "0x00" and r2["mode_encoding"]["command"]["auto"] == "0x20", "aircon_stat_r2: mode encoding mismatch")
     require(r2["fan_encoding"]["receive"]["auto"] == "0x07" and r2["fan_encoding"]["command"]["auto"] == "0x0F", "aircon_stat_r2: fan encoding mismatch")

@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -15,6 +16,15 @@
 #include "wfrac_protocol/operation_data.hpp"
 
 namespace {
+
+template <typename T, typename = void>
+struct HasSelfCleanField : std::false_type {};
+
+template <typename T>
+struct HasSelfCleanField<T, std::void_t<decltype(std::declval<T>().self_clean)>> : std::true_type {};
+
+static_assert(!HasSelfCleanField<wfrac_protocol::ReceiveState>::value,
+              "unreliable state[15] must not become typed self-clean status");
 
 std::vector<uint8_t> make_block(uint8_t segment_count, const std::vector<uint8_t>& segments, uint8_t state_five = 0) {
   assert(segments.size() == static_cast<std::size_t>(segment_count) * wfrac_protocol::kAirconSegmentBytes);
@@ -113,6 +123,62 @@ int main() {
   assert(semantic.target_temperature_half_degrees == 41U);
   assert(semantic.fan == wfrac_protocol::FanMode::auto_mode);
   assert(semantic.controller_room_temperature_quarter_degrees == 93);
+
+  // Error-family precedence is read-only; preserve the source byte and keep E/M distinct.
+  for (const auto& pair : {std::pair<uint8_t, wfrac_protocol::ErrorFamily>{0x00U, wfrac_protocol::ErrorFamily::none},
+                           {0x01U, wfrac_protocol::ErrorFamily::e_family},
+                           {0x7FU, wfrac_protocol::ErrorFamily::e_family},
+                           {0x80U, wfrac_protocol::ErrorFamily::m_family},
+                           {0xFFU, wfrac_protocol::ErrorFamily::m_family}}) {
+    receive_state[6] = pair.first;
+    const auto observed = wfrac_protocol::decode_receive_state(receive_block(receive_state)).error;
+    assert(observed.raw == pair.first && observed.family == pair.second);
+    assert(observed.code == ((pair.first & 0x80U) != 0U ? static_cast<uint8_t>(pair.first & 0x7FU) : pair.first));
+  }
+  receive_state[8] = 0xA8U;
+  auto fixed = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(fixed.cool_hot_judge.raw == 0xA8U);
+  assert(fixed.cool_hot_judge.bit_0x08 == wfrac_protocol::ObservedBit::set);
+  assert(fixed.operation_mode == wfrac_protocol::OperationMode::cool);
+  receive_state[8] = 0xA0U;
+  fixed = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(fixed.cool_hot_judge.raw == 0xA0U);
+  assert(fixed.cool_hot_judge.bit_0x08 == wfrac_protocol::ObservedBit::clear);
+
+  receive_state[2] = 0x00U;
+  receive_state[9] = 0x02U;
+  fixed = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(fixed.power == wfrac_protocol::PowerState::off);
+  assert(fixed.per_indoor_compressor_demand.raw == 0x02U);
+  assert(fixed.per_indoor_compressor_demand.bit_0x02 == wfrac_protocol::ObservedBit::set);
+  receive_state[2] = 0x01U;
+  receive_state[9] = 0x00U;
+  fixed = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(fixed.power == wfrac_protocol::PowerState::on);
+  assert(fixed.per_indoor_compressor_demand.bit_0x02 == wfrac_protocol::ObservedBit::clear);
+  receive_state[7] = 0x10U;
+  receive_state[9] = 0x02U;
+  fixed = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(fixed.per_indoor_compressor_demand.bit_0x02 == wfrac_protocol::ObservedBit::set);
+  assert(fixed.per_indoor_compressor_demand.raw == 0x02U);
+
+  receive_state[0] = 0x00U;
+  receive_state[10] = 0xA1U;
+  const auto vacant_model_a = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  receive_state[0] = 0x40U;
+  const auto vacant_model_b = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(vacant_model_a.vacant_related.raw == 0xA1U);
+  assert(vacant_model_a.vacant_related.bit_0x01 == wfrac_protocol::ObservedBit::set);
+  assert(vacant_model_b.vacant_related.bit_0x01 == vacant_model_a.vacant_related.bit_0x01);
+  receive_state[10] = 0xA0U;
+  fixed = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(fixed.vacant_related.bit_0x01 == wfrac_protocol::ObservedBit::clear);
+
+  receive_state[15] = 0x01U;
+  fixed = wfrac_protocol::decode_receive_state(receive_block(receive_state));
+  assert(fixed.state15_raw == 0x01U);
+  receive_state[15] = 0x00U;
+  assert(wfrac_protocol::decode_receive_state(receive_block(receive_state)).state15_raw == 0x00U);
 
   receive_state[2] = 0x00U;
   assert(wfrac_protocol::decode_receive_state(receive_block(receive_state)).power == wfrac_protocol::PowerState::off);
