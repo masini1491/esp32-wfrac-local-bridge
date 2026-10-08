@@ -31,6 +31,19 @@ FanMode decode_fan(uint8_t raw) {
   }
 }
 
+ErrorObservation decode_error(uint8_t raw) {
+  ErrorObservation result{};
+  result.raw = raw;
+  if ((raw & 0x80U) != 0U) {
+    result.family = ErrorFamily::m_family;
+    result.code = static_cast<uint8_t>(raw & 0x7FU);
+  } else if (raw != 0U) {
+    result.family = ErrorFamily::e_family;
+    result.code = raw;
+  }
+  return result;
+}
+
 }  // namespace
 
 VerticalDirectionState decode_vertical_direction(uint8_t direction_raw, uint8_t vane_raw) {
@@ -106,6 +119,14 @@ ReceiveState decode_receive_state(const AirconBlockView& receive) {
   result.fan = decode_fan(result.fan_raw);
   result.controller_room_temperature_raw = receive.state[5];
   result.controller_room_temperature_quarter_degrees = static_cast<int16_t>(receive.state[5]) - 61;
+  result.error = decode_error(receive.state[6]);
+  result.cool_hot_judge.raw = receive.state[8];
+  result.cool_hot_judge.bit_0x08 = (receive.state[8] & 0x08U) != 0U ? ObservedBit::set : ObservedBit::clear;
+  result.per_indoor_compressor_demand.raw = receive.state[9];
+  result.per_indoor_compressor_demand.bit_0x02 = (receive.state[9] & 0x02U) != 0U ? ObservedBit::set : ObservedBit::clear;
+  result.vacant_related.raw = receive.state[10];
+  result.vacant_related.bit_0x01 = (receive.state[10] & 0x01U) != 0U ? ObservedBit::set : ObservedBit::clear;
+  result.state15_raw = receive.state[15];
   result.vertical_direction = decode_vertical_direction(receive.state[2], receive.state[3]);
   result.horizontal_direction = decode_horizontal_direction(receive.state[11], receive.state[12]);
   return result;

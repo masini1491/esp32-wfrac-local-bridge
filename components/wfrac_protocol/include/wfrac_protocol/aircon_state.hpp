@@ -26,6 +26,8 @@ enum class HorizontalVanePosition {
   ignored_while_swinging,
 };
 enum class EntrustState { inactive, active, unknown };
+enum class ErrorFamily { none, e_family, m_family };
+enum class ObservedBit { clear, set };
 enum class EncodeError {
   none,
   invalid_power,
@@ -50,6 +52,27 @@ struct HorizontalDirectionState {
   EntrustState entrust = EntrustState::unknown;
 };
 
+struct ErrorObservation {
+  uint8_t raw = 0;
+  ErrorFamily family = ErrorFamily::none;
+  uint8_t code = 0;
+};
+
+struct CoolHotJudgeObservation {
+  uint8_t raw = 0;
+  ObservedBit bit_0x08 = ObservedBit::clear;
+};
+
+struct PerIndoorCompressorDemandObservation {
+  uint8_t raw = 0;
+  ObservedBit bit_0x02 = ObservedBit::clear;
+};
+
+struct VacantRelatedObservation {
+  uint8_t raw = 0;
+  ObservedBit bit_0x01 = ObservedBit::clear;
+};
+
 struct ReceiveState {
   uint8_t model_nr_raw = 0;
   uint8_t power_raw = 0;
@@ -61,6 +84,12 @@ struct ReceiveState {
   FanMode fan = FanMode::unknown;
   uint8_t controller_room_temperature_raw = 0;
   int16_t controller_room_temperature_quarter_degrees = 0;
+  ErrorObservation error{};
+  CoolHotJudgeObservation cool_hot_judge{};
+  PerIndoorCompressorDemandObservation per_indoor_compressor_demand{};
+  VacantRelatedObservation vacant_related{};
+  // Raw-only: state[15] bit 0 is not reliable self-clean cycle state.
+  uint8_t state15_raw = 0;
   VerticalDirectionState vertical_direction{};
   HorizontalDirectionState horizontal_direction{};
 };

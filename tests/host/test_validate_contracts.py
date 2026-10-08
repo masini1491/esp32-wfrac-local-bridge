@@ -179,6 +179,19 @@ class ContractValidatorTests(unittest.TestCase):
     def test_aircon_stat_self_clean_remains_unresolved(self) -> None:
         self.assert_rejected(lambda c: c["aircon_stat_r2"]["self_clean"].update(supported_control_or_status_established=True))
 
+    def test_advanced_fixed_state_error_family_precedence_is_guarded(self) -> None:
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["advanced_fixed_state_receive"]["error_state6"].update(precedence="zero_none_before_m_bit"))
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["advanced_fixed_state_receive"]["error_state6"].update(diagnosis="universal_fault_reason"))
+
+    def test_advanced_fixed_state_bits_do_not_project_physical_semantics(self) -> None:
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["advanced_fixed_state_receive"]["cool_hot_judge_state8"].update(physical_heating_or_cooling="confirmed"))
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["advanced_fixed_state_receive"]["per_indoor_compressor_demand_state9"].update(outdoor_running_inference=True))
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["advanced_fixed_state_receive"]["per_indoor_compressor_demand_state9"].update(operation_data_0x11_frequency_equivalence=True))
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["advanced_fixed_state_receive"]["vacant_related_state10"].update(physical_occupancy_inference=True))
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["advanced_fixed_state_receive"]["vacant_related_state10"].update(capability_hint_proves_support=True))
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["advanced_fixed_state_receive"]["state15"].update(typed_self_clean_cycle_state=True))
+        self.assert_rejected(lambda c: c["aircon_stat_r2"]["advanced_fixed_state_receive"]["state15"].update(reset_or_start_control=True))
+
     def test_operation_data_direct_cns_visibility_is_not_wf_rac_confirmed(self) -> None:
         self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x0C").update(visibility="CONFIRMED_QUERY_VALUE"))
 
