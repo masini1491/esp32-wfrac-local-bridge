@@ -360,6 +360,47 @@ class ContractValidatorTests(unittest.TestCase):
     def test_operation_data_13_is_not_calibrated_percentage(self) -> None:
         self.assert_rejected(lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13").update(value_quality="calibrated_open_percentage=true"))
 
+    def test_operation_data_13_idle_context_guards_are_exact(self) -> None:
+        entry = next(e for e in self.canonical["operation_data_r3"]["entries"] if e["code"] == "0x13")
+        idle = entry["idle_context_guards"]
+        self.assertEqual(idle["scope"], "per-indoor")
+        self.assertTrue(idle["raw_segment_preserved"])
+        self.assertEqual(idle["local_validation"], "HARDWARE_TEST_PENDING")
+        self.assertEqual(idle["provenance"]["evidence_role"], "SUPPLEMENTAL_USER_REPORT")
+
+        mutations = (
+            ("missing object", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13").pop("idle_context_guards")),
+            ("wrong object type", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13").update(idle_context_guards=[])),
+            ("missing guard", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"].pop("no_indoor_demand_implies_op2_zero")),
+            ("extra guard", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"].update(universal_idle_claim=True)),
+            ("wrong guard type", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"].update(no_indoor_demand_implies_op2_zero=0)),
+            ("wrong scope", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"].update(scope="shared-outdoor")),
+            ("local evidence elevation", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"].update(local_validation="CONFIRMED_LOCAL")),
+            ("raw no longer preserved", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"].update(raw_segment_preserved=False)),
+            ("missing provenance", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"].pop("provenance")),
+            ("wrong provenance type", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"].update(provenance=[])),
+            ("wrong provenance role", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"]["provenance"].update(evidence_role="CONFIRMED_LOCAL")),
+            ("wrong source revision", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"]["provenance"].update(revision="main")),
+            ("wrong discussion type", lambda c: next(e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13")["idle_context_guards"]["provenance"].update(discussion=True)),
+        )
+        for label, mutation in mutations:
+            with self.subTest(case=label):
+                self.assert_rejected(mutation)
+
+        for key, expected in validate_contracts.EEV_0X13_IDLE_BOOLEAN_GUARDS.items():
+            with self.subTest(guard=key, case="inverted"):
+                self.assert_rejected(
+                    lambda c, field=key, value=expected: next(
+                        e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13"
+                    )["idle_context_guards"].update({field: not value})
+                )
+            with self.subTest(guard=key, case="wrong type"):
+                self.assert_rejected(
+                    lambda c, field=key, value=expected: next(
+                        e for e in c["operation_data_r3"]["entries"] if e["code"] == "0x13"
+                    )["idle_context_guards"].update({field: str(value)})
+                )
+
     def test_operation_data_generic_write_remains_out_of_scope(self) -> None:
         self.assert_rejected(lambda c: c["operation_data_r3"].update(generic_operation_data_write="SUPPORTED"))
 
