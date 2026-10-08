@@ -4,27 +4,23 @@
 
 ## COMMITTED — Software-only continuation sequence
 
-下列工作已由使用者明確選定為後續不碰硬體／network 的 continuation sequence。它們目前都不是 Hot，不具 execution authority；每次只可對下一個 bounded Stage 做 fresh authority/evidence reconciliation，promotion 到 `TASKS.md`，再依 current authorization 執行。
+使用者已明確要求依序執行本 sequence。**Docs reconciliation 已 promotion 為 current Hot**；本 Cold 只保留其後尚未 promotion 的 committed stages。每次仍只可對下一個 bounded Stage 做 fresh authority/evidence reconciliation，promotion 到 `TASKS.md`，完成 validation/closure 後才進下一項。
 
-1. **Docs reconciliation**
-   - Reconcile stale README／roadmap status and validation-count drift against current canonical source/tests/CI.
-   - Keep this documentation/bookkeeping only; do not use it to broaden technical scope.
-
-2. **Vertical vane protocol core**
+1. **Vertical vane protocol core**
    - Fresh-reconcile pinned WF-RAC evidence for vertical vane position / up-down swing receive + command set-bit semantics.
    - Admit only the bounded portable protocol / request-composition / regression surface that current evidence supports.
    - Hardware actuation remains `HARDWARE_TEST_PENDING`.
 
-3. **Horizontal vane / 3D Auto read-side**
+2. **Horizontal vane / 3D Auto read-side**
    - Prefer read-side semantic/typed observation work first for `state[11]` / `state[12]`.
    - Do not infer or admit write semantics unless fresh evidence is independently sufficient.
    - Preserve model/capability gating and `HARDWARE_TEST_PENDING`.
 
-4. **Advanced fixed-state guards**
+3. **Advanced fixed-state guards**
    - Reconcile bounded read-side semantics / negative guards for remaining advanced fixed-state fields such as Vacant, CoolHotJudge, error/self-clean-related observations where evidence is sufficient.
    - Do not turn unreliable/status-only evidence into control support.
 
-5. **Device Model / Matter mapping**
+4. **Device Model / Matter mapping**
    - Only after lower protocol/read-side semantics are stable, reconcile bounded software-only Device Model and SDK-free Matter adapter mappings.
    - Actual Matter runtime, node/endpoint execution, commissioning, interoperability, hardware/network remain out of scope.
 
