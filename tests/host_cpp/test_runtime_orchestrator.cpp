@@ -85,7 +85,7 @@ struct Fixture {
   dm::DeviceState state{};
   wfrac_transport::SchemeCache cache{};
   std::array<uint8_t, 1024> request{}, response{};
-  std::array<uint8_t, 160> short_request{};
+  std::array<uint8_t, 256> short_request{};
   std::array<uint8_t, 128> scratch{}, raw{}, control{};
   RuntimeOrchestrator runtime;
   RuntimePolicy policy{100, 10, 20, 15, 80, 60, 2, 2, 2, 2};  // Synthetic test policy only.
@@ -265,7 +265,7 @@ void response_identity_is_optional_but_bound_to_request() {
 
   Fixture oversized; oversized.init(true);
   oversized.transport.read(observation(false, false, false,
-      "\"airconId\":\"" + std::string(180U, 'x') + "\""));
+      "\"airconId\":\"" + std::string(300U, 'x') + "\""));
   const auto oversized_report = oversized.runtime.step();
   assert(oversized_report.response_error == wfrac_api::ApiResponseError::output_too_small);
   assert(!oversized.state.observed.has_value && oversized.transport.calls == 1U);
