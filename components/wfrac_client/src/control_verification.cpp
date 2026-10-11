@@ -172,6 +172,7 @@ ControlVerificationOutcome perform_post_write_readback(
   if (report->response_error != wfrac_api::ApiResponseError::none || envelope.result != 0 ||
       !envelope.has_contents) {
     finish(wfrac_device_model::PendingCommandOutcome::failed, state);
+    session->write_accepted = false;
     report->application_result = envelope.result;
     report->outcome = ControlVerificationOutcome::readback_response_failure;
     return report->outcome;
@@ -183,6 +184,7 @@ ControlVerificationOutcome perform_post_write_readback(
       envelope.contents_json, buffers.request_buffer, buffers.base64_scratch, buffers.raw_aircon_stat, &contents);
   if (report->response_error != wfrac_api::ApiResponseError::none) {
     finish(wfrac_device_model::PendingCommandOutcome::failed, state);
+    session->write_accepted = false;
     report->outcome = ControlVerificationOutcome::readback_response_failure;
     return report->outcome;
   }
