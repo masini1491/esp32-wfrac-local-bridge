@@ -1,5 +1,7 @@
 #include "wfrac_client/control_verification.hpp"
 
+#include <cstring>
+
 namespace wfrac_client {
 namespace {
 
@@ -11,6 +13,15 @@ bool is_valid_buffer(wfrac_protocol::MutableByteView buffer) {
 
 bool is_valid_buffer(wfrac_transport::MutableByteView buffer) {
   return buffer.data != nullptr && buffer.size != 0U;
+}
+
+bool response_identity_matches(const wfrac_api::GetAirconStatContents& contents,
+                               wfrac_protocol::MutableByteView identity_buffer,
+                               const char* requested_aircon_id) {
+  if (!contents.has_aircon_id) return true;
+  const std::size_t requested_size = std::strlen(requested_aircon_id);
+  return contents.aircon_id_size == requested_size &&
+         std::memcmp(identity_buffer.data, requested_aircon_id, requested_size) == 0;
 }
 
 bool is_valid_common_input(const wfrac_api::ApiClientContext& context, const char* aircon_id,
@@ -161,6 +172,7 @@ ControlVerificationOutcome perform_post_write_readback(
   if (report->response_error != wfrac_api::ApiResponseError::none || envelope.result != 0 ||
       !envelope.has_contents) {
     finish(wfrac_device_model::PendingCommandOutcome::failed, state);
+    session->write_accepted = false;
     report->application_result = envelope.result;
     report->outcome = ControlVerificationOutcome::readback_response_failure;
     return report->outcome;
@@ -169,10 +181,17 @@ ControlVerificationOutcome perform_post_write_readback(
 
   wfrac_api::GetAirconStatContents contents{};
   report->response_error = wfrac_api::parse_get_aircon_stat_contents(
-      envelope.contents_json, {}, buffers.base64_scratch, buffers.raw_aircon_stat, &contents);
+      envelope.contents_json, buffers.request_buffer, buffers.base64_scratch, buffers.raw_aircon_stat, &contents);
   if (report->response_error != wfrac_api::ApiResponseError::none) {
     finish(wfrac_device_model::PendingCommandOutcome::failed, state);
+    session->write_accepted = false;
     report->outcome = ControlVerificationOutcome::readback_response_failure;
+    return report->outcome;
+  }
+  if (!response_identity_matches(contents, buffers.request_buffer, aircon_id)) {
+    finish(wfrac_device_model::PendingCommandOutcome::failed, state);
+    session->write_accepted = false;
+    report->outcome = ControlVerificationOutcome::readback_identity_mismatch;
     return report->outcome;
   }
 

@@ -78,17 +78,20 @@ std::array<uint8_t, 42> make_frame(bool power_on) {
   return raw;
 }
 
-std::string get_response(const std::array<uint8_t, 42>& raw) {
+std::string get_response(const std::array<uint8_t, 42>& raw, const char* aircon_id = nullptr) {
   std::array<uint8_t, 56> encoded{};
   std::size_t encoded_size = 0U;
   assert(wfrac_protocol::base64_encode({raw.data(), raw.size()}, {encoded.data(), encoded.size()}, &encoded_size) ==
          wfrac_protocol::Base64Error::none);
-  return std::string("{\"command\":\"getAirconStat\",\"result\":0,\"contents\":{\"airconStat\":\"") +
+  return std::string("{\"command\":\"getAirconStat\",\"result\":0,\"contents\":{") +
+         (aircon_id == nullptr ? "" : std::string("\"airconId\":\"") + aircon_id + "\",") +
+         "\"airconStat\":\"" +
          std::string(reinterpret_cast<const char*>(encoded.data()), encoded_size) + "\"}}";
 }
 
 struct Fixture {
   std::array<uint8_t, 512> request{};
+  std::array<uint8_t, 256> short_request{};
   std::array<uint8_t, 512> response{};
   std::array<uint8_t, 128> scratch{};
   std::array<uint8_t, 42> parsed_raw{};
@@ -193,6 +196,78 @@ int main() {
            ControlVerificationOutcome::readback_transport_failure);
     assert(report.transport_error == wfrac_transport::TransportError::timeout && !state.pending.intent.has_value() &&
            state.desired.power == wfrac_device_model::PowerState::on && transport.calls() == 2U);
+  }
+
+  {  // Present matching identity and absent identity both preserve compatibility.
+    const std::array<const char*, 2> identities{{"synthetic-aircon", nullptr}};
+    for (const char* id : identities) {
+      wfrac_device_model::DeviceState state{};
+      const std::string matching_response = get_response(on_frame, id);
+      ScriptedTransport transport({{{}, kWriteAccepted}, {{}, matching_response.c_str()}}, &state);
+      FakeTimeProvider time{};
+      Fixture fixture{};
+      wfrac_client::PostWriteVerificationSession session{};
+      wfrac_client::ControlVerificationReport report{};
+      assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 1U) ==
+             ControlVerificationOutcome::accepted);
+      assert(readback(&time, &transport, &state, &session, &report, &fixture) ==
+             ControlVerificationOutcome::confirmed);
+      assert(state.observed.value.power == wfrac_device_model::PowerState::on && transport.calls() == 2U);
+    }
+  }
+
+  {  // Mismatching identity fails closed without reconciling the other device's frame.
+    wfrac_device_model::DeviceState state{};
+    const std::string mismatch_response = get_response(on_frame, "other-aircon");
+    ScriptedTransport transport({{{}, kWriteAccepted}, {{}, mismatch_response.c_str()}}, &state);
+    FakeTimeProvider time{};
+    Fixture fixture{};
+    wfrac_client::PostWriteVerificationSession session{};
+    wfrac_client::ControlVerificationReport report{};
+    assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 2U) ==
+           ControlVerificationOutcome::accepted);
+    assert(readback(&time, &transport, &state, &session, &report, &fixture) ==
+           ControlVerificationOutcome::readback_identity_mismatch);
+    assert(!state.observed.has_value && !state.pending.intent.has_value() && !session.write_accepted &&
+           transport.calls() == 2U);
+  }
+
+  {  // Malformed escaped identity fails before touching the observed snapshot.
+    wfrac_device_model::DeviceState state{};
+    std::string malformed_response = get_response(on_frame);
+    const std::string contents = "\"contents\":{";
+    malformed_response.replace(malformed_response.find(contents), contents.size(),
+                               "\"contents\":{\"airconId\":\"\\uD800\",");
+    ScriptedTransport transport({{{}, kWriteAccepted}, {{}, malformed_response.c_str()}}, &state);
+    FakeTimeProvider time{};
+    Fixture fixture{};
+    wfrac_client::PostWriteVerificationSession session{};
+    wfrac_client::ControlVerificationReport report{};
+    assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 2U) ==
+           ControlVerificationOutcome::accepted);
+    assert(readback(&time, &transport, &state, &session, &report, &fixture) ==
+           ControlVerificationOutcome::readback_response_failure);
+    assert(report.response_error != wfrac_api::ApiResponseError::none && !state.observed.has_value &&
+           !state.pending.intent.has_value() && !session.write_accepted && transport.calls() == 2U);
+  }
+
+  {  // An identity too large for the caller's bounded request buffer is rejected, never truncated.
+    wfrac_device_model::DeviceState state{};
+    const std::string oversized_id(280U, 'x');
+    const std::string oversized_response = get_response(on_frame, oversized_id.c_str());
+    ScriptedTransport transport({{{}, kWriteAccepted}, {{}, oversized_response.c_str()}}, &state);
+    FakeTimeProvider time{};
+    Fixture fixture{};
+    fixture.buffers.request_buffer = {fixture.short_request.data(), fixture.short_request.size()};
+    wfrac_client::PostWriteVerificationSession session{};
+    wfrac_client::ControlVerificationReport report{};
+    assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 2U) ==
+           ControlVerificationOutcome::accepted);
+    assert(readback(&time, &transport, &state, &session, &report, &fixture) ==
+           ControlVerificationOutcome::readback_response_failure);
+    assert(report.response_error == wfrac_api::ApiResponseError::output_too_small &&
+           !state.observed.has_value && !state.pending.intent.has_value() && !session.write_accepted &&
+           transport.calls() == 2U);
   }
 
   {  // Write transport and application failures never enter verification.

@@ -46,7 +46,15 @@ struct RuntimeBindings {
   wfrac_protocol::MutableByteView control_raw{};
 };
 
-enum class RuntimeError { none, invalid_argument, busy, queue_full, clock_regressed, state_conflict };
+enum class RuntimeError {
+  none,
+  invalid_argument,
+  busy,
+  queue_full,
+  clock_regressed,
+  state_conflict,
+  response_identity_mismatch,
+};
 enum class RuntimeAction { idle, poll, write, readback, expire_command, discard_satisfied };
 enum class RuntimeOutcome { idle, observation, accepted, verifying, confirmed, not_confirmed,
                             failed, timed_out };
