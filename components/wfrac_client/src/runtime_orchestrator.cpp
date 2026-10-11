@@ -1,11 +1,20 @@
 #include "wfrac_client/runtime_orchestrator.hpp"
 
+#include <cstring>
 #include <limits>
 
 namespace wfrac_client {
 namespace {
 
 bool nonempty(const char* value) { return value != nullptr && value[0] != '\0'; }
+bool response_identity_matches(const wfrac_api::GetAirconStatContents& contents,
+                               wfrac_protocol::MutableByteView identity_buffer,
+                               const char* requested_aircon_id) {
+  if (!contents.has_aircon_id) return true;
+  const std::size_t requested_size = std::strlen(requested_aircon_id);
+  return contents.aircon_id_size == requested_size &&
+         std::memcmp(identity_buffer.data, requested_aircon_id, requested_size) == 0;
+}
 uint64_t after(uint64_t now, uint64_t delay) {
   return delay > std::numeric_limits<uint64_t>::max() - now
              ? std::numeric_limits<uint64_t>::max() : now + delay;
@@ -126,9 +135,15 @@ void RuntimeOrchestrator::poll(RuntimeStepReport* r) {
     return;
   }
   wfrac_api::GetAirconStatContents contents{};
-  r->response_error = wfrac_api::parse_get_aircon_stat_contents(envelope.contents_json, {},
+  r->response_error = wfrac_api::parse_get_aircon_stat_contents(envelope.contents_json,
+      bindings_.buffers.request_buffer,
       bindings_.buffers.base64_scratch, bindings_.buffers.raw_aircon_stat, &contents);
   if (r->response_error != wfrac_api::ApiResponseError::none) { record_read(false); return; }
+  if (!response_identity_matches(contents, bindings_.buffers.request_buffer, bindings_.aircon_id)) {
+    r->error = RuntimeError::response_identity_mismatch;
+    record_read(false);
+    return;
+  }
   r->observation_error = wfrac_device_model::reconcile_aircon_frame_observation(contents.frame, bindings_.state).error;
   if (r->observation_error != wfrac_device_model::ObservationMappingError::none) { record_read(false); return; }
   baseline_size_ = contents.raw_aircon_stat_size;

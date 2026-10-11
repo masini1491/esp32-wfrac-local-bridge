@@ -40,6 +40,7 @@ enum class ControlVerificationOutcome {
   readback_request_failure,
   readback_transport_failure,
   readback_response_failure,
+  readback_identity_mismatch,
   readback_observation_failure,
 };
 

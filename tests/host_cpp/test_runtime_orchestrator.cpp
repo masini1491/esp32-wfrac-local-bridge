@@ -25,7 +25,8 @@ struct WallTime final : wfrac_api::ITimeProvider {
   wfrac_api::TimeSample now() override { ++calls; return sample; }
 };
 
-std::string observation(bool on, bool corrupt = false, bool segmented = false) {
+std::string observation(bool on, bool corrupt = false, bool segmented = false,
+                        const std::string& identity_field = {}) {
   std::vector<uint8_t> raw(segmented ? 46U : 42U, 0);
   auto crc = wfrac_protocol::crc16_ccitt(raw.data(), 19U);
   raw[19] = static_cast<uint8_t>(crc);
@@ -43,7 +44,8 @@ std::string observation(bool on, bool corrupt = false, bool segmented = false) {
   std::size_t size = 0;
   assert(wfrac_protocol::base64_encode({raw.data(), raw.size()}, {encoded.data(), encoded.size()}, &size) ==
          wfrac_protocol::Base64Error::none);
-  return "{\"command\":\"getAirconStat\",\"result\":0,\"contents\":{\"airconStat\":\"" +
+  return "{\"command\":\"getAirconStat\",\"result\":0,\"contents\":{" + identity_field +
+      (identity_field.empty() ? "" : ",") + "\"airconStat\":\"" +
       std::string(reinterpret_cast<char*>(encoded.data()), size) + "\"}}";
 }
 const char* accepted = "{\"command\":\"setAirconStat\",\"result\":0}";
@@ -83,16 +85,22 @@ struct Fixture {
   dm::DeviceState state{};
   wfrac_transport::SchemeCache cache{};
   std::array<uint8_t, 1024> request{}, response{};
+  std::array<uint8_t, 160> short_request{};
   std::array<uint8_t, 128> scratch{}, raw{}, control{};
   RuntimeOrchestrator runtime;
   RuntimePolicy policy{100, 10, 20, 15, 80, 60, 2, 2, 2, 2};  // Synthetic test policy only.
-  RuntimeBindings bindings() {
+  RuntimeBindings bindings(bool short_request_buffer = false) {
+    const auto request_view = short_request_buffer
+        ? wfrac_protocol::MutableByteView{short_request.data(), short_request.size()}
+        : wfrac_protocol::MutableByteView{request.data(), request.size()};
     return {{"1.0", "synthetic-device", "synthetic-operator"}, "synthetic-aircon", &wall, &clock,
         {"example.invalid", 51443, 1000}, &cache, &transport, &state,
-        {{request.data(), request.size()}, {response.data(), response.size()},
+        {request_view, {response.data(), response.size()},
          {scratch.data(), scratch.size()}, {raw.data(), raw.size()}}, {control.data(), control.size()}};
   }
-  void init() { assert(runtime.initialize(bindings(), policy) == RuntimeError::none); }
+  void init(bool short_request_buffer = false) {
+    assert(runtime.initialize(bindings(short_request_buffer), policy) == RuntimeError::none);
+  }
   void baseline(bool on = false) {
     transport.read(observation(on));
     assert(runtime.step().outcome == RuntimeOutcome::observation);
@@ -228,6 +236,41 @@ void retry_availability_and_safety() {
   assert(fallback.transport.schemes[2] == wfrac_transport::TransportScheme::http);
 }
 
+void response_identity_is_optional_but_bound_to_request() {
+  Fixture matching; matching.init();
+  matching.transport.read(observation(false, false, false, "\"airconId\":\"synthetic-aircon\""));
+  assert(matching.runtime.step().outcome == RuntimeOutcome::observation);
+  assert(matching.state.observed.has_value && matching.transport.calls == 1U);
+
+  Fixture escaped; escaped.init();
+  escaped.transport.read(observation(false, false, false, "\"airconId\":\"\\u0073ynthetic-aircon\""));
+  assert(escaped.runtime.step().outcome == RuntimeOutcome::observation);
+  assert(escaped.state.observed.has_value && escaped.transport.calls == 1U);
+
+  Fixture mismatch; mismatch.init(); mismatch.baseline(true);
+  mismatch.transport.read(observation(true, false, false, "\"airconId\":\"other-aircon\""));
+  mismatch.clock.value = 100;
+  const auto mismatch_report = mismatch.runtime.step();
+  assert(mismatch_report.error == RuntimeError::response_identity_mismatch);
+  assert(mismatch_report.outcome == RuntimeOutcome::failed && !mismatch_report.poll_retry_scheduled);
+  assert(mismatch.state.observed.has_value && mismatch.state.observed.value.power == dm::PowerState::on &&
+         mismatch.state.availability == dm::AvailabilityState::available);
+  assert(mismatch.transport.calls == 2U);
+
+  Fixture malformed; malformed.init();
+  malformed.transport.read(observation(false, false, false, "\"airconId\":\"\\uD800\""));
+  const auto malformed_report = malformed.runtime.step();
+  assert(malformed_report.response_error != wfrac_api::ApiResponseError::none);
+  assert(!malformed.state.observed.has_value && malformed.transport.calls == 1U);
+
+  Fixture oversized; oversized.init(true);
+  oversized.transport.read(observation(false, false, false,
+      "\"airconId\":\"" + std::string(180U, 'x') + "\""));
+  const auto oversized_report = oversized.runtime.step();
+  assert(oversized_report.response_error == wfrac_api::ApiResponseError::output_too_small);
+  assert(!oversized.state.observed.has_value && oversized.transport.calls == 1U);
+}
+
 void time_baseline_and_reentrancy() {
   Fixture f; f.init(); f.wall.sample = {};
   assert(f.runtime.step().request_error == wfrac_api::ApiRequestError::time_unavailable);
@@ -263,5 +306,6 @@ int main() {
   serialization_and_superseding();
   verification_and_deadlines();
   retry_availability_and_safety();
+  response_identity_is_optional_but_bound_to_request();
   time_baseline_and_reentrancy();
 }
