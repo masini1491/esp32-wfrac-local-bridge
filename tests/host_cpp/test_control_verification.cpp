@@ -199,7 +199,8 @@ int main() {
   }
 
   {  // Present matching identity and absent identity both preserve compatibility.
-    for (const char* id : {"synthetic-aircon", nullptr}) {
+    const std::array<const char*, 2> identities{{"synthetic-aircon", nullptr}};
+    for (const char* id : identities) {
       wfrac_device_model::DeviceState state{};
       const std::string matching_response = get_response(on_frame, id);
       ScriptedTransport transport({{{}, kWriteAccepted}, {{}, matching_response.c_str()}}, &state);
