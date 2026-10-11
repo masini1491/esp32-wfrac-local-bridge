@@ -79,12 +79,13 @@ ControlVerificationOutcome begin_set_aircon_stat_verification(
     if (report != nullptr) report->outcome = ControlVerificationOutcome::invalid_argument;
     return ControlVerificationOutcome::invalid_argument;
   }
-  *session = {};
-
   if (wfrac_device_model::begin_pending_command(intent, state) != wfrac_device_model::DeviceStateError::none) {
     report->outcome = ControlVerificationOutcome::state_error;
     return report->outcome;
   }
+  // Initialize only after acquiring the pending command; busy rejection must
+  // preserve the existing caller-scheduled verification session.
+  *session = {};
   if (wfrac_device_model::stage_desired_intent(intent, state) != wfrac_device_model::DeviceStateError::none) {
     finish(wfrac_device_model::PendingCommandOutcome::failed, state);
     report->outcome = ControlVerificationOutcome::state_error;
