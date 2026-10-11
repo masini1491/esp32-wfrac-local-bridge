@@ -103,12 +103,14 @@ struct Fixture {
 wfrac_client::ControlVerificationOutcome begin(
     const std::array<uint8_t, 42>& raw, FakeTimeProvider* time, ScriptedTransport* transport,
     wfrac_device_model::DeviceState* state, wfrac_client::PostWriteVerificationSession* session,
-    wfrac_client::ControlVerificationReport* report, Fixture* fixture, std::size_t max_readbacks) {
+    wfrac_client::ControlVerificationReport* report, Fixture* fixture, std::size_t max_readbacks,
+    wfrac_device_model::CommandIntent intent =
+        wfrac_device_model::SetPowerIntent{wfrac_device_model::PowerState::on}) {
   const wfrac_api::ApiClientContext context{"1.0", "synthetic-device", "synthetic-operator"};
   const wfrac_client::ClientEndpoint endpoint{"example.invalid", 51443U, 1000U};
   wfrac_transport::SchemeCache cache{wfrac_transport::SchemeKnowledge::http_confirmed};
   return wfrac_client::begin_set_aircon_stat_verification(
-      wfrac_device_model::SetPowerIntent{wfrac_device_model::PowerState::on}, {raw.data(), raw.size()}, context,
+      intent, {raw.data(), raw.size()}, context,
       "synthetic-aircon", time, endpoint, &cache, transport, {max_readbacks}, fixture->buffers, state, session,
       report);
 }
@@ -122,6 +124,36 @@ wfrac_client::ControlVerificationOutcome readback(
   wfrac_transport::SchemeCache cache{wfrac_transport::SchemeKnowledge::http_confirmed};
   return wfrac_client::perform_post_write_readback(context, "synthetic-aircon", time, endpoint, &cache, transport,
                                                     fixture->buffers, state, session, report);
+}
+
+void assert_session_preserved(const wfrac_client::PostWriteVerificationSession& actual,
+                              const wfrac_client::PostWriteVerificationSession& expected) {
+  assert(actual.readback_attempts == expected.readback_attempts &&
+         actual.max_readback_attempts == expected.max_readback_attempts &&
+         actual.write_accepted == expected.write_accepted &&
+         actual.conflicting_observation_seen == expected.conflicting_observation_seen);
+}
+
+// These snapshots contain the original power-on pending command.
+void assert_state_preserved(const wfrac_device_model::DeviceState& actual,
+                            const wfrac_device_model::DeviceState& expected) {
+  assert(actual.pending.phase == expected.pending.phase && actual.pending.intent.has_value() &&
+         expected.pending.intent.has_value() &&
+         actual.pending.intent->index() == expected.pending.intent->index() &&
+         std::get<wfrac_device_model::SetPowerIntent>(*actual.pending.intent).value ==
+             std::get<wfrac_device_model::SetPowerIntent>(*expected.pending.intent).value);
+  assert(actual.desired.power == expected.desired.power && actual.desired.mode == expected.desired.mode &&
+         actual.desired.fan == expected.desired.fan &&
+         actual.desired.target_temperature_centi_celsius == expected.desired.target_temperature_centi_celsius);
+  assert(actual.observed.has_value == expected.observed.has_value &&
+         actual.observed.value.power == expected.observed.value.power &&
+         actual.observed.value.mode == expected.observed.value.mode &&
+         actual.observed.value.fan == expected.observed.value.fan &&
+         actual.observed.value.target_temperature_centi_celsius ==
+             expected.observed.value.target_temperature_centi_celsius &&
+         actual.observed.value.controller_room_temperature_centi_celsius ==
+             expected.observed.value.controller_room_temperature_centi_celsius &&
+         actual.availability == expected.availability);
 }
 
 }  // namespace
@@ -140,15 +172,109 @@ int main() {
     ScriptedTransport transport({{{}, kWriteAccepted}, {{}, read_on.c_str()}}, &state);
     FakeTimeProvider time{};
     Fixture fixture{};
-    wfrac_client::PostWriteVerificationSession session{};
+    wfrac_client::PostWriteVerificationSession session{3U, 9U, true, true};
     wfrac_client::ControlVerificationReport report{};
     assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 1U) ==
            ControlVerificationOutcome::accepted);
     assert(state.pending.phase == wfrac_device_model::PendingCommandPhase::verifying &&
            state.desired.power == wfrac_device_model::PowerState::on);
+    assert(session.write_accepted && session.readback_attempts == 0U &&
+           session.max_readback_attempts == 1U && !session.conflicting_observation_seen);
     assert(readback(&time, &transport, &state, &session, &report, &fixture) == ControlVerificationOutcome::confirmed);
     assert(state.observed.has_value && state.observed.value.power == wfrac_device_model::PowerState::on &&
            !state.pending.intent.has_value() && !state.desired.power.has_value() && transport.calls() == 2U);
+  }
+
+  {  // Busy rejection preserves the accepted command for either normal terminal readback.
+    const std::array<wfrac_device_model::CommandIntent, 2> duplicates{{
+        wfrac_device_model::SetPowerIntent{wfrac_device_model::PowerState::on},
+        wfrac_device_model::SetModeIntent{wfrac_device_model::HvacMode::heat}}};
+    for (bool converges : {false, true}) {
+      wfrac_device_model::DeviceState state{};
+      state.observed.has_value = true;
+      state.observed.value.power = wfrac_device_model::PowerState::off;
+      state.desired.mode = wfrac_device_model::HvacMode::dry;
+      state.desired.fan = wfrac_device_model::FanSetting::speed2;
+      state.desired.target_temperature_centi_celsius = 2100;
+      state.availability = wfrac_device_model::AvailabilityState::available;
+      ScriptedTransport transport({{{}, kWriteAccepted}, {{}, converges ? read_on.c_str() : read_off.c_str()}}, &state);
+      FakeTimeProvider time{};
+      Fixture fixture{};
+      wfrac_client::PostWriteVerificationSession session{};
+      wfrac_client::ControlVerificationReport report{};
+      assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 1U) ==
+             ControlVerificationOutcome::accepted);
+      const auto saved_session = session;
+      const auto saved_state = state;
+      const auto saved_time_calls = time.calls;
+      for (const auto& intent : duplicates) {
+        assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 3U, intent) ==
+               ControlVerificationOutcome::state_error);
+        assert(report.outcome == ControlVerificationOutcome::state_error && transport.calls() == 1U &&
+               time.calls == saved_time_calls);
+        assert_session_preserved(session, saved_session);
+        assert_state_preserved(state, saved_state);
+      }
+      assert(readback(&time, &transport, &state, &session, &report, &fixture) ==
+             (converges ? ControlVerificationOutcome::confirmed : ControlVerificationOutcome::not_confirmed));
+      assert(transport.calls() == 2U && !state.pending.intent.has_value() && !session.write_accepted &&
+             session.readback_attempts == 1U && state.observed.has_value &&
+             state.observed.value.power == (converges ? wfrac_device_model::PowerState::on :
+                                                        wfrac_device_model::PowerState::off));
+    }
+  }
+
+  {  // Preserve consumed readback budget, conflict history, and a newer desired target.
+    wfrac_device_model::DeviceState state{};
+    ScriptedTransport transport({{{}, kWriteAccepted}, {{}, read_off.c_str()}, {{}, read_on.c_str()}}, &state);
+    FakeTimeProvider time{};
+    Fixture fixture{};
+    wfrac_client::PostWriteVerificationSession session{};
+    wfrac_client::ControlVerificationReport report{};
+    assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 2U) ==
+           ControlVerificationOutcome::accepted);
+    assert(readback(&time, &transport, &state, &session, &report, &fixture) == ControlVerificationOutcome::verifying);
+    assert(wfrac_device_model::stage_desired_intent(
+               wfrac_device_model::SetPowerIntent{wfrac_device_model::PowerState::off}, &state) ==
+           wfrac_device_model::DeviceStateError::none);
+    const auto saved_session = session;
+    const auto saved_state = state;
+    const auto saved_time_calls = time.calls;
+    assert(begin(off_frame, &time, &transport, &state, &session, &report, &fixture, 9U,
+                 wfrac_device_model::SetPowerIntent{wfrac_device_model::PowerState::off}) ==
+           ControlVerificationOutcome::state_error);
+    assert_session_preserved(session, saved_session);
+    assert_state_preserved(state, saved_state);
+    assert(transport.calls() == 2U && time.calls == saved_time_calls);
+    assert(readback(&time, &transport, &state, &session, &report, &fixture) == ControlVerificationOutcome::confirmed);
+    assert(transport.calls() == 3U && session.readback_attempts == 2U && session.conflicting_observation_seen &&
+           !state.pending.intent.has_value() && state.desired.power == wfrac_device_model::PowerState::off);
+  }
+
+  {  // Invalid input/intent neither dispatches a write nor erases caller session state.
+    wfrac_device_model::DeviceState state{};
+    ScriptedTransport transport({}, &state);
+    FakeTimeProvider time{};
+    Fixture fixture{};
+    wfrac_client::PostWriteVerificationSession session{3U, 9U, true, true};
+    const auto saved_session = session;
+    wfrac_client::ControlVerificationReport report{};
+    assert(begin(on_frame, nullptr, &transport, &state, &session, &report, &fixture, 1U) ==
+           ControlVerificationOutcome::invalid_argument);
+    assert(begin(on_frame, &time, &transport, nullptr, &session, &report, &fixture, 1U) ==
+           ControlVerificationOutcome::invalid_argument);
+    assert(begin(on_frame, &time, &transport, &state, nullptr, &report, &fixture, 1U) ==
+           ControlVerificationOutcome::invalid_argument);
+    assert(begin(on_frame, &time, &transport, &state, &session, nullptr, &fixture, 1U) ==
+           ControlVerificationOutcome::invalid_argument);
+    assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 0U) ==
+           ControlVerificationOutcome::invalid_argument);
+    assert(begin(on_frame, &time, &transport, &state, &session, &report, &fixture, 1U,
+                 wfrac_device_model::SetPowerIntent{wfrac_device_model::PowerState::unknown}) ==
+           ControlVerificationOutcome::state_error);
+    assert_session_preserved(session, saved_session);
+    assert(transport.calls() == 0U && time.calls == 0U && !state.pending.intent.has_value() &&
+           !state.desired.power.has_value() && !state.observed.has_value);
   }
 
   {  // A mismatching authoritative observation is retained and never overwritten by desired state.
@@ -275,21 +401,25 @@ int main() {
     ScriptedTransport transport_failure({{wfrac_transport::TransportError::connection_failure, nullptr}}, &transport_state);
     FakeTimeProvider transport_time{};
     Fixture transport_fixture{};
-    wfrac_client::PostWriteVerificationSession transport_session{};
+    wfrac_client::PostWriteVerificationSession transport_session{3U, 9U, true, true};
     wfrac_client::ControlVerificationReport transport_report{};
     assert(begin(on_frame, &transport_time, &transport_failure, &transport_state, &transport_session, &transport_report,
                  &transport_fixture, 1U) == ControlVerificationOutcome::write_transport_failure);
     assert(!transport_state.pending.intent.has_value() && transport_failure.calls() == 1U);
+    assert(!transport_session.write_accepted && transport_session.readback_attempts == 0U &&
+           transport_session.max_readback_attempts == 0U && !transport_session.conflicting_observation_seen);
 
     wfrac_device_model::DeviceState rejected_state{};
     ScriptedTransport rejected({{{}, kWriteRejected}}, &rejected_state);
     FakeTimeProvider rejected_time{};
     Fixture rejected_fixture{};
-    wfrac_client::PostWriteVerificationSession rejected_session{};
+    wfrac_client::PostWriteVerificationSession rejected_session{3U, 9U, true, true};
     wfrac_client::ControlVerificationReport rejected_report{};
     assert(begin(on_frame, &rejected_time, &rejected, &rejected_state, &rejected_session, &rejected_report,
                  &rejected_fixture, 1U) == ControlVerificationOutcome::write_rejected);
     assert(rejected_report.application_result == 2 && !rejected_state.pending.intent.has_value() && rejected.calls() == 1U);
+    assert(!rejected_session.write_accepted && rejected_session.readback_attempts == 0U &&
+           rejected_session.max_readback_attempts == 0U && !rejected_session.conflicting_observation_seen);
   }
 
   return 0;
