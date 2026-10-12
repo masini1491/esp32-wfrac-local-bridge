@@ -22,6 +22,9 @@ jobs:
       - name: Run host tests
         run: python -m unittest tests.host.test_validate_contracts
 
+      - name: Run D1 offline deadline contract tests (pinned SDK parser)
+        run: python -B tests/host_cpp/run_deadline_d1.py --fetch-pinned-parser
+
       - name: Run offline diagnostic form tests
         run: >-
           g++ -std=c++17 -Wall -Wextra -Werror
