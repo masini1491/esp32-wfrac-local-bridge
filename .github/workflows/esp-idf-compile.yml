@@ -43,7 +43,7 @@ jobs:
           test "$(idf.py --version)" = "ESP-IDF v6.0.2"
           test "$(git -C "$IDF_PATH" rev-parse HEAD)" = "7101770dc6db2667b3c477cc31365dd1acd6db4e"
           test "$(git -C "$IDF_PATH/components/lwip/lwip" rev-parse HEAD)" = "fd432e4ee2cfb7f7f1c7eb7227e0173412e7b84e"
-          echo "A6B tested checkout: $(git rev-parse HEAD)"
+          echo "A6B tested checkout: $GITHUB_SHA"
           idf.py --preview -C tests/espidf_linux_probe -B "$GITHUB_WORKSPACE/build-a6b" -D IDF_TARGET=linux build
       - name: Read generated Linux configuration
         run: |
@@ -52,7 +52,7 @@ jobs:
           grep -qx 'CONFIG_LWIP_ENABLE=y' build-a6b/sdkconfig
           python tests/espidf_probe/report_config.py build-a6b/sdkconfig --cell 'linux / A6b offline SDK'
           nm build-a6b/wfrac_a6b_linux.elf | grep -E ' [Tt] (tcpip_try_callback|tcpip_thread)$'
-      - name: Run offline Linux SDK callback smoke
+      - name: Run offline Linux SDK callback and deferred-fence tests
         run: timeout --signal=KILL 20s build-a6b/wfrac_a6b_linux.elf
 
   compile:
