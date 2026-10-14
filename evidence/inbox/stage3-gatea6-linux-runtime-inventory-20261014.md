@@ -1,0 +1,19 @@
+# Stage 3 Gate A6a — pinned SDK offline runtime inventory (2026-10-14)
+
+**Authority/evidence:** ChatGPT research-only A6; project `main@29f2ad3facf9ea572f116dfd49168b4e502a9fdf`, pinned ESP-IDF `7101770dc6db2667b3c477cc31365dd1acd6db4e` (v6.0.2), esp-lwIP `fd432e4ee2cfb7f7f1c7eb7227e0173412e7b84e`. Source inspection, **no execution, no build, no production/SDK/test/CI modification**. This is evidence staging, not implementation authorization.
+
+## Confirmed
+
+- A5 `tests/espidf_probe/main/callback_fence_link.cpp` has a static retained Owner and linked entry graph; `app_main` deliberately never invokes DNS or `tcpip_try_callback`. Thus its six-cell PASS is **LINK_ONLY** and cannot be promoted to runtime callback/quiescence evidence.
+- A5 `.github/workflows/esp-idf-compile.yml` uses pinned `espressif/idf:v6.0.2` and C3/C6 six-cell cross-compilation; no Linux host execution or callback lifecycle job.
+- **Important positive source discovery:** Pinned ESP-IDF `components/lwip/CMakeLists.txt` explicitly selects `IDF_TARGET=linux` as its own port, and includes the actual `lwip/src/api/tcpip.c`, `lwip/src/core/dns.c`, and `port/freertos/sys_arch.c` in the component source set when `CONFIG_LWIP_ENABLE` is on. It selects `port/linux/vfs_lwip.c` for Linux and links `Threads::Threads` with POSIX wrappers. This is materially stronger than a generic fake callback scheduler, **but CMake source inclusion alone does not establish build/link/runtime viability or equivalence with C3/C6**. [Pinned IDF CMake](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/components/lwip/CMakeLists.txt).
+- Official Espressif Linux host-app documentation describes preview `idf.py --preview set-target linux`, FreeRTOS POSIX scheduler, partial component support and Linux-versus-target scheduling limitations. `lwip` has Linux simulation support in the documentation, but this does **not** establish that a deterministic offline DNS callback can be generated without network. [Espressif host-app guide](https://docs.espressif.com/projects/esp-idf/en/stable/esp32c3/api-guides/host-apps.html).
+- The current C3/C6 generated configuration evidence (`TCPIP_CORE_LOCKING=off`, `CHECK_THREAD_SAFETY=off`, TCPIP mailbox 32) is not proof that Linux target uses identical settings. Linux config must be read independently.
+
+## A6a decision / next dependency
+
+**LINUX_HOST_RUNTIME = SOURCE_SUPPORTED_CANDIDATE, NOT_RUN / UNPROVEN.** This is **not** an established admitted executable SDK scheduler in the project yet. A6a research identified a concrete bounded candidate: evaluate pinned `IDF_TARGET=linux` host app **without network**, starting with a minimal local TCPIP callback/fence ordering experiment; prove the actual lwIP CMake compilation and FreeRTOS scheduling in this environment first. A DNS completion event requires a separate design: no actual DNS request/network; do not claim direct `dns_call_found` behavior if not exercised.
+
+**Permission boundary:** Introducing a new Linux host target/fixture, CI execution job, emulator or scheduler test implementation is beyond A6's research-first authority and needs explicit user authorization and Codex implementation actor. Proposed staged scope, after permission: (1) Linux host compile/run smoke of `tcpip_try_callback` with no DNS; (2) offline core callback/fence ordering, queue admission failure and retained context; (3) only if legitimate and isolated, an SDK DNS callback completion path with no network, else STOP at TCPIP scheduler evidence. No generic fake scheduler replacement, SDK patch, real DNS/network/TLS/hardware, production implementation or Gate B.
+
+**Status:** A6a source inventory COMPLETE, A6b feasibility CANDIDATE (not approved for execution), SDK runtime callback/quiescence NOT_RUN, Gate A implementation feasibility PENDING / UNPROVEN, Gate B ON HOLD, Stage 3 sole Hot, Stage 4 Cold, Library readiness PRESERVED.
