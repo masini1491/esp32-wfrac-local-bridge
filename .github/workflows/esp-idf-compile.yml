@@ -6,12 +6,14 @@ on:
     paths:
       - 'components/**'
       - 'firmware/**'
+      - 'tests/espidf_probe/**'
       - '.github/workflows/esp-idf-compile.yml'
   pull_request:
     branches: [main]
     paths:
       - 'components/**'
       - 'firmware/**'
+      - 'tests/espidf_probe/**'
       - '.github/workflows/esp-idf-compile.yml'
   workflow_dispatch:
 
@@ -58,6 +60,8 @@ jobs:
         run: |
           . "$IDF_PATH/export.sh"
           test "$(idf.py --version)" = "ESP-IDF v6.0.2"
+          test "$(git -C "$IDF_PATH" rev-parse HEAD)" = "7101770dc6db2667b3c477cc31365dd1acd6db4e"
+          test "$(git -C "$IDF_PATH/components/lwip/lwip" rev-parse HEAD)" = "fd432e4ee2cfb7f7f1c7eb7227e0173412e7b84e"
           test -f "$FIRMWARE/CMakeLists.txt"
           echo "Provisioned ESP-IDF v6.0.2: $IDF_TARGET / $FIRMWARE"
 
@@ -79,3 +83,22 @@ jobs:
               ! grep -qx 'CONFIG_WFRAC_PROBE_WEBUI_ENABLED=y' "$GITHUB_WORKSPACE/build-ci/sdkconfig"
             fi
           fi
+
+      - name: A5 generated firmware configuration (allowlist only)
+        run: |
+          . "$IDF_PATH/export.sh"
+          python tests/espidf_probe/report_config.py "$GITHUB_WORKSPACE/build-ci/sdkconfig" \
+            --cell "$IDF_TARGET / $FIRMWARE / $VARIANT"
+
+      - name: A5 isolated SDK callback-fence compile/link (no execution)
+        run: |
+          . "$IDF_PATH/export.sh"
+          mkdir -p "$GITHUB_WORKSPACE/build-a5"
+          cp "$GITHUB_WORKSPACE/build-ci/sdkconfig" "$GITHUB_WORKSPACE/build-a5/sdkconfig"
+          idf.py -C tests/espidf_probe -B "$GITHUB_WORKSPACE/build-a5" -D "IDF_TARGET=$IDF_TARGET" build
+          python tests/espidf_probe/report_config.py "$GITHUB_WORKSPACE/build-a5/sdkconfig" \
+            --cell "$IDF_TARGET / isolated-probe / $VARIANT" \
+            --compare "$GITHUB_WORKSPACE/build-ci/sdkconfig"
+          riscv32-esp-elf-nm "$GITHUB_WORKSPACE/build-a5/wfrac_a5_link_only.elf" | \
+            grep -E ' [Tt] (tcpip_try_callback|dns_gethostbyname_addrtype)$'
+          echo 'A5 tier=LINK_ONLY; SDK callback execution=NOT_RUN; owner/reclaim=UNPROVEN'
