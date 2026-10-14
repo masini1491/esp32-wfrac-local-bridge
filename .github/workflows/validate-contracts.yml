@@ -25,6 +25,12 @@ jobs:
       - name: Run D1 offline deadline contract tests (pinned SDK parser)
         run: python -B tests/host_cpp/run_deadline_d1.py --fetch-pinned-parser
 
+      - name: Run A3 offline DNS callback-owner tests
+        run: >-
+          g++ -std=c++17 -Wall -Wextra -Werror
+          tests/host_cpp/test_deadline_a3.cpp
+          -o deadline-a3-tests && ./deadline-a3-tests
+
       - name: Run offline diagnostic form tests
         run: >-
           g++ -std=c++17 -Wall -Wextra -Werror
