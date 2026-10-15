@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.16)
+set(SDKCONFIG "${CMAKE_BINARY_DIR}/sdkconfig")
+set(COMPONENTS main)
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(wfrac_a7b_dns)

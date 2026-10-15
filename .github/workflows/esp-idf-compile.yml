@@ -8,6 +8,7 @@ on:
       - 'firmware/**'
       - 'tests/espidf_probe/**'
       - 'tests/espidf_linux_probe/**'
+      - 'tests/espidf_dns_probe/**'
       - '.github/workflows/esp-idf-compile.yml'
   pull_request:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - 'firmware/**'
       - 'tests/espidf_probe/**'
       - 'tests/espidf_linux_probe/**'
+      - 'tests/espidf_dns_probe/**'
       - '.github/workflows/esp-idf-compile.yml'
   workflow_dispatch:
 
@@ -23,6 +25,35 @@ permissions:
   contents: read
 
 jobs:
+  linux-dns:
+    name: Linux / A7b zero-egress DNS lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: espressif/idf:v6.0.2
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify pinned SDK and build isolated DNS binary (no execution)
+        run: |
+          . "$IDF_PATH/export.sh"
+          test "$(idf.py --version)" = "ESP-IDF v6.0.2"
+          test "$(git -C "$IDF_PATH" rev-parse HEAD)" = "7101770dc6db2667b3c477cc31365dd1acd6db4e"
+          test "$(git -C "$IDF_PATH/components/lwip/lwip" rev-parse HEAD)" = "fd432e4ee2cfb7f7f1c7eb7227e0173412e7b84e"
+          echo "A7B tested checkout: $GITHUB_SHA"
+          idf.py --preview -C tests/espidf_dns_probe -B "$GITHUB_WORKSPACE/build-a7b" -D IDF_TARGET=linux build
+      - name: Inspect generated config and prove interception BEFORE resolver execution
+        run: |
+          grep -qx 'CONFIG_IDF_TARGET_LINUX=y' build-a7b/sdkconfig
+          grep -qx 'CONFIG_LWIP_ENABLE=y' build-a7b/sdkconfig
+          python tests/espidf_probe/report_config.py build-a7b/sdkconfig --cell 'linux / A7b DNS'
+          python -B tests/espidf_dns_probe/verify_and_run.py build-a7b
+
   linux-callback:
     name: Linux / A6b offline SDK callback
     runs-on: ubuntu-latest
