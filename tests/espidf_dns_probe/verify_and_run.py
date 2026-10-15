@@ -17,6 +17,11 @@ def main():
     parser.add_argument("build", type=Path)
     args = parser.parse_args()
     build = args.build.resolve()
+    config = (build / "sdkconfig").read_text().splitlines()
+    if ("# CONFIG_LWIP_NETIF_LOOPBACK is not set" not in config or
+            "CONFIG_LWIP_NETIF_LOOPBACK=y" in config):
+        raise SystemExit("A7B STOP: generated SDK loopback not disabled; resolver NOT_RUN")
+    print("A7B_CONFIG generated CONFIG_LWIP_NETIF_LOOPBACK=disabled", flush=True)
     elf = build / "wfrac_a7b_dns.elf"
     commands = json.loads((build / "compile_commands.json").read_text())
     entries = [e for e in commands if e["file"].endswith("/src/core/dns.c")]
@@ -93,7 +98,9 @@ def main():
             raise SystemExit(f"A7B STOP: {mode} exit={result.returncode}, expected={expected}")
         return result.stdout
 
-    invoke("config")
+    binary_config = invoke("config")
+    if not re.search(r"\bLWIP_HAVE_LOOPIF=0\s+LWIP_NETIF_LOOPBACK=0\b", binary_config):
+        raise SystemExit("A7B STOP: binary loopback macros not zero; resolver NOT_RUN")
     denial = invoke("success", expected=1)  # Must stop before TCPIP init / DNS registration.
     if "binary interception proof required; resolver NOT_RUN" not in denial:
         raise SystemExit("A7B STOP: unapproved invocation guard missing")
