@@ -1,31 +1,50 @@
 name: ESP-IDF compile/link
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'components/**'
-      - 'firmware/**'
-      - 'tests/espidf_probe/**'
-      - 'tests/espidf_linux_probe/**'
-      - 'tests/espidf_dns_probe/**'
-      - '.github/workflows/esp-idf-compile.yml'
   pull_request:
     branches: [main]
-    paths:
-      - 'components/**'
-      - 'firmware/**'
-      - 'tests/espidf_probe/**'
-      - 'tests/espidf_linux_probe/**'
-      - 'tests/espidf_dns_probe/**'
-      - '.github/workflows/esp-idf-compile.yml'
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  # Explicit full validation only; dispatch is NOT a PR required-check substitute.
   workflow_dispatch:
+    inputs:
+      profile:
+        description: Full SDK validation (requires separately approved runner budget)
+        required: true
+        type: choice
+        options: [full]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  scope:
+    name: SDK scope plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      dns: ${{ steps.plan.outputs.dns }}
+      callback: ${{ steps.plan.outputs.callback }}
+      compile: ${{ steps.plan.outputs.compile }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Offline selector regression
+        run: python -B -m unittest discover -s tests/ci_scope -p 'test_*.py'
+      - name: Classify complete PR scope (API failure stops SDK scheduling)
+        id: plan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -B tools/ci_scope.py plan
+
   linux-dns:
+    needs: scope
+    if: ${{ needs.scope.outputs.dns == 'true' }}
     name: Linux / A7b zero-egress DNS lifecycle
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -55,6 +74,8 @@ jobs:
           python -B tests/espidf_dns_probe/verify_and_run.py build-a7b
 
   linux-callback:
+    needs: scope
+    if: ${{ needs.scope.outputs.callback == 'true' }}
     name: Linux / A6b offline SDK callback
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -87,6 +108,8 @@ jobs:
         run: timeout --signal=KILL 20s build-a6b/wfrac_a6b_linux.elf
 
   compile:
+    needs: scope
+    if: ${{ needs.scope.outputs.compile == 'true' }}
     name: ${{ matrix.target }} / ${{ matrix.firmware }} / ${{ matrix.variant }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -167,3 +190,18 @@ jobs:
           riscv32-esp-elf-nm "$GITHUB_WORKSPACE/build-a5/wfrac_a5_link_only.elf" | \
             grep -E ' [Tt] (tcpip_try_callback|dns_gethostbyname_addrtype)$'
           echo 'A5 tier=LINK_ONLY; SDK callback execution=NOT_RUN; owner/reclaim=UNPROVEN'
+
+  summary:
+    name: SDK scope result
+    if: ${{ always() }}
+    needs: [scope, linux-dns, linux-callback, compile]
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require selected suites; report skipped suites as NOT_RUN
+        env:
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: python -B tools/ci_scope.py summary
