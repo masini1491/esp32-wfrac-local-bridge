@@ -1,0 +1,14 @@
+{
+  "repository": "masini1491/esp32-wfrac-local-bridge",
+  "image": "espressif/idf:v6.0.2",
+  "platform": "linux/amd64",
+  "idf_version": "ESP-IDF v6.0.2",
+  "idf_sha": "7101770dc6db2667b3c477cc31365dd1acd6db4e",
+  "lwip_sha": "fd432e4ee2cfb7f7f1c7eb7227e0173412e7b84e",
+  "workflow_blobs": {
+    ".github/workflows/esp-idf-compile.yml": "76d71f4d52b1dcc330fdd8ea8032fb8be9da7aaf",
+    ".github/workflows/validate-contracts.yml": "833acb8820205a45765ae75634b986976c0476cc"
+  },
+  "log_bytes": 1048576,
+  "host_timeout_seconds": 1800
+}
