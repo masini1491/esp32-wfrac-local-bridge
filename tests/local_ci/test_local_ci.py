@@ -171,6 +171,78 @@ class LocalCiTests(unittest.TestCase):
         self.assertFalse(any("docker.sock" in arg for arg in argv))
         self.assertIn("1000:1000", argv)
         self.assertTrue(any("dst=/src,readonly" in arg for arg in argv))
+        self.assertIn("/tmp:rw,nosuid,nodev,noexec", argv)
+        self.assertIn("TMPDIR=/out/tmp", argv)
+        self.assertLess(argv.index("TMPDIR=/out/tmp"), argv.index("--entrypoint"))
+
+    def test_suite_temp_is_private_and_independent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "source"
+            root.mkdir()
+            paths = []
+            for suite in ("host", "a6b", "a7b"):
+                output = base / suite
+                output.mkdir()
+                paths.append(ci.prepare_suite_temp(root, output))
+                self.assertEqual(paths[-1], output / "tmp")
+                self.assertTrue(paths[-1].is_dir())
+                self.assertEqual(paths[-1].stat().st_mode & 0o777, 0o700)
+            self.assertEqual(len(set(p.resolve() for p in paths)), 3)
+
+    def test_suite_temp_rejects_source_reuse_and_symlink_escape(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root, output, outside = base / "source", base / "out", base / "outside"
+            root.mkdir()
+            output.mkdir()
+            outside.mkdir()
+            with self.assertRaises(ci.Stop):
+                ci.prepare_suite_temp(root, root)
+            self.assertFalse((root / "tmp").exists())
+            (output / "tmp").symlink_to(outside, target_is_directory=True)
+            with self.assertRaises(ci.Stop):
+                ci.prepare_suite_temp(root, output)
+            self.assertEqual(list(outside.iterdir()), [])
+            link = base / "linked-output"
+            link.symlink_to(outside, target_is_directory=True)
+            with self.assertRaises(ci.Stop):
+                ci.prepare_suite_temp(root, link)
+            fresh = base / "fresh"
+            fresh.mkdir()
+            ci.prepare_suite_temp(root, fresh)
+            with self.assertRaises(ci.Stop):
+                ci.prepare_suite_temp(root, fresh)
+
+    def test_child_tempfile_uses_suite_tmpdir_and_can_execute(self):
+        script = """
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+expected = Path(os.environ['TMPDIR']).resolve()
+assert Path(tempfile.gettempdir()).resolve() == expected
+with tempfile.TemporaryDirectory() as directory:
+    assert Path(directory).resolve().parent == expected
+    program = Path(directory) / 'exec-probe'
+    program.write_text('#!/bin/sh\\nexit 0\\n')
+    program.chmod(0o700)
+    subprocess.run([str(program)], stdin=subprocess.DEVNULL, check=True, timeout=5)
+print('SUITE_TMPDIR_EXEC_PASS')
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root, output = base / "source", base / "out"
+            root.mkdir()
+            output.mkdir()
+            temporary = ci.prepare_suite_temp(root, output)
+            # Fresh child imports tempfile only after its environment is set.
+            with mock.patch.dict(ci.os.environ, {"TMPDIR": str(temporary),
+                                                 "TEMP": "/invalid-fallback", "TMP": "/invalid-fallback"}):
+                code, log = ci.command([sys.executable, "-B", "-c", script])
+            self.assertEqual(code, 0, log)
+            self.assertIn("SUITE_TMPDIR_EXEC_PASS", log)
+            self.assertEqual(list(temporary.iterdir()), [])
 
     def test_source_output_rejected(self):
         with self.assertRaisesRegex(ci.Stop, "outside"):
@@ -349,6 +421,7 @@ class LocalCiTests(unittest.TestCase):
                 args = ci.arguments()
             def fake_container(*argv, **kwargs):
                 target = output / "host"
+                self.assertTrue((target / "tmp").is_dir())  # Prepared before container launch.
                 if provenance == "valid":
                     data = {"sdk": config["idf_sha"], "lwip": config["lwip_sha"],
                             "tools": {tool: "synthetic-version" for tool in ("python", "gcc", "g++", "cmake", "ninja")}}

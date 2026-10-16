@@ -242,6 +242,17 @@ def docker_prefix(sudo):
     return ["sudo", "-n", "docker"] if sudo else ["docker"]
 
 
+def prepare_suite_temp(root, output):
+    """Fresh, private temp storage in this suite's writable /out bind, not /tmp."""
+    temporary = output / "tmp"
+    if output.resolve().is_relative_to(root.resolve()):
+        raise Stop("suite temporary directory must be outside source tree")
+    if output.is_symlink() or not output.is_dir() or temporary.exists() or temporary.is_symlink():
+        raise Stop("suite temporary directory must be fresh output-only storage")
+    temporary.mkdir(mode=0o700)
+    return temporary
+
+
 def image_info(prefix, config, digest):
     # Context inspection reads local client configuration, not a remote daemon.
     context = json.loads(checked(prefix + ["context", "inspect"]))[0]
@@ -268,8 +279,8 @@ def docker_args(prefix, image, root, output, name, inside, branch, sha):
     return prefix + ["run", "--rm", "--pull=never", "--name", name, "--network=none", "--read-only",
         "--cap-drop=ALL", "--security-opt=no-new-privileges", "--user", f"{os.getuid()}:{os.getgid()}",
         "--mount", f"type=bind,src={root},dst=/src,readonly",
-        "--mount", f"type=bind,src={output},dst=/out", "--tmpfs", "/tmp:rw,nosuid,nodev",
-        "-e", "HOME=/out/home", "-e", "PYTHONPYCACHEPREFIX=/out/pycache",
+        "--mount", f"type=bind,src={output},dst=/out", "--tmpfs", "/tmp:rw,nosuid,nodev,noexec",
+        "-e", "TMPDIR=/out/tmp", "-e", "HOME=/out/home", "-e", "PYTHONPYCACHEPREFIX=/out/pycache",
         "-e", "WFRAC_OFFLINE=1", "-e", "GIT_OPTIONAL_LOCKS=0",
         "-e", "GIT_CONFIG_COUNT=3", "-e", "GIT_CONFIG_KEY_0=safe.directory", "-e", "GIT_CONFIG_VALUE_0=/src",
         "-e", "GIT_CONFIG_KEY_1=safe.directory", "-e", "GIT_CONFIG_VALUE_1=/opt/esp/idf",
@@ -440,6 +451,7 @@ def main(args):
             directory = output / name
             directory.mkdir()
             (directory / "home").mkdir()
+            prepare_suite_temp(root, directory)  # Exists before SDK export or Python starts.
             container = "wfrac-ci-" + uuid.uuid4().hex
             argv = docker_args(prefix, image, root, directory, container, name, args.expected_branch, before["sha"])
             start = time.monotonic()
