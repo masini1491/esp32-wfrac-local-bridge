@@ -324,6 +324,31 @@ def run_steps(work, output, steps, deadline, log_bytes):
             raise Stop("workflow step failed: " + step["name"])
 
 
+def workspace_facade(root, work):
+    """Writable output packages; original test modules remain read-only source links."""
+    if work.resolve().is_relative_to(root.resolve()):
+        raise Stop("workspace facade must be outside source tree")
+    work.mkdir()
+    for item in root.iterdir():
+        if item.name not in (".git", "tests"):
+            (work / item.name).symlink_to(item, target_is_directory=item.is_dir())
+
+    def package(source, output, expand_host=False):
+        output.mkdir()
+        if not (source / "__init__.py").is_file():
+            (output / "__init__.py").write_text("# Output-only local CI package; no source mutation.\n")
+        for item in source.iterdir():
+            if item.name == "__pycache__":
+                continue
+            if expand_host and item.name == "host" and item.is_dir():
+                package(item, output / item.name)
+            else:
+                (output / item.name).symlink_to(item, target_is_directory=item.is_dir())
+
+    # A regular installed 'tests' package otherwise shadows source namespace packages.
+    package(root / "tests", work / "tests", expand_host=True)
+
+
 def inside_job(root, config, jobs, name, identity_before, branch, sha):
     deadline = time.monotonic() + jobs.get(name, {}).get("timeout", 120)
     inside_check(config)
@@ -331,11 +356,7 @@ def inside_job(root, config, jobs, name, identity_before, branch, sha):
     if name == "check":
         return
     work = Path("/out/work")
-    work.mkdir()
-    # Writable facade for unchanged relative -o commands; symlinked source stays read-only.
-    for item in root.iterdir():
-        if item.name != ".git":
-            (work / item.name).symlink_to(item, target_is_directory=item.is_dir())
+    workspace_facade(root, work)
     env = {"GITHUB_WORKSPACE": str(work), "GITHUB_SHA": identity_before["sha"], **jobs[name]["env"]}
     os.environ.update(env)
     run_steps(work, Path("/out"), jobs[name]["steps"], deadline, config["log_bytes"])

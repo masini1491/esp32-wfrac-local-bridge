@@ -449,6 +449,74 @@ class LocalCiTests(unittest.TestCase):
                 ci.inside_job(ROOT, {}, {"host": {"timeout": 10}}, "host", {}, "main", "abc")
             steps.assert_not_called()
 
+    @contextlib.contextmanager
+    def colliding_package(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            site = temp / "site-packages"
+            (site / "tests").mkdir(parents=True)
+            (site / "tests/__init__.py").write_text('ORIGIN = "third-party"\n')
+            with mock.patch.dict(ci.os.environ, {"PYTHONPATH": str(site),
+                                                 "PYTHONPYCACHEPREFIX": str(temp / "pycache")}):
+                yield temp, site
+
+    def test_third_party_regular_tests_package_shadows_original_namespace(self):
+        self.assertFalse((ROOT / "tests/__init__.py").exists())
+        self.assertFalse((ROOT / "tests/host/__init__.py").exists())
+        with self.colliding_package() as (temp, site):
+            work = temp / "legacy"
+            work.mkdir()
+            (work / "tests").symlink_to(ROOT / "tests", target_is_directory=True)
+            code, log = ci.command([sys.executable, "-B", "-c",
+                "import tests; print(tests.__file__, flush=True); import tests.host.test_validate_contracts"], cwd=work)
+            self.assertNotEqual(code, 0)
+            self.assertIn(str(site / "tests/__init__.py"), log)
+            self.assertIn("No module named 'tests.host'", log)
+
+    def test_output_only_package_runs_exact_host_command_despite_collision(self):
+        module = ROOT / "tests/host/test_validate_contracts.py"
+        before = module.read_bytes()
+        _, jobs = ci.contract(ROOT)
+        step = next(s for s in jobs["host"]["steps"] if s["name"] == "Run host tests")
+        self.assertEqual(step["command"].strip(), "python -m unittest tests.host.test_validate_contracts")
+        with self.colliding_package() as (temp, site):
+            work = temp / "work"
+            ci.workspace_facade(ROOT, work)
+            binary = temp / "bin"
+            binary.mkdir()
+            (binary / "python").symlink_to(sys.executable)
+            with mock.patch.dict(ci.os.environ, {"PATH": str(binary) + ci.os.pathsep + ci.os.environ["PATH"],
+                                                 "PYTHONDONTWRITEBYTECODE": "1"}):
+                code, log = ci.command(["bash", "-eo", "pipefail", "-c", step["command"]], cwd=work)
+            self.assertEqual(code, 0, log)
+            self.assertIn("Ran 76 tests", log)
+            self.assertIn("OK", log)
+            self.assertFalse((work / "tests").is_symlink())
+            self.assertFalse((work / "tests/host").is_symlink())
+            self.assertTrue((work / "tests/host/test_validate_contracts.py").is_symlink())
+            self.assertEqual((work / "tests/host/test_validate_contracts.py").resolve(), module.resolve())
+            self.assertFalse((work / ".git").exists())
+            self.assertTrue((work / "tests/host_cpp").is_symlink())
+        self.assertEqual(module.read_bytes(), before)
+        self.assertFalse((ROOT / "tests/__init__.py").exists())
+        self.assertFalse((ROOT / "tests/host/__init__.py").exists())
+
+    def test_facade_preserves_existing_source_initializers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, work = Path(directory) / "source", Path(directory) / "work"
+            (root / "tests/host").mkdir(parents=True)
+            for path in (root / "tests/__init__.py", root / "tests/host/__init__.py"):
+                path.write_text("# existing source initializer\n")
+            ci.workspace_facade(root, work)
+            for relative in ("tests/__init__.py", "tests/host/__init__.py"):
+                self.assertTrue((work / relative).is_symlink())
+                self.assertEqual((work / relative).resolve(), root / relative)
+
+    def test_facade_refuses_to_write_inside_source(self):
+        with self.assertRaisesRegex(ci.Stop, "outside source"):
+            ci.workspace_facade(ROOT, ROOT / "forbidden-facade")
+        self.assertFalse((ROOT / "forbidden-facade").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
