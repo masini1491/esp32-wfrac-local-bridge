@@ -3,7 +3,7 @@
 Local evidence does **not** replace formally required GitHub checks, independent
 ChatGPT acceptance or separate integration approval. No self-hosted runner is
 registered. These commands never push, open a PR or trigger Actions. PR #13's
-unmerged selector is not a dependency. Production/network/hardware remain outside
+remote selector is not executed by Local CI. Production/network/hardware remain outside
 scope; A7b runs only its existing in-memory, zero-egress SDK handler tests.
 
 ## New-machine prerequisites / permission boundary
@@ -95,6 +95,14 @@ Only existing checkout actions are replaced by verified local source. D1's expli
 `--fetch-pinned-parser` becomes its existing `--sdk "$IDF_PATH"` mode, which validates
 the identical original blobs. No parser is imitated and no validation-network
 acquisition is attempted. If workflow parity needs YAML edits, STOP for new scope.
+
+The reviewed SDK job guards are strictly `needs: scope` and the matching
+`needs.scope.outputs.dns|callback|compile == 'true'` expression. Local profiles
+select the nine suites explicitly offline, not by running GitHub API routing;
+unknown/missing/changed guards STOP even after workflow hashes are repinned.
+Host includes both selector and Local CI offline regressions. GitHub Host remains
+enabled on PR and main push; SDK remains PR-selective or explicitly dispatched,
+so Local CI tooling/routing-only changes do not request the expensive matrix.
 
 ## Isolation, outputs and evidence
 

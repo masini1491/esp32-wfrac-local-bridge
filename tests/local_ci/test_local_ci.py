@@ -126,6 +126,50 @@ class LocalCiTests(unittest.TestCase):
         self.assertEqual(jobs["a6b"]["timeout"], 900)
         self.assertEqual(jobs["a7b"]["timeout"], 900)
         self.assertTrue(all(cell["timeout"] == 1200 for cell in cells))
+        for name in ("Run offline CI scope tests", "Run offline Local CI tests"):
+            self.assertIn(name, [step["name"] for step in jobs["host"]["steps"]])
+
+    def test_only_reviewed_remote_sdk_conditions_are_supported(self):
+        for key in ("dns", "callback", "compile"):
+            approved = {"needs": "scope", "if": "${{ needs.scope.outputs." + key + " == 'true' }}"}
+            ci.sdk_routing(approved, key)
+            for bad in ({}, {**approved, "needs": ["scope"]}, {**approved, "needs": "other"},
+                        {**approved, "if": "${{ always() }}"}, {**approved, "if": "false"},
+                        {**approved, "if": approved["if"] + " || true"}):
+                with self.assertRaises(ci.Stop):
+                    ci.sdk_routing(bad, key)
+
+    def test_hash_repin_cannot_bypass_condition_validation(self):
+        original = (ROOT / ".github/workflows/esp-idf-compile.yml").read_text()
+        config = json.loads((ROOT / "tools/local-ci.config.json").read_text())
+        for before, replacement in (("needs: scope", "needs: [scope]"), ("needs: scope", "needs: other"),
+                                    ("needs.scope.outputs.dns == 'true'", "always()"),
+                                    ("needs: scope", "needs: scope\n    needs: scope")):
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "tools").mkdir()
+                for path in config["workflow_blobs"]:
+                    output = root / path
+                    output.parent.mkdir(parents=True, exist_ok=True)
+                    raw = ((original.replace(before, replacement, 1)).encode()
+                           if path.endswith("esp-idf-compile.yml") else (ROOT / path).read_bytes())
+                    output.write_bytes(raw)
+                    config["workflow_blobs"][path] = ci.blob(raw)
+                (root / "tools/local-ci.config.json").write_text(json.dumps(config))
+                with self.assertRaisesRegex(ci.Stop, "needs/if|duplicate"):
+                    ci.contract(root)
+
+    def test_host_main_push_and_pr_checks_sdk_not_push(self):
+        import yaml
+        host = yaml.load((ROOT / ".github/workflows/validate-contracts.yml").read_text(), Loader=yaml.BaseLoader)
+        sdk = yaml.load((ROOT / ".github/workflows/esp-idf-compile.yml").read_text(), Loader=yaml.BaseLoader)
+        self.assertEqual(host["on"]["push"]["branches"], ["main"])
+        self.assertIn("pull_request", host["on"])
+        self.assertNotIn("push", sdk["on"])
+        self.assertIn("pull_request", sdk["on"])
+        self.assertIn("workflow_dispatch", sdk["on"])
+        self.assertNotIn("needs", host["jobs"]["validate-contracts"])
+        self.assertNotIn("if", host["jobs"]["validate-contracts"])
 
     def test_effective_job_timeout_is_workflow_capped(self):
         self.assertEqual(ci.job_budget({"timeout-minutes": "2"}, 600)["timeout"], 120)

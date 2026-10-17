@@ -175,20 +175,38 @@ def job_budget(job, local_cap=None):
             "local_timeout_cap_seconds": local_cap}
 
 
+def sdk_routing(job, key):
+    # Local profiles select explicitly offline; only this reviewed remote guard is
+    # understood, not ignored or generalized to arbitrary Actions expressions.
+    expected = "${{ needs.scope.outputs." + key + " == 'true' }}"
+    if job.get("needs") != "scope" or job.get("if") != expected:
+        raise Stop("unsupported SDK needs/if selection contract")
+
+
 def contract(root):
     config = json.loads((root / "tools/local-ci.config.json").read_text())
     try:
         import yaml
     except ImportError:
         raise Stop("PyYAML prerequisite missing; request approved installation, never auto-install") from None
+    class WorkflowLoader(yaml.BaseLoader):
+        def construct_mapping(self, node, deep=False):
+            keys = [self.construct_object(key, deep=deep) for key, _ in node.value]
+            if any(not isinstance(key, str) for key in keys) or len(keys) != len(set(keys)):
+                raise Stop("duplicate/unsupported workflow mapping key")
+            return super().construct_mapping(node, deep=deep)
     documents = {}
     for path, expected in config["workflow_blobs"].items():
         raw = (root / path).read_bytes()
         if blob(raw) != expected:
             raise Stop("workflow drift: commands/conditions/matrix/required-check review needed: " + path)
-        documents[path] = yaml.load(raw.decode(), Loader=yaml.BaseLoader)
+        documents[path] = yaml.load(raw.decode(), Loader=WorkflowLoader)
     host = documents[".github/workflows/validate-contracts.yml"]["jobs"]["validate-contracts"]
     sdk = documents[".github/workflows/esp-idf-compile.yml"]["jobs"]
+    if "if" in host or "needs" in host:
+        raise Stop("Host must remain unconditional for PR and main push")
+    for job, key in (("linux-dns", "dns"), ("linux-callback", "callback"), ("compile", "compile")):
+        sdk_routing(sdk[job], key)
     jobs = {"host": {"job": host, "env": {}, **job_budget(host, config["host_timeout_seconds"])}}
     for name, key in (("a6b", "linux-callback"), ("a7b", "linux-dns")):
         jobs[name] = {"job": sdk[key], "env": {}, **job_budget(sdk[key])}
@@ -213,7 +231,7 @@ def contract(root):
                 if step["uses"] != "actions/checkout@v4":
                     raise Stop("unsupported workflow action")
                 continue  # Source identity is checked independently; never remote checkout in tests.
-            if "if" in step or "if" in value["job"] or "${{" in step.get("run", ""):
+            if "if" in step or "${{" in step.get("run", ""):
                 raise Stop("unsupported workflow condition/expression")
             original = step["run"]
             effective = original
