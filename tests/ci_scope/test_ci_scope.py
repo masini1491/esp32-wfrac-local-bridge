@@ -81,12 +81,41 @@ class SelectorTests(unittest.TestCase):
     def test_protected_sdk_jobs_allow_only_gating_difference(self):
         before = "jobs:\n" + "".join(f"  {job}:\n    runs-on: ubuntu-latest\n    steps:\n      - run: build\n\n"
                                         for job in scope.SUITES.values())
-        after = before.replace("    runs-on:", "    needs: scope\n    if: selected\n    runs-on:")
+        after = before
+        for key, job in scope.SUITES.items():
+            after = after.replace(f"  {job}:\n", f"  {job}:\n    needs: scope\n    if: " + "${{ needs.scope.outputs." + key + " == 'true' }}\n")
         self.assertEqual(scope.protected_workflow(before, scope.WORKFLOWS[0]), scope.protected_workflow(after, scope.WORKFLOWS[0]))
         self.assertNotEqual(scope.protected_workflow(before, scope.WORKFLOWS[0]),
                             scope.protected_workflow(after.replace("run: build", "run: skip"), scope.WORKFLOWS[0]))
         with self.assertRaises(scope.ScopeError):
             scope.protected_workflow("jobs: {}", scope.WORKFLOWS[0])
+
+    def test_unreviewed_routing_guards_rejected(self):
+        original = Path(scope.WORKFLOWS[0]).read_text()
+        for altered in (original.replace("needs: scope", "needs: [scope]", 1),
+                        original.replace("needs: scope", "needs: other", 1),
+                        original.replace("needs.scope.outputs.dns == 'true'", "always()", 1),
+                        original.replace("    needs: scope\n", "", 1)):
+            with self.assertRaises(scope.ScopeError):
+                scope.protected_workflow(altered, scope.WORKFLOWS[0])
+
+    def test_local_ci_paths_and_rename_union(self):
+        paths = [*scope.LOCAL_CI_FILES, "tests/local_ci/test_local_ci.py"]
+        self.assertFalse(any(scope.classify(paths).values()))
+        for path in (".env", "credentials.pem", "CMakeLists.txt", "tools/local_ci.py.bak"):
+            self.assertTrue(all(scope.classify(paths + [path]).values()))
+        changed = scope.changed_paths([dict(status="renamed", filename="tools/local_ci.py",
+                                            previous_filename="firmware/build.cmake")])
+        self.assertTrue(scope.classify(changed)["compile"])
+
+    def test_mandatory_host_regression_commands(self):
+        original = Path(scope.WORKFLOWS[1]).read_text()
+        scope.host_regressions(original, required=True)
+        for name, command in scope.HOST_REGRESSIONS.items():
+            for altered in (original.replace(command, "echo skipped"),
+                            original.replace("      - name: " + name + "\n        run: " + command + "\n", "")):
+                with self.assertRaises(scope.ScopeError):
+                    scope.host_regressions(altered, required=True)
 
     def test_protected_host_commands(self):
         before = "    runs-on: ubuntu-latest\n      - name: Check Python syntax\n        run: existing\n"

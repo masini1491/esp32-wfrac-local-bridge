@@ -1,6 +1,8 @@
 name: Validate WF-RAC contracts
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -21,6 +23,9 @@ jobs:
 
       - name: Run offline CI scope tests
         run: python -B -m unittest discover -s tests/ci_scope -p 'test_*.py'
+
+      - name: Run offline Local CI tests
+        run: python -B -m unittest discover -s tests/local_ci -p 'test_*.py'
 
       - name: Check Python syntax
         run: python -m py_compile tools/validate_contracts.py

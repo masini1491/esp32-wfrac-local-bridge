@@ -20,6 +20,12 @@ from urllib.request import Request, urlopen
 SUITES = {"dns": "linux-dns", "callback": "linux-callback", "compile": "compile"}
 WORKFLOWS = (".github/workflows/esp-idf-compile.yml",
              ".github/workflows/validate-contracts.yml")
+LOCAL_CI_FILES = {"tools/local_ci.py", "tools/local-ci.config.json", "tools/local-ci.sh",
+                  "tools/bootstrap-local-ci.sh", "tools/bootstrap-local-ci.ps1"}
+HOST_REGRESSIONS = {
+    "Run offline CI scope tests": "python -B -m unittest discover -s tests/ci_scope -p 'test_*.py'",
+    "Run offline Local CI tests": "python -B -m unittest discover -s tests/local_ci -p 'test_*.py'",
+}
 
 
 class ScopeError(ValueError):
@@ -56,10 +62,10 @@ def classify(paths):
             selected["callback"] = True
         elif path.startswith(("components/", "firmware/", "tests/espidf_probe/")):
             selected["compile"] = True
-        elif (path in (*WORKFLOWS, "tools/ci_scope.py", "tools/validate_contracts.py",
+        elif (path in LOCAL_CI_FILES or path in (*WORKFLOWS, "tools/ci_scope.py", "tools/validate_contracts.py",
                       "TASKS.md", "BACKLOG.md", "AGENTS.md", "README.md", "LICENSE", ".gitignore") or
               path.startswith(("docs/", "evidence/", "specs/", "tests/host/",
-                               "tests/host_cpp/", "tests/ci_scope/"))):
+                               "tests/host_cpp/", "tests/ci_scope/", "tests/local_ci/"))):
             continue
         else:
             # Unknown implementation/security/build input must never become docs-only.
@@ -72,8 +78,27 @@ def job_block(text, job):
                       text.replace("\r\n", "\n"), re.M | re.S)
     if not match:
         raise ScopeError("protected SDK job missing")
-    # Only the two single-line routing keys may differ in protected SDK jobs.
+    key = next(key for key, value in SUITES.items() if value == job)
+    needs = re.findall(r"^    needs:([^\n]*)\n", match[1], flags=re.M)
+    conditions = re.findall(r"^    if:([^\n]*)\n", match[1], flags=re.M)
+    if needs or conditions:
+        expected = "${{ needs.scope.outputs." + key + " == 'true' }}"
+        if needs != [" scope"] or conditions != [" " + expected]:
+            raise ScopeError("unreviewed SDK needs/if routing")
+    # Only the two validated single-line routing keys may differ from legacy base.
     return re.sub(r"^    (?:needs|if):[^\n]*\n", "", match[1], flags=re.M).rstrip()
+
+
+def host_regressions(text, required=False):
+    text = text.replace("\r\n", "\n")
+    for name, command in HOST_REGRESSIONS.items():
+        marker = "      - name: " + name + "\n"
+        block = marker + "        run: " + command + "\n"
+        if marker in text:
+            if text.count(marker) != 1 or block not in text:
+                raise ScopeError("Host offline regression command drift")
+        elif required:
+            raise ScopeError("mandatory Host offline regression missing")
 
 
 def protected_workflow(text, path):
@@ -81,6 +106,7 @@ def protected_workflow(text, path):
         return tuple(job_block(text, job) for job in SUITES.values())
     marker = "      - name: Check Python syntax\n"
     text = text.replace("\r\n", "\n")
+    host_regressions(text)
     if text.count(marker) != 1 or "    runs-on: ubuntu-latest\n" not in text:
         raise ScopeError("protected Host suite missing")
     return text[text.index(marker):].rstrip()
@@ -150,6 +176,7 @@ def plan(event_name, event, repo, get=fetch_json):
         return dict.fromkeys(SUITES, True)
     if event_name != "pull_request" or not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
         raise ScopeError("unsupported event/repository identity")
+    host_regressions(Path(WORKFLOWS[1]).read_text(), required=True)
     expected = event["pull_request"]
     number = expected["number"]
     if type(number) is not int or number <= 0:
