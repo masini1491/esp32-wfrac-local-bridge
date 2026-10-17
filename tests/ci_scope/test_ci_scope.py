@@ -4,6 +4,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+import re
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
@@ -97,7 +98,37 @@ class SelectorTests(unittest.TestCase):
                         original.replace("needs.scope.outputs.dns == 'true'", "always()", 1),
                         original.replace("    needs: scope\n", "", 1)):
             with self.assertRaises(scope.ScopeError):
-                scope.protected_workflow(altered, scope.WORKFLOWS[0])
+                scope.protected_workflow(altered, scope.WORKFLOWS[0], require_sdk_guards=True)
+
+    def test_each_candidate_sdk_job_requires_exact_complete_guards(self):
+        original = Path(scope.WORKFLOWS[0]).read_text().replace("\r\n", "\n")
+        self.assertEqual(
+            tuple(scope.classify(["tools/ci_scope.py", "tests/ci_scope/test_ci_scope.py"]).values()),
+            (False, False, False),
+        )
+        scope.protected_workflow(original, scope.WORKFLOWS[0], require_sdk_guards=True)
+
+        for key, job in scope.SUITES.items():
+            expected_if = "    if: ${{ needs.scope.outputs." + key + " == 'true' }}\n"
+            start = original.index("  " + job + ":\n")
+            next_job = re.search(r"^  [\w-]+:\n", original[start + 1:], re.M)
+            end = start + 1 + next_job.start() if next_job else len(original)
+            block = original[start:end]
+
+            mutations = {
+                "both_missing": block.replace("    needs: scope\n", "", 1).replace(expected_if, "", 1),
+                "needs_missing": block.replace("    needs: scope\n", "", 1),
+                "if_missing": block.replace(expected_if, "", 1),
+                "wrong_needs": block.replace("    needs: scope\n", "    needs: other\n", 1),
+                "wrong_if": block.replace(expected_if, expected_if.replace("outputs." + key, "outputs.other"), 1),
+                "duplicate_needs": block.replace("    needs: scope\n", "    needs: scope\n    needs: scope\n", 1),
+                "duplicate_if": block.replace(expected_if, expected_if + expected_if, 1),
+                "unsupported_if": block.replace(expected_if, "    if: always()\n", 1),
+            }
+            for label, altered_block in mutations.items():
+                candidate = original[:start] + altered_block + original[end:]
+                with self.subTest(job=job, mutation=label), self.assertRaises(scope.ScopeError):
+                    scope.protected_workflow(candidate, scope.WORKFLOWS[0], require_sdk_guards=True)
 
     def test_local_ci_paths_and_rename_union(self):
         paths = [*scope.LOCAL_CI_FILES, "tests/local_ci/test_local_ci.py"]

@@ -73,7 +73,7 @@ def classify(paths):
     return selected
 
 
-def job_block(text, job):
+def job_block(text, job, require_guard=False):
     match = re.search(r"^  " + re.escape(job) + r":\n(.*?)(?=^  [\w-]+:\n|\Z)",
                       text.replace("\r\n", "\n"), re.M | re.S)
     if not match:
@@ -81,7 +81,7 @@ def job_block(text, job):
     key = next(key for key, value in SUITES.items() if value == job)
     needs = re.findall(r"^    needs:([^\n]*)\n", match[1], flags=re.M)
     conditions = re.findall(r"^    if:([^\n]*)\n", match[1], flags=re.M)
-    if needs or conditions:
+    if require_guard or needs or conditions:
         expected = "${{ needs.scope.outputs." + key + " == 'true' }}"
         if needs != [" scope"] or conditions != [" " + expected]:
             raise ScopeError("unreviewed SDK needs/if routing")
@@ -101,9 +101,9 @@ def host_regressions(text, required=False):
             raise ScopeError("mandatory Host offline regression missing")
 
 
-def protected_workflow(text, path):
+def protected_workflow(text, path, require_sdk_guards=False):
     if path == WORKFLOWS[0]:
-        return tuple(job_block(text, job) for job in SUITES.values())
+        return tuple(job_block(text, job, require_sdk_guards) for job in SUITES.values())
     marker = "      - name: Check Python syntax\n"
     text = text.replace("\r\n", "\n")
     host_regressions(text)
@@ -200,7 +200,8 @@ def plan(event_name, event, repo, get=fetch_json):
             if data.get("encoding") != "base64":
                 raise ScopeError("base workflow content unavailable")
             before = base64.b64decode(data["content"], validate=False).decode("utf-8")
-            if protected_workflow(before, path) != protected_workflow(Path(path).read_text(), path):
+            if protected_workflow(before, path) != protected_workflow(
+                    Path(path).read_text(), path, require_sdk_guards=True):
                 raise ScopeError("workflow build/test semantics changed; explicit full approval required")
     stable(get(root))
     return dict.fromkeys(SUITES, True) if full else classify(paths)
