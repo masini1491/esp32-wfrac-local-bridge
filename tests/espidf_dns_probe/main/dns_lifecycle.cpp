@@ -1,5 +1,6 @@
 // A7b isolated Linux SDK DNS handler tests. All UDP attempts are linker-wrapped.
-// Static owners/captures are retained until process exit. No token reclamation.
+// All storage remains static. R1 reuses only completed owner slots after a fence;
+// per-generation callback records remain retained, with no heap reclamation.
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -52,6 +53,31 @@ struct Trace { const char* event; unsigned owner; };
 Trace trace[256]{};
 unsigned trace_size = 0, fence_count = 0, wanted_fences = 1;
 
+constexpr unsigned reuse_slot_limit = 2, reuse_token_limit = 4;
+enum class SlotState { unused, retained, reusable, quarantined };
+struct ReuseToken;
+struct ReuseSlot {
+    unsigned id = 0, generation = 0;
+    SlotState state = SlotState::unused;
+    ReuseToken* current = nullptr;
+};
+struct ReuseToken {
+    ReuseSlot* owner = nullptr;
+    unsigned id = 0, generation = 0, query = 0, receive = 0, queued = 0, drained = 0;
+    char hostname[48]{};
+    bool callback_seen = false, handler_returned = false, fence_seen = false;
+    bool expired = false, discarded = false;
+    err_t fence_result = ERR_VAL;
+};
+ReuseSlot reuse_slots[reuse_slot_limit];
+ReuseToken reuse_tokens[reuse_token_limit];
+unsigned reuse_count = 0, reuse_query = 0, reuse_receive = 0;
+unsigned reuse_fences = 0, reuse_wanted = 1;
+bool reuse_receiving = false;
+struct ReuseTrace { const char* event; ReuseToken* token; };
+ReuseTrace reuse_trace[128]{};
+unsigned reuse_trace_size = 0;
+
 [[noreturn]] void fail(const char* label) {
     std::printf("A7B FAIL/STOP: %s\n", label);
     std::fflush(stdout);
@@ -62,6 +88,10 @@ void record(const char* event, unsigned id = 0) {
     check(xTaskGetCurrentTaskHandle() == core, "not TCPIP task");
     check(trace_size < 256, "trace capacity");
     trace[trace_size++] = {event, id};
+}
+void reuse_record(const char* event, ReuseToken& token) {
+    check(xTaskGetCurrentTaskHandle() == core && reuse_trace_size < 128, "R1 trace/core bound");
+    reuse_trace[reuse_trace_size++] = {event, &token};
 }
 void wait_for(EventBits_t bit, const char* label) {
     check((xEventGroupWaitBits(events, bit, pdFALSE, pdTRUE, budget) & bit) == bit, label);
@@ -123,6 +153,137 @@ err_t lookup(const char* name, Owner& owner) {
            owner.result == ERR_OK ? "registration_OK" : "registration_error", owner.id);
     return owner.result;
 }
+
+bool reuse_callback_matches(const ReuseToken& token) {
+    return token.owner && token.owner->current == &token &&
+           token.owner->generation == token.generation &&
+           token.owner->state == SlotState::retained && !token.callback_seen;
+}
+ReuseToken* acquire_slot(unsigned index, const char* hostname) {
+    check(xTaskGetCurrentTaskHandle() == core, "R1 acquisition outside core");
+    if (index >= reuse_slot_limit || reuse_count == reuse_token_limit) return nullptr;
+    auto& slot = reuse_slots[index];
+    if (slot.state != SlotState::unused && slot.state != SlotState::reusable) return nullptr;
+    if (slot.state == SlotState::reusable)
+        check(slot.current && slot.current->handler_returned && slot.current->fence_seen &&
+              !slot.current->expired, "R1 reuse requires completed executed barrier");
+    check(std::strlen(hostname) < sizeof(ReuseToken::hostname), "R1 hostname bound");
+    auto& token = reuse_tokens[reuse_count];
+    token.id = reuse_count++;
+    token.owner = &slot;
+    token.generation = ++slot.generation;
+    std::memcpy(token.hostname, hostname, std::strlen(hostname) + 1);
+    slot.current = &token;
+    slot.state = SlotState::retained;
+    reuse_record("owner_acquired", token);
+    std::printf("A7BR1_OWNER token=%u slot=%u generation=%u address=%p hostname=%s\n",
+                token.id, slot.id, token.generation, static_cast<void*>(&slot), token.hostname);
+    return &token;
+}
+void reuse_fence(void* arg) {
+    auto& token = *static_cast<ReuseToken*>(arg);
+    check(!reuse_receiving && token.handler_returned && token.callback_seen && !token.fence_seen &&
+          token.fence_result == ERR_OK && token.owner->current == &token &&
+          token.owner->generation == token.generation && token.owner->state == SlotState::retained,
+          "R1 fence requires actual handler return/current retained owner");
+    reuse_record("deferred_fence", token);
+    token.fence_seen = true;
+    token.owner->state = token.expired ? SlotState::quarantined : SlotState::reusable;
+    reuse_record(token.expired ? "late_owner_quarantined" : "owner_reusable", token);
+    for (unsigned i = 0; i < reuse_count; ++i) {
+        const auto& other = reuse_tokens[i];
+        if (other.owner != token.owner && !other.fence_seen)
+            check(other.owner->state == SlotState::retained, "R1 no cross-owner release");
+    }
+    if (++reuse_fences == reuse_wanted) xEventGroupSetBits(events, finished);
+}
+void reuse_filler(void* arg) {
+    auto& token = *static_cast<ReuseToken*>(arg);
+    if (++token.drained == token.queued) {
+        reuse_record("queue_drained", token);
+        xEventGroupSetBits(events, finished);
+    }
+}
+void hold_fence(void* arg) {
+    auto& token = *static_cast<ReuseToken*>(arg);
+    check(token.handler_returned && !reuse_receiving && !token.fence_seen &&
+          token.owner->state == SlotState::retained, "R1 held fence retains owner after handler return");
+    reuse_record("fence_held", token);
+    xEventGroupSetBits(events, waiting);
+    check(xSemaphoreTake(gate, budget) == pdTRUE, "R1 held fence watchdog");
+}
+void reuse_found(const char* hostname, const ip_addr_t* address, void* arg) {
+    auto& token = *static_cast<ReuseToken*>(arg);
+    check(reuse_receiving && token.receive == reuse_receive && reuse_callback_matches(token) &&
+          hostname && std::strcmp(hostname, token.hostname) == 0,
+          "R1 original callback hostname/generation/owner identity");
+    reuse_record("DNS_found_enter", token);
+    token.callback_seen = true;
+    check(address && ip_addr_eq(address, &expected_address), "R1 genuine callback address");
+    token.discarded = token.expired;
+    if (token.expired) reuse_record("late_result_discarded", token);
+    if (std::strcmp(mode, "reuse-fence-error") == 0) {
+        for (unsigned i = 0; i <= TCPIP_MBOX_SIZE; ++i) {
+            if (tcpip_try_callback(reuse_filler, &token) != ERR_OK) break;
+            ++token.queued;
+        }
+    }
+    if (std::strcmp(mode, "reuse-delayed") == 0)
+        check(tcpip_try_callback(hold_fence, &token) == ERR_OK, "R1 fence holder admission");
+    token.fence_result = tcpip_try_callback(reuse_fence, &token);
+    reuse_record(token.fence_result == ERR_OK ? "fence_admitted" : "fence_rejected", token);
+    if (std::strcmp(mode, "reuse-fence-error") == 0) {
+        check(token.fence_result == ERR_MEM && token.queued > 0, "R1 real fence ERR_MEM");
+        token.owner->state = SlotState::quarantined;
+    } else check(token.fence_result == ERR_OK, "R1 fence admission");
+    reuse_record("DNS_found_exit_marker", token);
+}
+void reuse_lookup(ReuseToken& token) {
+    check(netif_list == nullptr && !violation && reuse_callback_matches(token), "R1 registration guard");
+    const unsigned before = wrapped;
+    ip_addr_t answer{};
+    const err_t rc = dns_gethostbyname_addrtype(token.hostname, &answer, reuse_found, &token,
+                                               LWIP_DNS_ADDRTYPE_IPV4);
+    check(rc == ERR_INPROGRESS, "R1 distinct uncached registration must be genuine INPROGRESS");
+    token.query = wrapped == before ? reuse_tokens[0].query : before;
+    check(token.query < wrapped && captures[token.query].recv, "R1 captured original DNS query");
+    reuse_record("registration_INPROGRESS", token);
+}
+void reuse_start(void*) {
+    set_server();
+    auto* first = acquire_slot(0, "first.a7br1.test");
+    check(first, "R1 first owner acquisition");
+    reuse_lookup(*first);
+    reuse_query = first->query;
+    check(acquire_slot(0, "premature.a7br1.test") == nullptr, "R1 pending owner cannot recycle");
+    reuse_record("pending_reuse_rejected", *first);
+    if (std::strcmp(mode, "reuse-duplicate") == 0 || std::strcmp(mode, "reuse-absent") == 0) {
+        const bool duplicate = std::strcmp(mode, "reuse-duplicate") == 0;
+        if (duplicate)
+            check((LWIP_DNS_SECURE & LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING) != 0,
+                  "R1 duplicate configuration");
+        auto* second = acquire_slot(1, duplicate ? first->hostname : "absent.a7br1.test");
+        check(second && second != first && second->owner != first->owner, "R1 distinct duplicate arguments");
+        reuse_lookup(*second);
+        check(wrapped == (duplicate ? 2U : 3U), "R1 duplicate coalescing/absent query capture");
+        reuse_wanted = duplicate ? 2 : 1;
+    }
+    xEventGroupSetBits(events, registered);
+}
+void reuse_next(void*) {
+    reuse_fences = 0;
+    check(reuse_tokens[0].handler_returned && reuse_tokens[0].fence_seen,
+          "R1 first generation barrier not complete");
+    auto* next = acquire_slot(0, "second.a7br1.test");
+    check(next && next->owner == reuse_tokens[0].owner && next->generation == 2 &&
+          std::strcmp(next->hostname, reuse_tokens[0].hostname) != 0, "R1 same slot/new generation/new hostname");
+    // A pure guard check, not a forged SDK callback or private registration read.
+    check(!reuse_callback_matches(reuse_tokens[0]), "R1 stale generation guard");
+    reuse_record("stale_generation_guard_rejected", reuse_tokens[0]);
+    reuse_lookup(*next);
+    reuse_query = next->query;
+    xEventGroupSetBits(events, registered);
+}
 void smoke(void*) {
     check(netif_list == nullptr, "live netif before smoke");
     pbuf* packet = pbuf_alloc(PBUF_RAW, 4, PBUF_RAM);
@@ -168,18 +329,18 @@ void start(void*) {
     }
     xEventGroupSetBits(events, registered);
 }
-void inject(void*) {
-    auto& query = captures[1];
+void inject_query(unsigned index, bool negative, bool reuse = false) {
+    check(index < wrapped, "captured query index");
+    auto& query = captures[index];
     check(query.length >= 16 && query.length <= packet_limit - 16 && query.pcb && query.recv,
           "bounded captured DNS query");
-    owners[0].expired = std::strcmp(mode, "late") == 0;
     unsigned char reply[packet_limit]{};
     std::memcpy(reply, query.bytes, query.length);
-    reply[2] = 0x81; reply[3] = owners[0].negative ? 0x83 : 0x80;
-    reply[6] = 0; reply[7] = owners[0].negative ? 0 : 1;
+    reply[2] = 0x81; reply[3] = negative ? 0x83 : 0x80;
+    reply[6] = 0; reply[7] = negative ? 0 : 1;
     reply[8] = reply[9] = reply[10] = reply[11] = 0;
     unsigned length = query.length;
-    if (!owners[0].negative) {
+    if (!negative) {
         const unsigned char answer[16] = {
             0xc0, 0x0c, 0, 1, 0, 1, 0, 0, 0, 60, 0, 4, 192, 0, 2, 44
         };
@@ -194,11 +355,42 @@ void inject(void*) {
     const ip_addr_t source = query.server;
     const u16_t port = query.port;
     query.pcb = nullptr; query.recv = nullptr;
-    record("original_dns_recv_enter");
+    if (reuse) {
+        check(!reuse_receiving, "R1 nested receive forbidden");
+        reuse_receiving = true;
+        ++reuse_receive;
+        for (unsigned i = 0; i < reuse_count; ++i) {
+            auto& token = reuse_tokens[i];
+            if (token.query == index && !token.callback_seen) {
+                token.receive = reuse_receive;
+                reuse_record("original_dns_recv_enter", token);
+            }
+        }
+    } else record("original_dns_recv_enter");
     receive(arg, pcb, packet, &source, port);
     // No PCB or pbuf access after ownership transfer.
     recv_returned = true;
-    record("original_dns_recv_returned");
+    if (reuse) {
+        reuse_receiving = false;
+        for (unsigned i = 0; i < reuse_count; ++i) {
+            auto& token = reuse_tokens[i];
+            if (token.receive == reuse_receive && token.callback_seen) {
+                token.handler_returned = true;
+                reuse_record("original_dns_recv_returned", token);
+            }
+        }
+    } else record("original_dns_recv_returned");
+}
+void inject(void*) {
+    owners[0].expired = std::strcmp(mode, "late") == 0;
+    inject_query(1, owners[0].negative);
+}
+void reuse_inject(void*) {
+    if (std::strcmp(mode, "reuse-late") == 0) {
+        reuse_tokens[0].expired = true;
+        reuse_record("caller_wait_expired", reuse_tokens[0]);
+    }
+    inject_query(reuse_query, false, true);
 }
 void cached(void*) {
     check(lookup("owner.a7b.test", owners[2]) == ERR_OK && owners[2].calls == 0 &&
@@ -221,6 +413,89 @@ void exhaust(void*) {
     check(exhausted && pending > 0 && wrapped > 1 && !violation, "bounded DNS exhaustion");
     record("pending_owners_quarantined", pending);
     xEventGroupSetBits(events, registered);
+}
+void reuse_verify(void*) {
+    const bool absent = std::strcmp(mode, "reuse-absent") == 0;
+    const bool failed = std::strcmp(mode, "reuse-fence-error") == 0;
+    const bool late = std::strcmp(mode, "reuse-late") == 0;
+    if (absent) {
+        check(reuse_count == reuse_slot_limit, "R1 finite pool filled");
+        for (unsigned i = 0; i < reuse_slot_limit; ++i) {
+            check(reuse_slots[i].state == SlotState::retained && !reuse_tokens[i].callback_seen &&
+                  !reuse_tokens[i].fence_seen && acquire_slot(i, "unsafe.a7br1.test") == nullptr,
+                  "R1 absent callback retains finite owner pool");
+        }
+        reuse_record("pool_exhausted_retained", reuse_tokens[0]);
+    } else {
+        for (unsigned i = 0; i < reuse_count; ++i) {
+            auto& token = reuse_tokens[i];
+            check(token.callback_seen && token.handler_returned, "R1 actual completed SDK callback");
+            if (failed) {
+                check(!token.fence_seen && token.fence_result == ERR_MEM && token.queued > 0 &&
+                      token.drained == token.queued, "R1 failed fence drain is not release evidence");
+            } else check(token.fence_seen, "R1 executed fence missing");
+        }
+        if (failed || late) {
+            check(reuse_slots[0].state == SlotState::quarantined &&
+                  (!late || reuse_tokens[0].discarded) &&
+                  acquire_slot(0, "unsafe.a7br1.test") == nullptr, "R1 quarantine prevents reuse");
+            reuse_record("quarantined_reuse_rejected", reuse_tokens[0]);
+        } else {
+            auto& last = reuse_tokens[reuse_count - 1];
+            // Local predicate assertion only; never invokes or forges SDK callbacks.
+            check(!reuse_callback_matches(last), "R1 duplicate callback guard");
+            reuse_record("duplicate_callback_guard_rejected", last);
+            for (const auto& slot : reuse_slots)
+                check(slot.state == SlotState::unused || slot.state == SlotState::reusable,
+                      "R1 completed owner eligibility");
+        }
+    }
+    xEventGroupSetBits(events, registered);
+}
+void run_reuse() {
+    post(reuse_start);
+    wait_for(registered, "R1 registration watchdog");
+    xEventGroupClearBits(events, registered);
+    if (std::strcmp(mode, "reuse-absent") == 0 || std::strcmp(mode, "reuse-late") == 0) {
+        check((xEventGroupWaitBits(events, finished, pdFALSE, pdTRUE, pdMS_TO_TICKS(50)) & finished) == 0,
+              "R1 no completion before injected reply");
+    }
+    if (std::strcmp(mode, "reuse-absent") != 0) {
+        post(reuse_inject);
+        if (std::strcmp(mode, "reuse-delayed") == 0) {
+            wait_for(waiting, "R1 fence holder watchdog");
+            check((xEventGroupWaitBits(events, finished, pdFALSE, pdTRUE, pdMS_TO_TICKS(50)) & finished) == 0 &&
+                  reuse_slots[0].state == SlotState::retained && !reuse_tokens[0].fence_seen &&
+                  reuse_tokens[0].handler_returned, "R1 admission/handler return cannot release held fence");
+            std::puts("A7BR1_HELD_FENCE_RETAINED PASS");
+            check(xSemaphoreGive(gate) == pdTRUE, "R1 release fence holder");
+        }
+        wait_for(finished, "R1 actual completion/fence watchdog");
+        if (std::strcmp(mode, "reuse") == 0) {
+            xEventGroupClearBits(events, finished);
+            post(reuse_next);
+            wait_for(registered, "R1 second-generation registration watchdog");
+            xEventGroupClearBits(events, registered);
+            post(reuse_inject);
+            wait_for(finished, "R1 second-generation fence watchdog");
+            check(reuse_count == 2 && reuse_slots[0].generation == 2 && wrapped == 3,
+                  "R1 two genuine uncached generations");
+        }
+    }
+    post(reuse_verify);
+    wait_for(registered, "R1 final owner-state watchdog");
+    check(!violation && netif_list == nullptr, "R1 final zero-egress guard");
+    for (unsigned i = 0; i < reuse_trace_size; ++i) {
+        const auto& item = reuse_trace[i];
+        const auto& token = *item.token;
+        std::printf("A7BR1_EVENT %u %s token=%u owner=%u generation=%u hostname=%s\n",
+                    i, item.event, token.id, token.owner->id, token.generation, token.hostname);
+    }
+    std::printf("A7BR1_COMPLETED_DNS_OWNER_REUSE %s PASS tokens=%u storage=STATIC\n", mode, reuse_count);
+    std::puts("A7BR1 UNPROVEN private found=NULL direct read; arbitrary token free/recycling; "
+              "permanent callback/fence stall; caller-return/cleanup/close deadlines");
+    std::fflush(stdout);
+    std::_Exit(0);
 }
 void print_config() {
     std::printf("A7B_CONFIG LWIP_DNS_SECURE=%u DNS_TABLE_SIZE=%u CORE_LOCKING=%u "
@@ -261,6 +536,10 @@ extern "C" void app_main() {
     if (std::strcmp(mode, "config") == 0) { print_config(); std::fflush(stdout); std::_Exit(0); }
     const bool is_smoke = std::strcmp(mode, "smoke") == 0;
     const bool is_guard = std::strcmp(mode, "guard") == 0;
+    const bool is_reuse = std::strcmp(mode, "reuse") == 0 ||
+        std::strcmp(mode, "reuse-duplicate") == 0 || std::strcmp(mode, "reuse-late") == 0 ||
+        std::strcmp(mode, "reuse-fence-error") == 0 || std::strcmp(mode, "reuse-delayed") == 0 ||
+        std::strcmp(mode, "reuse-absent") == 0;
     if (!is_smoke && !is_guard) {
         const char* proof = std::getenv("A7B_WRAP_PROVEN");
         check(proof && std::strcmp(proof, "verified-by-runner") == 0,
@@ -268,9 +547,10 @@ extern "C" void app_main() {
         check(std::strcmp(mode, "immediate") == 0 || std::strcmp(mode, "success") == 0 ||
               std::strcmp(mode, "error") == 0 || std::strcmp(mode, "duplicate") == 0 ||
               std::strcmp(mode, "late") == 0 || std::strcmp(mode, "fence-error") == 0 ||
-              std::strcmp(mode, "exhaust") == 0, "unknown mode; resolver NOT_RUN");
+              std::strcmp(mode, "exhaust") == 0 || is_reuse, "unknown mode; resolver NOT_RUN");
     }
     for (unsigned i = 0; i < owner_limit; ++i) owners[i].id = i;
+    for (unsigned i = 0; i < reuse_slot_limit; ++i) reuse_slots[i].id = i;
     check(ipaddr_aton("198.51.100.53", &server) && ipaddr_aton("192.0.2.44", &expected_address),
           "synthetic numeric addresses");
     events = xEventGroupCreateStatic(&event_storage);
@@ -287,6 +567,7 @@ extern "C" void app_main() {
         std::fflush(stdout); std::_Exit(0);
     }
     xEventGroupClearBits(events, finished);
+    if (is_reuse) run_reuse();
     if (std::strcmp(mode, "immediate") == 0) {
         post(immediate); wait_for(finished, "immediate cases timeout");
     } else if (std::strcmp(mode, "exhaust") == 0) {
