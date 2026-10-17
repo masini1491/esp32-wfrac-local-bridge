@@ -1,7 +1,8 @@
 // A6b: real pinned SDK Linux TCPIP task, in-memory callbacks only.
-// No netif, resolver request, sockets, TLS, token reuse or SDK source patch.
+// Plus CLOSE-T1: unconnected CLOSED netconn deletion; no network or SDK patch.
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -9,6 +10,9 @@
 #include "freertos/task.h"
 #include "lwip/opt.h"
 #include "lwip/tcpip.h"
+#include "lwip/api.h"
+#include "lwip/netif.h"
+#include "lwip/tcp.h"
 
 #if !CONFIG_IDF_TARGET_LINUX
 #error "A6b executes only on the isolated Linux host target"
@@ -16,12 +20,21 @@
 #if LWIP_TCPIP_CORE_LOCKING
 #error "This probe requires the independently reported serialized TCPIP configuration"
 #endif
+#if LWIP_HAVE_LOOPIF || LWIP_NETIF_LOOPBACK
+#error "CLOSE-T1 requires a Linux binary without loopback/netifs"
+#endif
 
 namespace {
 constexpr EventBits_t initialized = 1;
 constexpr EventBits_t completed = 2;
 constexpr EventBits_t waiting = 4;
 constexpr EventBits_t drained = 8;
+constexpr EventBits_t close_held = 16;
+constexpr EventBits_t close_admitted = 32;
+constexpr EventBits_t close_waiting = 64;
+constexpr EventBits_t close_returned = 128;
+constexpr EventBits_t close_gate_exited = 256;
+constexpr EventBits_t close_started = 512;
 constexpr TickType_t budget = pdMS_TO_TICKS(5000);
 StaticEventGroup_t event_storage;
 EventGroupHandle_t events;
@@ -49,6 +62,19 @@ struct Owner {
 Owner normal_owner;
 Owner delayed_owner;
 Owner full_owner;
+
+// Finite test-only worker and owner: retained until real completion or exit.
+// No caller storage is reclaimed on a watchdog/negative termination path.
+StaticTask_t close_worker_storage;
+StackType_t close_worker_stack[4096];
+TaskHandle_t close_worker_task;
+struct CloseOwner {
+    netconn* connection = nullptr;
+    err_t result = ERR_VAL;
+    unsigned posts = 0;
+    unsigned waits = 0;
+    bool core_exited = false;
+} close_owner;
 
 [[noreturn]] void fail(const char* label) {
     std::printf("A6B FAIL: %s\n", label);
@@ -122,6 +148,89 @@ void verify_order(const Owner& owner, const char* label) {
           owner.order[2] == Event::exit_marker && owner.order[3] == Event::fence &&
           owner.fence_result == ERR_OK && owner.retained, label);
 }
+void hold_close_core(void*) {
+    xEventGroupSetBits(events, close_held);
+    if (xSemaphoreTake(release_gate, budget) != pdTRUE) {
+        // Test termination is not cancellation or resource quiescence.
+        std::puts("T1 TEST_TERMINATION: core gate watchdog; owner retained");
+        std::fflush(stdout);
+        std::_Exit(2);
+    }
+    close_owner.core_exited = true;
+    xEventGroupSetBits(events, close_gate_exited);
+}
+void delete_on_worker(void*) {
+    wait_for(close_started, "T1 worker start gate timeout");
+    close_owner.result = netconn_delete(close_owner.connection);
+    if (close_owner.result == ERR_OK) close_owner.connection = nullptr;
+    xEventGroupSetBits(events, close_returned);
+    // Static task/stack remain allocated until process exit, not production workers.
+    vTaskSuspend(nullptr);
+}
+void close_cases() {
+    check(netif_list == nullptr, "T1 strict no-netif guard");
+    netconn* normal = netconn_new(NETCONN_TCP);
+    check(normal != nullptr && normal->pcb.tcp != nullptr &&
+          normal->pcb.tcp->state == CLOSED, "T1 normal fresh CLOSED PCB");
+    check(netconn_delete(normal) == ERR_OK, "T1 normal delete");
+    normal = nullptr;
+    std::puts("T1 PASS 1: genuine SDK CLOSED netconn_new -> netconn_delete returned ERR_OK");
+
+    close_owner.connection = netconn_new(NETCONN_TCP);
+    check(close_owner.connection != nullptr && close_owner.connection->pcb.tcp != nullptr &&
+          close_owner.connection->pcb.tcp->state == CLOSED, "T1 held fresh CLOSED PCB");
+    check(tcpip_try_callback(hold_close_core, nullptr) == ERR_OK, "T1 hold admission");
+    wait_for(close_held, "T1 held core timeout");
+    close_worker_task = xTaskCreateStatic(delete_on_worker, "close-test", 4096, nullptr,
+                                         tskIDLE_PRIORITY + 1, close_worker_stack,
+                                         &close_worker_storage);
+    check(close_worker_task != nullptr, "T1 static worker creation");
+    xEventGroupSetBits(events, close_started);
+    // Wrappers observe, then delegate to real SDK functions; never fake admission.
+    wait_for(close_admitted | close_waiting, "T1 actual API-message/sem entry timeout");
+    check(close_owner.posts == 1 && close_owner.waits == 1, "T1 SDK wait path observed");
+    check((xEventGroupWaitBits(events, close_returned, pdFALSE, pdTRUE,
+                              pdMS_TO_TICKS(50)) & close_returned) == 0 &&
+          eTaskGetState(close_worker_task) == eBlocked &&
+          !close_owner.core_exited && close_owner.connection != nullptr,
+          "T1 pending caller must retain owner");
+    std::puts("T1 TRACE: core held -> actual sys_mbox_post returned -> actual sem wait entered -> caller pending; owner retained");
+    const char* negative = std::getenv("WFRAC_T1_NEGATIVE");
+    if (negative != nullptr && std::strcmp(negative, "no-release") == 0) {
+        // Deliberately fail closed, never return/free while API-message is pending.
+        std::puts("T1 TEST_TERMINATION: missing release; retained owner; no quiescence claim");
+        std::fflush(stdout);
+        std::_Exit(2);
+    }
+    check(xSemaphoreGive(release_gate) == pdTRUE, "T1 explicit core release");
+    wait_for(close_gate_exited | close_returned, "T1 genuine completion timeout");
+    check(close_owner.core_exited && close_owner.result == ERR_OK &&
+          close_owner.connection == nullptr && netif_list == nullptr,
+          "T1 actual delete completion and ownership disposition");
+    std::puts("T1 PASS 2: explicit release -> core exit -> genuine SDK delete ERR_OK -> caller returned; owner handle cleared only on success");
+    std::puts("T1 SDK_RUNTIME_CONFIRMED: 2/2 CLOSED-branch cases; no connected FIN/close ERR_MEM evidence");
+    std::puts("T1 NOT_RUN: queue-saturated delete, connected FIN/ERR_MEM, sockets, TLS/HTTP cleanup, hardware");
+    std::puts("T1 UNPROVEN: universal caller-return/cleanup deadline, worker reclamation; process exit is TEST_TERMINATION not SDK shutdown");
+}
+}
+// Link-time observation of unchanged pinned SDK calls. These wrappers do not
+// bypass admission, semaphore completion, or change results/timeouts.
+extern "C" void __real_sys_mbox_post(sys_mbox_t*, void*);
+extern "C" u32_t __real_sys_arch_sem_wait(sys_sem_t*, u32_t);
+extern "C" void __wrap_sys_mbox_post(sys_mbox_t* box, void* message) {
+    __real_sys_mbox_post(box, message);
+    if (close_worker_task != nullptr && xTaskGetCurrentTaskHandle() == close_worker_task) {
+        ++close_owner.posts;
+        xEventGroupSetBits(events, close_admitted);
+    }
+}
+extern "C" u32_t __wrap_sys_arch_sem_wait(sys_sem_t* sem, u32_t timeout) {
+    if (close_worker_task != nullptr && xTaskGetCurrentTaskHandle() == close_worker_task) {
+        check(timeout == 0, "T1 SDK untimed completion wait");
+        ++close_owner.waits;
+        xEventGroupSetBits(events, close_waiting);
+    }
+    return __real_sys_arch_sem_wait(sem, timeout);
 }
 extern "C" void app_main() {
     events = xEventGroupCreateStatic(&event_storage);
@@ -130,6 +239,7 @@ extern "C" void app_main() {
     tcpip_init(init_done, nullptr);
     wait_for(initialized, "tcpip_init timeout");
     check(core_task != xTaskGetCurrentTaskHandle(), "TCPIP task must differ from app task");
+    check(netif_list == nullptr, "T1 no netif after tcpip_init");
 
     check(tcpip_try_callback(callback, &normal_owner) == ERR_OK, "normal admission");
     wait_for(completed, "normal fence timeout");
@@ -161,8 +271,9 @@ extern "C" void app_main() {
     std::printf("A6B PASS 3: actual admission/fence ERR_MEM; queued=%u mailbox=%u drained=%u owner retained\n",
                 full_owner.queued, static_cast<unsigned>(TCPIP_MBOX_SIZE), full_owner.consumed);
     std::puts("A6B RUNTIME_CONFIRMED: 3/3 in-memory SDK cases; all owners static and unrecycled");
-    std::puts("A6B NOT_RUN: DNS callback/registration clear, duplicate hostname, never-arriving DNS, cancellation, token recycle, TLS, close, hardware");
+    std::puts("A6B NOT_RUN: DNS callback/registration clear, duplicate hostname, never-arriving DNS, cancellation, token recycle, TLS, connected close, hardware");
     std::puts("A6B UNPROVEN: DNS quiescence, caller-return bound, eventual reclamation, worker teardown");
+    close_cases();
     std::fflush(stdout);
     std::_Exit(0);
 }
