@@ -1,0 +1,50 @@
+# Stage 3 Gate A / D2-P0 — Minimal controllable-I/O and private-owner architecture design
+
+**Date:** 2026-10-18 (Asia/Taipei); **project base:** `main@89c709aaebb90a674d0c786c94cc4bc8328259b3`. Pinned ESP-IDF v6.0.2 `7101770dc6db2667b3c477cc31365dd1acd6db4e`, esp-lwIP `fd432e4ee2cfb7f7f1c7eb7227e0173412e7b84e`, mbedTLS `6cc42afad309e861f4c07e6f106e2ab14a9cb8e5`. **Scope:** design-only source audit / evidence staging, no implementation or test authorization. This is a follow-up to [accepted D0 interpretation](stage3-gatea-d0-scope-reconciliation-20261018.md), [HTTP subcall limitations](stage3-gatea-d0-http-subcall-and-atomic-cleanup-20261018.md), and existing D1/A6b/A7b/T1/F1 evidence.
+
+## Decision under the actual D0, not a stronger hypothetical requirement
+
+**Candidate to further validate, NOT implementation admission:** Keep the unchanged synchronous `ITransport::perform()` signature and scheme/endpoint/TLS policy, but confine a finite, single-attempt state machine and all mutable network state to the ESP-IDF adapter. Use explicit monotonic checkpoints around **each controllable** I/O, one-shot HTTP framing based on pinned `http_parser`, TLS identity verification, and a separate observed teardown/quiescence gate before publishing success. D0 permits the **unpreemptible internal SDK wait and cleanup to overrun** the I/O budget, provided this is disclosed; it does not waive L2 fail-close, L3 ownership/quarantine or protection against slow trickle.
+
+**Minimal private conceptual components (not proposed public API/source yet):**
+
+- `DeadlineBudget`: one overflow-checked monotonic absolute end, created once per request; reject clock regression; check before each controllable wait/read/write/handshake retry and immediately after any returning SDK call. Pinned [`esp_timer_get_time()`](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/components/esp_timer/include/esp_timer.h#L219-L223) offers an `int64_t` microseconds-since-init time source, **not** proof of externally hard wall-clock return. Ensure units/overflow/zero-timeout and SDK wait rounding never accidentally encode *infinite* waits.
+- `AttemptOwner`: a private finite-lifetime state/ownership record for socket descriptor, resolved address, DNS callback token, TLS contexts/trust chain, BIO, parser and candidate response. No raw pointer to a caller stack/buffer is retained by a callback after `perform()` returns. At most one attempted HTTP command per `perform()`; no redirects/auth/scheme retry or new worker per timeout. Bounded retained/quarantined state must prevent another conflicting attempt if terminal quiescence is unknown.
+- `ResolverBoundary`: numeric IPv4/IPv6 may be parsed without asynchronous DNS (validate address family/scope), but **hostname input remains supported** and cannot silently downgrade to numeric-only. For hostname, only a proved callback+deferred-fence owner lifetime is admissible; A7b proved finite *completed* callback generation reuse, **not** arbitrary cancellation or eventual reclaim if no callback. Use private/static bounded ownership and fail-closed quarantine on uncertainty rather than freeing/reusing a pending callback token. Also preserve original logical hostname for TLS identity and HTTP Host independent of selected network address.
+- `SocketBoundary`: supported BSD Sockets using nonblocking connect / `select` or `poll` under remaining budget after initial source-level TCPIP API-message dispatch. **Unpreemptible dispatch and subsequent close remain disclosed exceptions** (not claimed hard-bounded). After `EINTR/EAGAIN`, recompute budget and never reset the clock or start a new physical attempt. Do not use ESP-IDF-unsupported application Raw API or production Netconn as a shortcut.
+- `TlsBoundary`: mbedTLS client config, CA chain, `MBEDTLS_SSL_VERIFY_REQUIRED`, original approved hostname/SNI via `mbedtls_ssl_set_hostname`, and an explicitly owned private BIO for the *already owned socket*. Check `WANT_READ/WANT_WRITE` with the same budget; distinguish TLS record retry rules from a second HTTP physical attempt. A successful `esp_tls_set_conn_sockfd` alone does not establish this handoff: pinned `ESP_TLS_INIT` resets descriptor and reconnects. The private mbedTLS route is only **INFERRED as a feasible design** and needs API/config/build tests; no trust-all, `skip_common_name`, scheme downgrade or custom cipher weakness.
+- `HttpBoundary`: pinned `http_parser` v2.7.0 with explicit header/framing/body limits, complete-message evidence before success, 1xx/interim cases, chunk/Content-Length conflict handling and EOF semantics. No `esp_http_client_open/fetch_headers/read_response` for aggregate checkpoint claims because they each contain internal repeated transport calls. Candidate payload bytes remain private and non-authoritative while parsing. After valid fully received response, honor all HTTP statuses as application data; overflow preserves `response_too_large` scheme-evidence semantics only when the attempted transport/scheme has actually been established.
+- `TeardownGate`: lifecycle `ACTIVE → TERMINAL_DECIDED → STOPPING → QUIESCENT → RELEASED`. Exactly one owner performs TLS shutdown/free, socket close, DNS callback fence and parser release in a justified order; record each actual API error. `close()==0` does not certify no FIN_WAIT/TIME_WAIT PCB, while `esp_http_client_cleanup()==ESP_OK` does not certify a socket release. Unknown close/callback state means do **not** free referenced owner storage or publish success; quarantine/STOP conflicting attempts, with explicit capacity/availability failure and **no blind second close**. No detached cleanup, cross-task `vTaskDelete` or forced socket release.
+
+## Minimal candidate state machine and success commit
+
+```text
+validate(request, response, certificate) -> clear public metadata
+  -> allocate owned bounded attempt, monotonic start + end
+  -> resolve numeric OR bounded-owner hostname callback
+  -> socket create / connect (recognize unpreemptible TCPIP dispatch)
+  -> HTTPS? set verified TLS client + BIO, handshake on repeated budgeted readiness
+  -> serialize exactly one POST (track partial bytes; never start another attempt)
+  -> parse bounded headers + body until *complete final HTTP response*
+  -> TERMINAL_DECIDED (success, timeout, io_failure, identity failure, overflow ...)
+  -> STOPPING: terminate I/O / clear callback references / close once / free safely
+  -> QUIESCENT? if NO: keep owner quarantined and reject later conflicting requests
+                if YES: RELEASED and atomically publish *only* valid success metadata
+  -> return classified terminal outcome (not a claim of hard caller-return)
+```
+
+The current [adapter](../../components/wfrac_transport_espidf/src/esp_http_transport.cpp) instead sets successful `http_status` and `body_size` before calling upstream `esp_http_client_cleanup()`; pinned [cleanup code](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/components/esp_http_client/esp_http_client.c#L1101-L1142) masks close status. **SOURCE_CONFIRMED conditional failure masking**, not proven actual leak/UAF. The standalone F1 test remains only `SYNTHETIC_PASS`. Success commit in a future replacement requires an **independently trustworthy teardown witness**; merely moving two assignments after `esp_http_client_cleanup()` does not repair that missing witness.
+
+## Pre-implementation GO/NO-GO gates and negative test plan
+
+| Candidate gate | Target witness | STOP / negative witness |
+| --- | --- | --- |
+| D2-P0-A: supported API/compiler provenance | Relevant pinned C3/C6 APIs for monotonic timer, BSD socket, mbedTLS BIO/CA/hostname, parser are exact and compatible | Requires unsupported Raw/Netconn production API, SDK/private-state injection or unapproved public `ITransport` change |
+| D2-P0-B: L1 single-budget path | Offline fake-clock phases for DNS, connect, handshake WANT_READ/WRITE, partial send, header/body trickle; every controllable wait bounded by *same remaining* budget | Frozen/retrograde/overflow clock, zero interpreted as infinite wait, extra I/O after timeout, repeated per-chunk timeout reset |
+| D2-P0-C: L2 one attempt + atomic result | Synthetic partial header/body, interim response, chunked framing, non-2xx, overflow, TLS identity fail, maybe-delivered write; `body_size=0` on failures; valid success only after full completion | Blind re-drive of write, inappropriate scheme_mismatch/downgrade, published partial-success or retry-on-cleanup failure |
+| D2-P0-D: L3 owner/teardown | All private pointers have tracked allocation/close/free owner; finite callback fence; terminal close/quiescence witnessed before success; quarantine on any unknown path | Treating `cleanup()==ESP_OK` as close acknowledgment, double close, freed pending token, caller-buffer post-return access, conflicting attempt after quarantine |
+| D2-P0-E: scoped software integration | Host + Python regressions and exact C3/C6 six-cell compile/link at a separately authorized Codex candidate; no real radio/socket/TLS execution | Full-stack SDK or hardware PASS claimed from compile/fakes; unauthorized workflow/SDK/config/portable interface changes |
+
+**Current outcome:** architecture *triage complete*, **source-supported but NOT FEASIBILITY PASS for production**. The most material unresolved proof is not timer mathematics: it is a supported hostname-compatible DNS owner recovery, correct TLS identity configuration, and **an observable close/quiescence witness on errors**. A future Codex **D2-P0 test-only design/probe** or production replacement would be new execution and must be separately authorized with paths/acceptance; this file itself grants no such authority. Prior D1/A6b/A7b/T1/F1 acceptance and PR #16 integration stay intact, and no completed gate is repeated merely because of documentation.
+
+**Persistent status:** Stage 3 sole Hot; Gate A **PENDING/UNPROVEN**, Gate B **HOLD**, Stage 4 Cold, library readiness **PRESERVED**.
