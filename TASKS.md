@@ -2,6 +2,9 @@
 
 ## Hot — Health audit Stage 3: ESP-IDF HTTP aggregate attempt deadline (P2)
 
+**Gate A L3 close-ack vs PCB-reclamation source checkpoint — 2026-10-18 (READ-ONLY):** [Pinned lwIP lifecycle and `TF_CLOSEPEND` dossier](evidence/inbox/stage3-gatea-l3-close-ack-versus-pcb-reclaim-20261018.md) confirms `netconn_delete/close` success does **not** mean every connected TCP PCB is freed: FIN_WAIT/TIME_WAIT may persist until protocol timer/peer progression, and `tcp_close_shutdown_fin()` can return `ERR_OK` with `TF_CLOSEPEND` after a FIN allocation `ERR_MEM` (source path only, NOT_RUN). Distinguish API completion, application callback/handle quiescence, and protocol PCB reclamation; do not silently weaken original D0 L3 to permit partial cleanup. No connected FIN runtime, production, SDK patch or new test Stage authorized. Stage 3 sole Hot, Gate A PENDING/UNPROVEN, Gate B HOLD, Stage 4 Cold, Library readiness=PRESERVED.
+
+
 **Gate A BSD nonblocking TCPIP API-message checkpoint — 2026-10-18 (READ-ONLY SOURCE STUDY):** [Pinned socket connect / DNS cancel / TLS identity dossier](evidence/inbox/stage3-gatea-bsd-nonblocking-api-message-20261018.md) confirms that `O_NONBLOCK` leaves `lwip_connect → netconn_connect → netconn_apimsg → tcpip_send_msg_wait_sem` with synchronous unbounded TCPIP mailbox/completion waits in the current non-core-locking SDK. `dns_clear_cache()` is global and dispatches callbacks, not per-request cancellation; mbedTLS WANT_READ/WRITE with required TLS hostname/CA verification does not prove teardown quiescence. **Supported BSD sockets + custom verified TLS remains a research candidate, not a proven L1/L2/L3 replacement.** Preserve Stage 3 sole Hot, Gate A PENDING/UNPROVEN, Gate B HOLD, Stage 4 Cold, Library readiness=PRESERVED; no new Codex implementation, tests, SDK config or production changes authorized.
 
 
