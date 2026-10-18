@@ -1,0 +1,23 @@
+# Stage 3 Gate A — External upstream cancellation and lwIP support survey
+
+Date: 2026-10-18 (Asia/Taipei). Project baseline: `main@1fab482ba6f0699f80b2950f5a4b6792f0a4410d`. SOURCE_CONFIRMED / DOC_CONFIRMED only; no new SDK runtime, source implementation, device or network tests. Source pins: ESP-IDF v6.0.2 `7101770dc6db2667b3c477cc31365dd1acd6db4e`, esp-lwIP `fd432e4ee2cfb7f7f1c7eb7227e0173412e7b84e`. This is sanitized evidence staging, not authority to execute changes.
+
+## Findings
+
+1. **HTTP cancel is close-then-reconnect, not terminal cancellation.** Exact pinned [esp_http_client.c L494–515](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/components/esp_http_client/esp_http_client.c#L494-L515) shows `esp_http_client_cancel_request()` checking state, calling `esp_transport_close()` and then `esp_http_client_connect()`. Close and reconnect can enter previously documented blocking TCPIP completion and synchronous resolver paths. This cannot prove aggregate bounded caller-return, teardown or quiescence. [The pinned HTTP header L315–344](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/components/esp_http_client/include/esp_http_client.h#L315-L344) prohibits concurrent `perform()` on the same client handle; that warning alone does not independently establish `cancel_request()` thread-safety one way or the other.
+2. **ESP-IDF Raw / Netconn support boundary.** The exact pinned official [lwIP guide L310–323](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/docs/en/api-guides/lwip.rst#L310-L323) says lwIP Raw API is unsupported for ESP-IDF applications. Netconn is enabled, but not officially tested/supported. BSD Sockets remains the documented supported application interface. Accepted T1 test-only `netconn_delete()` demonstrates a scoped SDK execution path; it does **not** confer production Netconn support. General upstream lwIP Raw API capabilities do not override this policy.
+3. **Cross-task close is not guaranteed to return promptly.** The pinned [lwIP guide L400–406](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/docs/en/api-guides/lwip.rst#L400-L406) states cross-thread `close()` can wait until other calls on the socket return, and warns that deleting tasks waiting on `select()` or `poll()` can leave callbacks pointing to deleted task stacks and corrupt lwIP structures.
+4. **Async flag does not close the gaps.** Exact pinned [HTTP header L218–225](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/components/esp_http_client/include/esp_http_client.h#L218-L225) documents `is_async` as HTTPS-only; pinned [ESP-TLS async L608–616](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/components/esp-tls/esp_tls.c#L608-L616) reaches synchronous [getaddrinfo L221–255](https://github.com/espressif/esp-idf/blob/7101770dc6db2667b3c477cc31365dd1acd6db4e/components/esp-tls/esp_tls.c#L221-L255). Cleanup/close is separately synchronous and may mask close errors. See [earlier architecture dossier](stage3-gatea-post-t1f1-deadline-architecture-20261018.md).
+
+## Bounded architecture disposition
+
+| Candidate | Status |
+| --- | --- |
+| `esp_http_client_cancel_request()` as universal abort | **NO-GO**: close then reconnect, no hard teardown bound |
+| `is_async=true` as sole fix | **NO-GO**: HTTPS-only declaration, synchronous DNS and cleanup remain |
+| lwIP Raw or Netconn in production | **Not admitted**: official support limitation |
+| Supported BSD Sockets + controlled nonblocking TLS | **Research candidate only**: resolver lifetime, shutdown/close, hostname/SNI/PEM verification and caller-return bounds still UNPROVEN |
+| Fixed-capacity owner-worker with fail-closed quarantine | **Conditional research candidate**: caller notification may be bounded under scheduling assumptions, but permanently stuck owner/resources cannot be reclaimed as a proven L3 guarantee |
+| Device watchdog reset | Distinct system-level policy; no per-attempt L3 proof and no authorization |
+
+**Decision:** retain original strict aggregate deadline and independent quiescence requirements unless user explicitly chooses different acceptance criteria. Do not interpret this study as permission for SDK patch, production source, Codex test stage, live network/hardware or Gate B. Stage 3 sole Hot, Gate A **PENDING/UNPROVEN**, Gate B **HOLD**, Stage 4 Cold, Library readiness **PRESERVED**. Prior T1 2/2 actual CLOSED SDK evidence and F1 8/8 synthetic evidence are unchanged; connected FIN/ERR_MEM, cleanup, absolute hard caller-return and full resource reclamation remain UNPROVEN/NOT_RUN.
