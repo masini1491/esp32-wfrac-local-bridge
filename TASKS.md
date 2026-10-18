@@ -2,6 +2,9 @@
 
 ## Hot — Health audit Stage 3: ESP-IDF HTTP aggregate attempt deadline (P2)
 
+**Gate A BSD nonblocking TCPIP API-message checkpoint — 2026-10-18 (READ-ONLY SOURCE STUDY):** [Pinned socket connect / DNS cancel / TLS identity dossier](evidence/inbox/stage3-gatea-bsd-nonblocking-api-message-20261018.md) confirms that `O_NONBLOCK` leaves `lwip_connect → netconn_connect → netconn_apimsg → tcpip_send_msg_wait_sem` with synchronous unbounded TCPIP mailbox/completion waits in the current non-core-locking SDK. `dns_clear_cache()` is global and dispatches callbacks, not per-request cancellation; mbedTLS WANT_READ/WRITE with required TLS hostname/CA verification does not prove teardown quiescence. **Supported BSD sockets + custom verified TLS remains a research candidate, not a proven L1/L2/L3 replacement.** Preserve Stage 3 sole Hot, Gate A PENDING/UNPROVEN, Gate B HOLD, Stage 4 Cold, Library readiness=PRESERVED; no new Codex implementation, tests, SDK config or production changes authorized.
+
+
 **Gate A external official-source survey — 2026-10-18 (READ-ONLY):** [Cancellation / lwIP API support evidence](evidence/inbox/stage3-gatea-upstream-cancellation-survey-20261018.md) establishes at the pinned ESP-IDF 6.0.2 revision: `esp_http_client_cancel_request()` closes then reconnects rather than providing terminal cancellation; Raw API is unsupported and Netconn enabled-but-unsupported for applications; cross-task socket close can wait for in-use calls, while deleting a task blocked in `select/poll` risks invalid stack callbacks. An async HTTP flag is HTTPS-only and does not remove synchronous DNS/cleanup gaps. Supported BSD Sockets plus TLS is **research only**, not proven hard-deadline design. Preserve sole Hot Stage 3, Gate A PENDING/UNPROVEN, Gate B HOLD, Stage 4 Cold, Library readiness PRESERVED; no production, tests, SDK, Workflow or hardware/network authorization added.
 
 
