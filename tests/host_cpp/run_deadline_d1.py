@@ -1,4 +1,4 @@
-"""D1 OFFLINE TEST-ONLY runner; never imports or exercises a network adapter.
+"""Retained D1 + D2-P0-T OFFLINE TEST-ONLY runner; no network adapter execution.
 
 Parser acquisition is an explicit, read-only SDK-source operation, not product
 network validation. Upstream files live only in TemporaryDirectory, not Git.
@@ -33,7 +33,7 @@ def checked_parser(data, expected):
 
 def run(command, cwd):
     print("COMMAND:", subprocess.list2cmdline([str(x) for x in command]), flush=True)
-    subprocess.run(command, cwd=cwd, check=True)
+    subprocess.run(command, cwd=cwd, check=True, timeout=60)
 
 
 def main():
@@ -47,7 +47,8 @@ def main():
     root = Path(__file__).resolve().parents[2]
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     print(f"TESTED CHECKOUT SHA: {revision}", flush=True)
-    for relative in ("tests/host_cpp/test_deadline_d1.cpp", "tests/host_cpp/run_deadline_d1.py"):
+    for relative in ("tests/host_cpp/test_deadline_d1.cpp", "tests/host_cpp/test_deadline_d2_p0.cpp",
+                     "tests/host_cpp/run_deadline_d1.py"):
         content = (root / relative).read_bytes().replace(b"\r\n", b"\n")
         print(f"INPUT SHA256 {relative} {hashlib.sha256(content).hexdigest()}", flush=True)
     for compiler in (args.cc, args.cxx):
@@ -75,7 +76,7 @@ def main():
              str(build / "http_parser.c"), "-o", str(obj)], root)
         run([args.cxx, "-std=c++17", "-Wall", "-Wextra", "-Werror",
              "-I", str(build), "-I", str(root / "components/wfrac_transport/include"),
-             str(root / "tests/host_cpp/test_deadline_d1.cpp"),
+             str(root / "tests/host_cpp/test_deadline_d2_p0.cpp"),
              str(root / "components/wfrac_transport/src/scheme_policy.cpp"),
              str(obj), "-o", str(exe)], root)
         run([str(exe)], root)

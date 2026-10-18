@@ -540,6 +540,7 @@ void contract_tests() {
 }
 } // namespace
 
+#ifndef WFRAC_D1_FIXTURES_ONLY
 int main() {
   parser_tests(); contract_tests();
   std::cout << "D1 OFFLINE TEST-ONLY; actual upstream parser version=" << http_parser_version()
@@ -554,3 +555,4 @@ int main() {
   }
   std::cout << "D1: " << passed << '/' << tests.size() << " cases PASS\n";
 }
+#endif
