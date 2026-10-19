@@ -77,6 +77,7 @@ err_t admission(Owner& owner) {
 Owner retained_owner;
 }  // namespace
 
+extern "C" void wfrac_d2_tls_link_anchor();
 extern "C" void app_main() {
     // Keep the complete reference graph reachable to the linker without invoking
     // any SDK operation. Do not run/flash this fixture as lifecycle evidence.
@@ -84,4 +85,6 @@ extern "C" void app_main() {
     Owner* volatile linked_storage = &retained_owner;
     (void)linked_entry;
     (void)linked_storage;
+    void (*volatile tls_link_only)() = wfrac_d2_tls_link_anchor;
+    (void)tls_link_only; // Retain symbol graph only; NEVER invoke this function.
 }

@@ -1,4 +1,4 @@
-"""Retained D1 + D2-P0-T OFFLINE TEST-ONLY runner; no network adapter execution.
+"""Retained D1 + D2-P0/P1-T OFFLINE TEST-ONLY runner; no network adapter execution.
 
 Parser acquisition is an explicit, read-only SDK-source operation, not product
 network validation. Upstream files live only in TemporaryDirectory, not Git.
@@ -48,6 +48,7 @@ def main():
     revision = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     print(f"TESTED CHECKOUT SHA: {revision}", flush=True)
     for relative in ("tests/host_cpp/test_deadline_d1.cpp", "tests/host_cpp/test_deadline_d2_p0.cpp",
+                     "tests/host_cpp/test_deadline_d2_p1.cpp",
                      "tests/host_cpp/run_deadline_d1.py"):
         content = (root / relative).read_bytes().replace(b"\r\n", b"\n")
         print(f"INPUT SHA256 {relative} {hashlib.sha256(content).hexdigest()}", flush=True)
@@ -76,7 +77,7 @@ def main():
              str(build / "http_parser.c"), "-o", str(obj)], root)
         run([args.cxx, "-std=c++17", "-Wall", "-Wextra", "-Werror",
              "-I", str(build), "-I", str(root / "components/wfrac_transport/include"),
-             str(root / "tests/host_cpp/test_deadline_d2_p0.cpp"),
+             str(root / "tests/host_cpp/test_deadline_d2_p1.cpp"),
              str(root / "components/wfrac_transport/src/scheme_policy.cpp"),
              str(obj), "-o", str(exe)], root)
         run([str(exe)], root)

@@ -23,3 +23,43 @@ No generic fake scheduler, emulator, new worker, SDK patch or hardware execution
 is introduced. Compile/link cannot prove quiescence, reclaim, close latency or
 hard synchronous caller-return bounds. Gate A feasibility remains PENDING;
 Gate B remains ON HOLD.
+
+## D2-P1-T — mbedTLS/BIO reference graph (compile/link only)
+
+`app_main` additionally retains the address of `wfrac_d2_tls_link_anchor` but never
+invokes it. That test-owned graph references SSL client defaults, required verify
+mode, empty CA-chain config, setup, empty hostname, BIO, and ordered context/config/
+CA disposal. No real certificate/key, hostname, IP, credential, handshake, socket
+connect, target execution or network is introduced. The existing A5 graph remains.
+
+The fixture explicitly requires `mbedtls`. Header-only `decltype` checks establish
+the upstream `mbedtls_net_poll/close` prototypes, without creating unresolved calls
+or claiming target implementations. Actual `net_send/recv/recv_timeout/free`
+addresses are retained; timeout/free are NOT called by this fixture.
+
+Each C3/C6 build runs `verify_tls_link.py` **after a successful link**, using the
+actual generated sdkconfig and compile_commands, preprocessing the actual fixture
+command to check `MBEDTLS_NET_C` undefined and `MBEDTLS_CONFIG_FILE` selection.
+It verifies pinned SDK/submodule identities and selected port bytes, rejects an
+upstream networking source in the compile database, inspects the actual port object,
+fixture relocations, final ELF and linker cross-references. This is stronger than
+prototype compilation or symbol grep alone. No ELF is executed.
+
+```sh
+idf.py -C tests/espidf_probe -B /absolute/output/c6 -D IDF_TARGET=esp32c6 build
+idf.py -C tests/espidf_probe -B /absolute/output/c3 -D IDF_TARGET=esp32c3 build
+```
+
+SDKCONFIG remains build-local. Use the existing pinned SDK/toolchain; do not
+download/install, patch SDK or change security settings to make a build pass.
+The post-link verifier prints an allowlisted JSON `D2_P1_LINK` record per actual
+target, source/object identity, available symbols and ELF SHA256. Classification
+is **SDK_COMPILE_ONLY**, never TLS/callback/network/hardware runtime evidence.
+The existing six scope-selected CI cells each also build this A5 fixture from
+their actual firmware config; no workflow/selector or SDK config is modified.
+Publishing such a PR requires the Stage's separate CI budget preflight.
+
+Host exact-pointer/length and borrowed-owner negatives are documented in
+`tests/host_cpp/README_deadline_d2_p1.md`. They remain SYNTHETIC_PASS only.
+Native failed-close/quiescence, TLS identity verification, request timing and
+hardware remain UNPROVEN / NOT_RUN; Gate A PENDING and Gate B HOLD.

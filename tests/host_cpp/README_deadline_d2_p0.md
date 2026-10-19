@@ -12,11 +12,12 @@ python -B tests/host_cpp/run_deadline_d1.py --sdk /path/to/existing/pinned/esp-i
 python -B tests/host_cpp/run_deadline_d1.py --fetch-pinned-parser
 ```
 
-The retained runner now compiles `test_deadline_d2_p0.cpp`, which includes the
+The retained runner includes `test_deadline_d2_p0.cpp` via the P1 test aggregator
+(see `README_deadline_d2_p1.md`), while preserving all P0 cases. P0 includes the
 unchanged D1 fixtures with only the old standalone `main` excluded by a test-only
 guard. All original 36 cases run first, with a fail-closed inventory assertion;
 26 D2 cases follow. No parser code is copied or rewritten. The original D1 file
-still compiles standalone. The runner hashes all three test/runner inputs and
+still compiles standalone. The runner hashes all included test/runner inputs and
 checks exact upstream parser Git blobs before compilation as C99; the harness
 is C++17, `-Wall -Wextra -Werror`. Compile/test subprocesses have a 60-second test
 watchdog. A watchdog is test termination, not transport cancellation/quiescence.
