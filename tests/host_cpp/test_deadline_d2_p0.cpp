@@ -5,6 +5,7 @@
 #include "test_deadline_d1.cpp"
 #undef WFRAC_D1_FIXTURES_ONLY
 
+namespace { // Reusable test fixtures have TU-local linkage, like their D1 types.
 namespace d2 {
 enum class Op { dns, connect_dispatch, ready, handshake, send, receive };
 enum class Hint { ok, interrupted, again, want_read, want_write, failure };
@@ -437,7 +438,9 @@ void register_tests() {
   });
 }
 } // namespace d2
+} // namespace
 
+#ifndef WFRAC_D2_FIXTURES_ONLY
 int main() {
   std::cout << "D1 OFFLINE TEST-ONLY; actual upstream parser version=" << http_parser_version()
             << "; no SDK timing/TLS/network/cleanup guarantee\n";
@@ -456,3 +459,4 @@ int main() {
   std::cout << "NOT_RUN: native TLS/BIO/API compile/link, DNS/network/hardware, A6b/T1/A7b replay, C3/C6 matrix\n"
             << "UNPROVEN: hostname callback recovery, trusted native close witness, actual TLS verification; Gate A PENDING, Gate B HOLD\n";
 }
+#endif
