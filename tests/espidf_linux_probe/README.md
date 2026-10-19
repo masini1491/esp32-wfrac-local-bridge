@@ -17,7 +17,8 @@ admission/fence ERR_MEM under bounded queue saturation and subsequent drain.
 ERR_MEM may come from message allocation or mailbox admission; the accepted count
 and generated mailbox capacity are printed, without claiming allocator fault injection.
 Core callbacks record events and signal SDK synchronization primitives; normal
-traces print from the app task. No netif, DNS lookup, socket or TLS call is made.
+traces print from the app task. These A6b cases make no netif, DNS lookup, socket
+or TLS calls. The separately scoped T2A cases below add CLOSED BSD sockets only.
 
 Owners remain static and are never recycled or freed. Process exit is not SDK
 worker teardown. The exit marker is a test callback marker, not a DNS registration
@@ -77,6 +78,61 @@ claim. Queue-saturated **delete** is NOT_RUN (the retained A6b callback saturati
 is a different test). Connected FIN allocation/ERR_MEM, delayed FIN polling,
 native socket close, TLS shutdown, HTTP cleanup, universal caller-return and
 cleanup deadlines remain NOT_RUN / UNPROVEN. Gate A PENDING; Gate B HOLD.
+
+## CLOSE-T2A: native never-connected BSD socket close / retained owner
+
+The same pinned Linux ELF preserves A6b 3/3 and T1 2/2 and adds two cases:
+
+1. A fresh `lwip_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)` returns a valid
+   descriptor; actual `lwip_close` returns 0 before owner invalidation.
+2. Another fresh socket is retained in static storage while a finite test-only
+   callback holds the TCPIP task. One static worker calls real `lwip_close`.
+   The existing post/semaphore wrappers delegate unchanged to real SDK functions.
+   During the 50-ms observation window the caller is blocked, has not returned,
+   and retains the same descriptor. Explicit release precedes observed successful
+   close return and only then owner invalidation. Post/wait counts are measured,
+   not assumed to equal T1: socket disposal can require another completion.
+
+Neither socket is bound, listening or connected. CLOSED is established by the
+pinned fresh allocation path, not private PCB manipulation. After each close,
+`lwip_fcntl(F_GETFL)` returns EBADF, independently showing descriptor-table
+disposition. This is a separate invalid-descriptor API observation, **not** a
+lower-layer close failure on a valid socket or timed proof of PCB reclamation.
+
+Compile guards require IPv4/sockets, disabled loopback and no core locking.
+Runtime requires `netif_list == nullptr` during allocation, held core, observed
+post/wait and completion; no netif is ever created. Build/run locally in an
+independently inspected Docker `--network none` container with read-only source
+and SDK, dropped capabilities and no-new-privileges. That is local host-level
+isolation evidence, not something inferred from `netif_list`. Existing GitHub
+container routing does not itself establish host-level egress isolation; report
+that remote limitation. No bind/connect/listen/accept/send/recv, DNS/TLS/HTTP or
+hardware execution is performed. Source CMake does not change SDK configuration.
+
+```sh
+python -B tests/espidf_linux_probe/verify_close_t2a.py /absolute/build-directory
+python -B tests/espidf_linux_probe/verify_close_t1.py /absolute/build-directory
+```
+
+T2A's local verifier proves generated Linux config, pinned actual socket source
+build input, native ELF and close -> prepare-delete/free -> delete routing,
+and real SDK post/wait observer delegation before executing the ELF. It runs
+success and `WFRAC_T2A_NEGATIVE=no-release` separately under 20-second watchdogs.
+The negative must exit 2 with retained owner and `TEST_TERMINATION`, with no close
+return, owner invalidation or completion claim. No forced release/task deletion
+is used. Twelve synthetic verifier tests (including ten missing-marker subcases)
+reject incomplete/reordered/duplicate traces, premature owner release, missing
+post/wait, changed descriptor, unsafe config, wrong call routing and termination
+masquerading as success. Build post-link runs those verifier tests only; existing
+callback CI runs the positive ELF, not the additional local negative runner.
+
+Only the measured unconnected CLOSED socket normal-return and finite held/resumed
+cases earn `SDK_RUNTIME_CONFIRMED`. Synthetic guards are `SYNTHETIC_PASS`.
+Static workers/owners remain allocated until true completion or process exit;
+process exit never proves teardown/reclamation. Connected FIN/TF_CLOSEPEND/ERR_MEM,
+real close failure on a valid socket, TLS shutdown, DNS never-callback quiescence,
+permanent-stall reclamation and aggregate hard caller-return/cleanup deadlines
+remain NOT_RUN/UNPROVEN. Gate A PENDING/UNPROVEN; Gate B HOLD; Stage 4 Cold.
 
 ## CLOSE-F1: synthetic status / ownership counterexamples only
 

@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cerrno>
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -13,6 +14,7 @@
 #include "lwip/api.h"
 #include "lwip/netif.h"
 #include "lwip/tcp.h"
+#include "lwip/sockets.h"
 
 #if !CONFIG_IDF_TARGET_LINUX
 #error "A6b executes only on the isolated Linux host target"
@@ -22,6 +24,9 @@
 #endif
 #if LWIP_HAVE_LOOPIF || LWIP_NETIF_LOOPBACK
 #error "CLOSE-T1 requires a Linux binary without loopback/netifs"
+#endif
+#if !LWIP_SOCKET || !LWIP_IPV4
+#error "CLOSE-T2A requires genuine BSD sockets and IPv4"
 #endif
 
 namespace {
@@ -75,6 +80,23 @@ struct CloseOwner {
     unsigned waits = 0;
     bool core_exited = false;
 } close_owner;
+
+constexpr EventBits_t socket_held = 1024;
+constexpr EventBits_t socket_admitted = 2048;
+constexpr EventBits_t socket_waiting = 4096;
+constexpr EventBits_t socket_returned = 8192;
+constexpr EventBits_t socket_gate_exited = 16384;
+constexpr EventBits_t socket_started = 32768;
+StaticTask_t socket_worker_storage;
+StackType_t socket_worker_stack[4096];
+TaskHandle_t socket_worker_task;
+struct SocketOwner {
+    int fd = -1;
+    int result = -2;
+    unsigned posts = 0;
+    unsigned waits = 0;
+    bool core_exited = false;
+} normal_socket, held_socket;
 
 [[noreturn]] void fail(const char* label) {
     std::printf("A6B FAIL: %s\n", label);
@@ -212,6 +234,91 @@ void close_cases() {
     std::puts("T1 NOT_RUN: queue-saturated delete, connected FIN/ERR_MEM, sockets, TLS/HTTP cleanup, hardware");
     std::puts("T1 UNPROVEN: universal caller-return/cleanup deadline, worker reclamation; process exit is TEST_TERMINATION not SDK shutdown");
 }
+
+void socket_disposed(int fd) {
+    // Separate descriptor-table observation, NOT failed close on a valid socket
+    // and NOT a measurement of underlying protocol PCB reclamation.
+    errno = 0;
+    check(lwip_fcntl(fd, F_GETFL, 0) == -1 && errno == EBADF,
+          "T2A closed descriptor must no longer resolve");
+    check(netif_list == nullptr, "T2A no-netif after descriptor disposition");
+}
+void hold_socket_core(void*) {
+    check(netif_list == nullptr, "T2A no-netif on held core");
+    xEventGroupSetBits(events, socket_held);
+    if (xSemaphoreTake(release_gate, budget) != pdTRUE) {
+        std::puts("T2A TEST_TERMINATION: core gate watchdog; owner retained");
+        std::fflush(stdout);
+        std::_Exit(2);
+    }
+    held_socket.core_exited = true;
+    xEventGroupSetBits(events, socket_gate_exited);
+}
+void socket_on_worker(void*) {
+    wait_for(socket_started, "T2A worker start timeout");
+    held_socket.result = lwip_close(held_socket.fd);
+    std::printf("T2A TRACE close_returned result=%d owner=retained\n", held_socket.result);
+    check(held_socket.result == 0 && held_socket.core_exited && netif_list == nullptr,
+          "T2A genuine successful close after core release");
+    held_socket.fd = -1;
+    std::puts("T2A TRACE owner_invalidated after_close_return");
+    xEventGroupSetBits(events, socket_returned);
+    // No forced delete or worker reclamation claim.
+    vTaskSuspend(nullptr);
+}
+void socket_cases() {
+    check(netif_list == nullptr, "T2A strict no-netif guard");
+    std::printf("T2A CONFIG LWIP_SOCKET=%d LWIP_IPV4=%d LWIP_HAVE_LOOPIF=%d LWIP_NETIF_LOOPBACK=%d no_netif=1\n",
+                LWIP_SOCKET, LWIP_IPV4, LWIP_HAVE_LOOPIF, LWIP_NETIF_LOOPBACK);
+    // Fresh TCP sockets only: never bound, listening or connected. CLOSED is
+    // established by the pinned allocation path, not by private PCB mutation.
+    normal_socket.fd = lwip_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    check(normal_socket.fd >= 0 && netif_list == nullptr, "T2A fresh socket allocation");
+    const int normal_fd = normal_socket.fd;
+    normal_socket.result = lwip_close(normal_socket.fd);
+    check(normal_socket.result == 0, "T2A real normal BSD close");
+    normal_socket.fd = -1;
+    socket_disposed(normal_fd);
+    std::printf("T2A PASS 1: fresh fd=%d -> real lwip_close=0 -> owner invalidated -> descriptor EBADF; PCB reclamation unmeasured\n", normal_fd);
+
+    held_socket.fd = lwip_socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    check(held_socket.fd >= 0 && netif_list == nullptr, "T2A held fresh socket allocation");
+    const int held_fd = held_socket.fd;
+    std::printf("T2A TRACE socket_created fd=%d owner=retained no_netif=1\n", held_fd);
+    check(tcpip_try_callback(hold_socket_core, nullptr) == ERR_OK, "T2A hold admission");
+    wait_for(socket_held, "T2A held core timeout");
+    std::puts("T2A TRACE core_held");
+    socket_worker_task = xTaskCreateStatic(socket_on_worker, "bsd-close-test", 4096, nullptr,
+                                         tskIDLE_PRIORITY + 1, socket_worker_stack,
+                                         &socket_worker_storage);
+    check(socket_worker_task != nullptr, "T2A static worker creation");
+    xEventGroupSetBits(events, socket_started);
+    wait_for(socket_admitted | socket_waiting, "T2A real post/wait observation timeout");
+    check((xEventGroupWaitBits(events, socket_returned, pdFALSE, pdTRUE,
+                              pdMS_TO_TICKS(50)) & socket_returned) == 0 &&
+          eTaskGetState(socket_worker_task) == eBlocked && !held_socket.core_exited &&
+          held_socket.fd == held_fd && held_socket.result == -2 && netif_list == nullptr,
+          "T2A pending caller must retain descriptor owner");
+    std::printf("T2A TRACE pending posts=%u waits=%u fd=%d owner=retained no_netif=1\n",
+                held_socket.posts, held_socket.waits, held_socket.fd);
+    const char* negative = std::getenv("WFRAC_T2A_NEGATIVE");
+    if (negative != nullptr && std::strcmp(negative, "no-release") == 0) {
+        std::puts("T2A TEST_TERMINATION: missing release; retained owner; no cleanup claim");
+        std::fflush(stdout);
+        std::_Exit(2);
+    }
+    std::puts("T2A TRACE explicit_release");
+    check(xSemaphoreGive(release_gate) == pdTRUE, "T2A explicit core release");
+    wait_for(socket_gate_exited | socket_returned, "T2A actual close completion timeout");
+    check(held_socket.core_exited && held_socket.result == 0 && held_socket.fd == -1 &&
+          held_socket.posts >= 1 && held_socket.waits >= 1,
+          "T2A returned close and owner disposition");
+    socket_disposed(held_fd);
+    std::printf("T2A PASS 2: actual BSD close returned 0; posts=%u waits=%u; descriptor EBADF; owner invalidated only after return\n",
+                held_socket.posts, held_socket.waits);
+    std::puts("T2A SDK_RUNTIME_CONFIRMED: 2/2 never-connected CLOSED BSD socket cases only");
+    std::puts("T2A UNPROVEN: PCB reclamation timing, connected FIN/ERR_MEM, valid-socket close failure, TLS/DNS quiescence, hard return/cleanup deadline, worker reclamation");
+}
 }
 // Link-time observation of unchanged pinned SDK calls. These wrappers do not
 // bypass admission, semaphore completion, or change results/timeouts.
@@ -223,12 +330,22 @@ extern "C" void __wrap_sys_mbox_post(sys_mbox_t* box, void* message) {
         ++close_owner.posts;
         xEventGroupSetBits(events, close_admitted);
     }
+    if (socket_worker_task != nullptr && xTaskGetCurrentTaskHandle() == socket_worker_task) {
+        check(netif_list == nullptr, "T2A no-netif during real post");
+        ++held_socket.posts;
+        xEventGroupSetBits(events, socket_admitted);
+    }
 }
 extern "C" u32_t __wrap_sys_arch_sem_wait(sys_sem_t* sem, u32_t timeout) {
     if (close_worker_task != nullptr && xTaskGetCurrentTaskHandle() == close_worker_task) {
         check(timeout == 0, "T1 SDK untimed completion wait");
         ++close_owner.waits;
         xEventGroupSetBits(events, close_waiting);
+    }
+    if (socket_worker_task != nullptr && xTaskGetCurrentTaskHandle() == socket_worker_task) {
+        check(timeout == 0 && netif_list == nullptr, "T2A real untimed SDK wait and no-netif");
+        ++held_socket.waits;
+        xEventGroupSetBits(events, socket_waiting);
     }
     return __real_sys_arch_sem_wait(sem, timeout);
 }
@@ -274,6 +391,7 @@ extern "C" void app_main() {
     std::puts("A6B NOT_RUN: DNS callback/registration clear, duplicate hostname, never-arriving DNS, cancellation, token recycle, TLS, connected close, hardware");
     std::puts("A6B UNPROVEN: DNS quiescence, caller-return bound, eventual reclamation, worker teardown");
     close_cases();
+    socket_cases();
     std::fflush(stdout);
     std::_Exit(0);
 }
