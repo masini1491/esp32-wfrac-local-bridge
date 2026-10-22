@@ -1,0 +1,32 @@
+# GATEA-D2 Stage 1 — independent acceptance of sealed host-integrity recovery
+
+**Reviewed:** 2026-10-22 Asia/Taipei. **Target:** `masini1491/esp32-wfrac-local-bridge`. **Producer remote execution reference:** `main@8f64aae2cdb2f63958852a616f056175531af5ef`. **Pinned playbook:** `1cff3ae6bc8b4d7245e0e2733b1e8f64c5d75614`. **Verdict:** `STAGE1_HOST_EXPORT_INTEGRITY_ACCEPTED` for preserved **29 candidate working bytes / 7 reviewed snapshot blobs / 934 original exported payload bytes and 1,036 sealed archive members**, with explicit **live-host and D2 verifier boundaries**. This is ChatGPT's **separate offline archive-byte audit**, not Codex's self-reported PASS copied into the record, and not an interactive read of the user's current Windows filesystem.
+
+## Raw uploaded evidence and independent computation
+
+- User attached full `gatea-d2-stage1-integrity.zip`: **24,137,481 bytes**, SHA-256 **`233f15c01239a3bf78463b571580c26c3e37ac932106eb5d78bb76cbaddc2964`**, recomputed directly from file and matched the external `handoff.json`, `archive-readback.json` and `SHA256SUMS.txt`.
+- Independently used Python ZIP reader plus per-member CRC32, length, SHA-256 recomputation over all **1,036 distinct actual decompressed bytes**: **1,036/1,036 MATCH** with external `archive-readback.json` (**261,401 bytes**, SHA-256 `059fae1f3155c4f85c938c2f3887d908ab71b3901fd60f66779941095dfea842`). Matched exactly the **1,035 member entries** of in-ZIP `reports/member-manifest.json` (self-excluded). Uncompressed sum **103,794,098 bytes**. No duplicate, path traversal, Windows case-fold or NFC-normalized case-fold name collisions.
+- Independently verified external `post-archive-preservation.json` **347,776 bytes**, SHA-256 `16b2c9aff1cf0cfd4f4bdbe6fc7b0b0cb9c7647f041026efdda9b191802d12a3`; handoff file SHA-256 `54e488fd13adf1b8591e1059f681764cca03ca5812e743a7baebe7d7d12ec110`; internal `reports/audit-report.json` SHA-256 `df75b6ba69801c294ec55af5ec87dda03e896ec98c29c44f228b6916e3326a35`, all matching the independently parsed `SHA256SUMS.txt` and/or signed-off metadata where applicable (SHA-256 integrity, **not** a digital signature).
+
+## What the ZIP independently establishes
+
+| Source group | Real ZIP members checked | Additional independent checks |
+| --- | ---: | --- |
+| Six preserved R1/R2-A/R2-B/R2-C1/R2-C2/D2 candidate groups | **29/29** | Each raw SHA-256 and Git SHA-1 `blob <len>\0<bytes>` matches audit report's actual working/staged blob ID; per-group counts **6/1/6/3/6/7** |
+| Seven reviewed original D2 source snapshot files | **7/7** | Each SHA-256, byte count, Git blob ID matches the original reviewed index; **all 7 bytes equal the corresponding archived D2 group-6 candidate**, including unchanged `verify_d2.py` |
+| Original exported native SDK build outputs | **934/934**, **101,480,096 bytes** | Parsed the **original raw** `original-output/output-inventory.json` from ZIP (outside 934 denominator); all 934 exact relative paths, sizes and hashes equal the independently recomputed payload bytes, with no missing/extra output members |
+| Other preserved evidence and metadata | **66 members** | 4 historical evidence ZIPs, 39 original receipts, 18 preservation byte files, 4 audit reports, plus the excluded original export manifest; total archive **1,036 members** |
+
+- Source `original-output/evidence/https/wfrac_gatea_d2_compile_only.map` actual ZIP bytes recomputed SHA-256 **`8b48b3dbc41a9a9592118b1997d2212e7b1eb0558a3ecb9a5b834a2715befb3a`**, identical to original *post-negative export inventory*, but **NOT** original positive `original-output/evidence/https-link-proof.json` map value **`e3908e1a667fa66d9f837aeeaf7f4f38226bcbd54858e768456675c8185c33bc`**. HTTPS-disabled map raw bytes hash **`3c35597c23e5c695bbbeeabe6f7eaf9f15d2bb1e17f0139b25e905c8ffdd995d`**, matching its proof. The positive HTTPS link proof's self-declared tier is **NOT independently admitted** after this mismatch.
+- Producer post-archive `post-archive-preservation.json` reports **1,038/1,038 original files unchanged** after sealing, including all six index/ref groups and 29/7/934 files. ChatGPT cross-matched **1,032 of the 1,038** post-archive reported size/SHA-256 pairs to actual file bytes retained somewhere in the archive; **six** original host metadata/receipt files were not packed as those exact bytes (five `.git` linked-worktree pointer files plus one older preservation receipt). Those six are supported by producer-readback metadata **only**, not a second direct Windows read from ChatGPT. The post-archive check also correctly excludes claims of kernel-atomic snapshot.
+- No `git status` was performed in this Stage 1 and `HEAD`/raw index receipts **do not prove** a clean/synced live main; the original local main `07794d12a91b760bd4dc7f15e3dc3c2551bfc113` and canonical remote `8f64aae2cdb2f63958852a616f056175531af5ef` have distinct roles. No fresh live Docker volume readback; audited files are the **host export**, not newly re-read volume storage.
+
+## Scope ceiling and next decision
+
+**Accept:** `CANDIDATE_29_OF_29_ARCHIVED_BYTES_VERIFIED`, `SNAPSHOT_7_OF_7_ARCHIVED_BYTES_AND_GIT_BLOBS_VERIFIED`, `EXPORTED_ARTIFACTS_934_OF_934_ARCHIVED_BYTES_VERIFIED`, `SEALED_BUNDLE_1036_OF_1036_VERIFIED`. The independently reviewed archive plus Codex's preserved before/after host receipts substantiate completion of the bounded Stage 1 **host-export evidence recovery**, without upgrading current live worktree status.
+
+**Do NOT accept:** original first D2 campaign's whole `PINNED_COMPILE_LINK_CONFIRMED` evidence or `verify` outcome (`build exit0`, `verify exit1` due to positive map overwritten by a negative link); the four previously masked C5 proof assertions are still **UNPROVEN**. The first 1,800-second campaign remains **CONSUMED**. No new SDK/fixture edits, Docker/linker execution, hardware/network test, CI or publication occurred during this audit.
+
+**Next separately gated proposal:** design one **off-repository derivative of the original D2 snapshot**, modifying only `tests/espidf_linux_probe/gatea_d2/verify_d2.py`: isolate negative ELF/map/depfile/all writable linker outputs and add baseline-PASS / targeted-assertion-FAIL / baseline-PASS checks for 11 mutations (particularly the four masked cases), plus offline harness controls. This remains **NOT YET USER-AUTHORIZED**, no fixture changes or second compile campaign implied by Stage 1 evidence acceptance.
+
+Stage 3 Gate A **PENDING/UNPROVEN**; Gate B **HOLD**; Stage 4 **COLD**; Library readiness **PRESERVED**.
