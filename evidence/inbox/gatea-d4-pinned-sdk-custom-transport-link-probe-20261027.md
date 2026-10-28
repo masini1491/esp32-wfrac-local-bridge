@@ -105,6 +105,25 @@ Codex reports one already-authorized stable off-repository D4 preparation root `
 
 **Report / decision:** Return each bounded nonsecret output and exit/error; failures STOP, no alternate image/volume/daemon selected automatically. A matching image ID and volume metadata establishes only **current local metadata availability**, not that IDF_PATH, ESP-IDF commit, esp-lwIP or compiler were verified inside image. Keep `SDK_MATERIALIZATION_UNVERIFIED` pending a separate strictly isolated, read-only image-content probe. D2 volume must remain **untouched and never mounted RW** for D4; preferred next **proposal** is an independent D4 output volume, not yet authorized to create. Audit and explicitly approve exact isolation and manual build commands separately before any native C6 attempt. Status: `D4_READONLY_DOCKER_METADATA_PREFLIGHT_AUTHORIZED__NATIVE_BUILD_HELD`. Gate A PENDING/UNPROVEN, Gate B HOLD, Stage4 COLD, library readiness PRESERVED.
 
+
+## D4 human image and volume metadata preflight outcome — 2026-10-28
+
+**Disposition: `D4_LOCAL_IMAGE_VOLUME_METADATA_VERIFIED__SDK_CONTENT_UNVERIFIED`** (user's own WSL terminal transcript; GitHub remote check is separate). The user ran the already-authorized metadata-only checks. Output (no secret/password included) reports:
+- `id -u` = **1000**; `DOCKER_HOST` and `DOCKER_CONTEXT` selectors empty (preflight `set -eu` completed).
+- Docker context `default`, endpoint `unix:///var/run/docker.sock`, socket exists and is not a symlink per passing predicates.
+- Docker **Server 29.1.3**.
+- Exact existing image `IMAGE_ID=sha256:0d8c9773d48a327233f9c1d7c654ff0bcf133ae24503ea2e97a57cfe02b8cb67`, `OS=linux`, `ARCH=amd64` — all expected identity fields MATCH.
+- Exact retained D2 Docker volume `VOLUME=wfrac-gatea-d2-fs-20261021-01 DRIVER=local` — metadata MATCH.
+- `D4_READONLY_PREFLIGHT_COMPLETE` observed. Password was typed locally only; no password was provided to ChatGPT or Codex.
+
+**Proof boundary:** This verifies current human-terminal *image and volume metadata availability*. It does **NOT** establish in-image `IDF_PATH`, `esp-idf` commit `7101770dc6db2667b3c477cc31365dd1acd6db4e`, esp-lwIP commit `fd432e4ee2cfb7f7f1c7eb7227e0173412e7b84e`, compiler version `esp-15.2.0_20251204`, C6 toolchain availability, ELF/linker map, or unchanged D2 volume contents. All these remain `UNVERIFIED` until a separately admitted exact-SDK image-content probe. Docker daemon status is only evidenced at transcript time; Codex `sudo -n` remains blocked.
+
+**Output isolation direction:** The D2 volume must remain retained and **never mounted in D4 native runs**, especially not RW. Recommend a future **dedicated D4-only Linux ext4 volume** (not created/authorized by this checkpoint), with verified-absent identity, independent source read-only mount and before/after manifest, no network, no Docker socket, no extra Linux capabilities. The originally sealed handoff's RW D2-volume manual build command is **superseded as unsafe to execute as-is**; any replacement exact command requires fresh ChatGPT review and separate user approval.
+
+**Next bounded action candidate, NOT YET EXECUTABLE:** Formal admission of a single human-terminal **in-image, read-only SDK/toolchain identity probe** using exactly the verified image and a hardened nonnetwork container, *without either D2 volume or fixture/source mounts, and without SDK compile/link*. Even a read-only rootfs container is still a **Docker container create/run side effect**, which the completed metadata-only authorization explicitly prohibited. Before launch, review literal Docker command and tool versions/readouts, restrict output to safe hashes/version metadata and obtain an exact additional user approval. If the image lacks the exact pins, STOP; do not pull/replace/rebuild silently.
+
+**State:** Same D4 child; no additional native attempt, `0/2`; SDK build `NOT_RUN`, manual build `HELD`. D3 `CLOSED/3-of-3`, Stage2R `CLOSED/TRACE_LIMITED`, original Stage2 HTTPS map mismatch `UNRESOLVED`. Gate A `PENDING/UNPROVEN`; Gate B `HOLD`; Stage4 `COLD`; library readiness `PRESERVED`.
+
 ## STOP, handoff and state preservation
 
 - STOP before any host build if repository identity/trust, approved execution permission, exact SDK pin, root persistence, fixture source lineage, stage scope, or protected artifact integrity fails. No `safe.directory`/ACL/owner bypass, privileges, extra clone/worktree or arbitrary fallbacks. Formal approved minimum permission for local Git operations may be requested as previously documented; an old permission grant does not carry over without checking.
