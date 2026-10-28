@@ -171,6 +171,24 @@ Codex reports one already-authorized stable off-repository D4 preparation root `
 
 **Build and Gate status remain unchanged:** `D4_NATIVE_COMPILE_LINK=NOT_RUN`, `0/2` build aggregates consumed. Original `MANUAL_BUILD_HELD.md` remains HELD, protected D2 volume unmounted and D4 volume uncreated. SDK physical deadline, callback quiescence, TLS/DNS/cleanup remain UNPROVEN; Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, readiness `PRESERVED`.
 
+
+## D4 C6 compiler location and version result — 2026-10-28 (user-terminal evidence)
+
+**Result: `D4_PINNED_SDK_AND_C6_TOOLCHAIN_IDENTITY_VERIFIED__NATIVE_BUILD_HELD`.** The user executed the separately admitted one-shot `d4-c6-toolchain-location-readonly-20261028.sh` in their own WSL terminal after checking the file SHA-256 exactly matched the published `901a6e525620329b81fd7067700fa47a1fa2dad44ed5c6ff2cf8ddf872744e6a`. The script declared image pin `sha256:0d8c9773d48a327233f9c1d7c654ff0bcf133ae24503ea2e97a57cfe02b8cb67` and returned:
+
+- `IDF_TOOLS_PATH_SET=YES`, `HOME_SET=YES`, `C6_COMPILER_ON_ACTIVE_PATH=NO`.
+- `C6_COMPILER_CANDIDATE_COUNT=1`.
+- `C6_COMPILER_FOUND=/opt/esp/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/bin/riscv32-esp-elf-g++`.
+- Compiler `--version`: **`riscv32-esp-elf-g++ (crosstool-NG esp-15.2.0_20251204) 15.2.0`**; exact version agrees with `esp-idf@7101770dc6db2667b3c477cc31365dd1acd6db4e` pinned `tools/tools.json` C6 compiler recommendation.
+- Local **compiler binary SHA-256 `a0dfebec55dd9c6819cd554262c8d1dee784a2a0724af134ebdbc9190aa763aa`**; keep as an immutable observed binary reference, **not independently compared against an official per-executable trusted checksum**.
+- Observed final markers `D4_C6_TOOLCHAIN_LOCATION_IDENTITY_PASS` and `D4_READONLY_TOOLCHAIN_LOCATION_PROBE_COMPLETED`. The user pasted the terminal output and did not show explicit numeric process exit; final marker is direct evidence that the script reached its success branch, not direct verification of an OS process trace.
+
+**Evaluation:** Combining this one-shot result with the earlier verified ESP-IDF HEAD, lwIP HEAD and five SDK blob IDs, the **same pinned image has both compatible SDK source identity and one located, executable expected-version C6 compiler**. The earlier compiler PATH STOP is accounted for as a **search-path activation/visibility difference**, not a missing compiler; **why PATH lacked the compiler is not independently established** and no script changed it. The location is not an automatic authorization to source `export.sh`, alter PATH or compile. Toolchain binary SHA was obtained but its provenance beyond current in-image bytes is not cryptographically attested.
+
+**Scope and protection:** This second one-shot read-only container probe is **CONSUMED / CLOSED**, not re-executable under the same authorization. No host, SDK, source, D2 volume, Docker volume, output root or build artifact mutation claimed. No D4 C6 compile/link, linker map or ELF is available, so native SDK seam still **UNVERIFIED**. Original `d4-preparation-handoff.zip` was accepted at static-only tier; its `MANUAL_BUILD_HELD.md` command is still **UNSAFE TO RUN AS-IS** because it mounts protected D2 volume RW. A future native build must use a new separately authorized D4-only output volume, exact fixture source identity, safe mount/read-only provenance and a reviewed manual command. **No D4 volume creation/native build is authorized by this acceptance.**
+
+**Remaining checks before any build approval:** Exact D4 fixture inputs/hashes, changed manual-build script not referencing old D2 volume, isolated D4 output root/volume, toolchain activation strategy that uses verified C6 compiler path, no network/privilege/secret scope expansion, build result and evidence retention plan. This task establishes environment presence, not actual C++ compilation, API linkage, real deadline or cleanup. D4 native aggregates **0/2 consumed**, manual native build HELD. D3 CLOSED / 3/3; Gate A PENDING/UNPROVEN, Gate B HOLD, Stage4 COLD, library readiness PRESERVED.
+
 ## STOP, handoff and state preservation
 
 - STOP before any host build if repository identity/trust, approved execution permission, exact SDK pin, root persistence, fixture source lineage, stage scope, or protected artifact integrity fails. No `safe.directory`/ACL/owner bypass, privileges, extra clone/worktree or arbitrary fallbacks. Formal approved minimum permission for local Git operations may be requested as previously documented; an old permission grant does not carry over without checking.
