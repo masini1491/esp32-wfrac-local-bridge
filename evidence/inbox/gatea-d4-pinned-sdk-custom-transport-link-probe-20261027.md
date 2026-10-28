@@ -40,6 +40,17 @@ D3's original aggregate harness limit **3/3** was a *stage-local test-evidence/r
 
 D3 remains CLOSED with **3/3** fake-model attempts exhausted. D4 native C6 compile/link **NOT_RUN / 0 of 2**; Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage 4 `COLD`, library readiness `PRESERVED`.
 
+
+## Docker sudo preflight result — 2026-10-28 (producer STOP / ChatGPT remote reconciliation)
+
+**Status: `D4_INTERACTIVE_AUTH_REQUIRED__DOCKER_SERVER_UNVERIFIED`.** Under the narrow operation-specific approval, Codex reports executing exactly one `sudo -n docker version` in the previously authorized WSL context. WSL user `uid=1000(user)` is in group `sudo`, not `docker`; `DOCKER_HOST` and `DOCKER_CONTEXT` were unset; original socket `/var/run/docker.sock` was `root:docker`, mode `0660`. Command returned `sudo: a password is required`, exit **1**; **NO Docker Server version was obtained**. These local observations are **Codex producer-reported** (not directly observed by ChatGPT); GitHub independent remote check confirms canonical `main=55ecb952268d9205657d23b714ae0aad236d3f54` at checkpoint, not host live permission.
+
+This result proves non-interactive sudo *was unavailable in that executing context*, **not** that the Docker daemon is dead, that credentials are incorrect or that ESP-IDF could not compile. No image, container, root/fixture, source, SDK, service configuration or native build was created/modified. **D4 attempts 0/2 USED; native compile/link NOT_RUN**. The approved noninteractive probe is **consumed and terminated**; do not repeat under the same known-blocked agent context, request a password via chat, cache/relay credentials, run interactive sudo inside Codex, silently switch Docker daemon, or change groups, socket/sudoers/ACL/owner.
+
+**Separate recommended path, NOT yet admitted as D4 build actor revision:** The user may voluntarily execute `sudo docker version` in their **own** WSL interactive terminal, entering the password locally, and share a credential-free Docker *Server* version/result. A PASS establishes Docker-daemon reachability **in that human terminal only**, not Codex capability or build authority. If the user selects a manual native build workflow, first revise the D4 actor/evidence contract to separate Codex preparation of exact pinned fixtures/commands (no Docker invocation) from *user-executed* minimal approved Docker commands with exit/stdout/stderr/SDK and map provenance; independent ChatGPT review remains mandatory. No build/pull/run/container creation is authorized by this checkpoint. STOP with `INTERACTIVE_AUTH_REQUIRED` until capability and actor plan are explicitly resolved.
+
+D3 CLOSED / 3-of-3 local model test attempts exhausted. Gate A PENDING/UNPROVEN, Gate B HOLD, Stage 4 COLD, library readiness PRESERVED.
+
 ## STOP, handoff and state preservation
 
 - STOP before any host build if repository identity/trust, approved execution permission, exact SDK pin, root persistence, fixture source lineage, stage scope, or protected artifact integrity fails. No `safe.directory`/ACL/owner bypass, privileges, extra clone/worktree or arbitrary fallbacks. Formal approved minimum permission for local Git operations may be requested as previously documented; an old permission grant does not carry over without checking.
