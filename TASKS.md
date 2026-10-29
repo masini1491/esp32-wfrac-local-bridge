@@ -4,7 +4,7 @@
 
 ## Sole Hot — Stage 3 / `GATEA-D2` (P2 aggregate HTTP attempt deadline)
 
-**Current:** `GATEA-D2` remains the only Hot. **Current Codex child:** `GATEA-D2-HTTPCLIENT-INTEGRATION-BUILD_LINK_TESTONLY_20261029` — `USER_AUTHORIZED__NOT_STARTED` (offline SDK integration harness source + scoped build/link only; zero-egress is DESIGN-ONLY; no binary execution). Previous `D2_V3_PINNED_SDK_TRANSPORT_DISPATCH_SCOPED_ACCEPTED__CHILD_CLOSED` remains CLOSED (SDK dispatcher 4/4 PASS, V3 start consumed); `D4_NATIVE_C6_CUSTOM_TRANSPORT_COMPILE_LINK_SCOPED_ACCEPTED__CHILD_CLOSED` remains CLOSED.
+**Current:** `GATEA-D2` remains the only Hot. **Current Codex child:** `GATEA-D2-HTTPCLIENT-INTEGRATION-BUILD_LINK_TESTONLY_20261029` — `STAGE_A_LAUNCHER_PERMISSION_BLOCKED__PREFLIGHT_NOT_RUN` (offline SDK integration harness source + scoped build/link only; zero-egress is DESIGN-ONLY; no binary execution). Previous `D2_V3_PINNED_SDK_TRANSPORT_DISPATCH_SCOPED_ACCEPTED__CHILD_CLOSED` remains CLOSED (SDK dispatcher 4/4 PASS, V3 start consumed); `D4_NATIVE_C6_CUSTOM_TRANSPORT_COMPILE_LINK_SCOPED_ACCEPTED__CHILD_CLOSED` remains CLOSED.
 
 **Project-wide boundary:** Gate A **`PENDING/UNPROVEN`**; Gate B **`HOLD`**; Stage 4 **`COLD`**; library readiness **`PRESERVED`**. No network, HTTP/HTTPS/TLS execution, hardware, ELF execution, source/SDK mutation, CI or Docker action is authorized by this queue cleanup.
 
@@ -18,6 +18,8 @@
 - **D — Zero-egress DESIGN ONLY:** specify (without implementing or executing) an independently checkable negative-control and deny-by-default boundary for all egress including loopback, built-in TCP/SSL paths and accidental DNS; name future fixture/permission/host inspection, strict stop conditions and separate runtime one-start authorization. `--network none` alone is not a proof of zero socket/connect attempts. No stage E six-case execution authorization.
 
 **Validation/report:** new test-only path allowlist; `git diff --check`, exact source/Kconfig/dependency and link provenance; report BUILD_LINK_PASS / BLOCKED / NOT_RUN per actual facts; identify missing SDK/environment or zero-egress proof. Keep original evidence, historical volumes, LocalCache, D2/D4 containers and V2/V3 closed receipts untouched. Do not automatically retry blocked builds or bypass ownership/permissions/safe.directory. Git push/repository write requires currently valid Codex actor/permission gates; stop rather than expanding paths or installing toolchain. Do not promote L1/L2/L3, Gate A or other Hot/Cold items. Future stage E requires **separate explicit user approval** after independent safety/review gates.
+
+**Current STOP (2026-10-30):** Codex Git bootstrap and safe sync PASS at `5fb1ec1c`; formally approved WSL SDK/toolchain preflight launcher returned `CreateProcess os error 5` **before launch**. Stage A preflight `NOT_RUN`, no harness/source/build/link, no alternate launcher/retry. [Scoped launcher/permission STOP evidence](evidence/inbox/gatea-d2-httpclient-integration-stageA-launcher-permission-stop-20261030.md). No scope advancement; only read-only permission-route review or separately authorized exact recovery may follow.
 
 ### Unresolved Gate A critical path
 
