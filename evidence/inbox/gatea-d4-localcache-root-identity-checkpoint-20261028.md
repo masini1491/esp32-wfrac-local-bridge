@@ -33,3 +33,14 @@ The user provided a terminal transcript executed as WSL non-root user `user@SHIN
 **Next**: user may SHA-verify and inspect the Windows read-only candidate, run it from the same Windows principal in PowerShell 7 and return its bounded output. If Windows byte hashes fail or physical ID is unavailable/inconsistent, stop and classify `INCONCLUSIVE` rather than infer identity. Once all pre-write checks are accepted, obtain explicit fresh approval for the already bounded one-time WSL `--prepare` overlay write. No Docker volume/container creation or native SDK build approval follows.
 
 **Invariant unchanged:** sole Hot `GATEA-D2`, same D4 child; D4 native `NOT_RUN / 0 of 2`, D3 closed `3/3`, Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, library readiness `PRESERVED`.
+
+
+## 2026-10-29 Windows PowerShell unsigned script policy STOP (no host file audit executed)
+
+User provided Windows PowerShell **7.6.9** transcript, running from `C:\Users\user\Downloads`. `Get-FileHash -Algorithm SHA256` for `d4-localcache-windows-readonly-20261029.ps1` returned `2EA0974528D02B5EC4F044AAB66FEAE3EE40149852FA6C23FAE316F3CF88B6CB`, matching the sealed candidate `2ea0974528d02b5ec4f044aab66feae3ee40149852fa6c23fae316f3cf88b6cb`. Invoking `pwsh -NoProfile -File ...` was blocked at the Windows execution-policy/signature gate: PowerShell reported `SecurityError` because the file was not digitally signed. **The script body was not run.** Do not represent its 17-hash check, target-absence test, marker/physical identity or `fsutil` result as observed.
+
+Classification: `WINDOWS_SCRIPT_EXECUTION_POLICY_BLOCKED` (permission/policy boundary, not evidence-integrity/fixture/SDK failure). The previously accepted WSL 17/17 and V2 ZIP 7/7 preflight remains limited to that user WSL context. No D4 overlay materialization, Docker volume, build or native attempt took place by this Windows command.
+
+**Alternative next scoped check:** user can enter limited read-only PowerShell interactive commands directly in the current terminal, without invoking or dot-sourcing the unsigned file, changing ExecutionPolicy, using `-ExecutionPolicy Bypass`, or calling `Unblock-File`. The signed-hash-checked candidate `.ps1` may be opened as *text data* solely to extract the 17 static path/digest pairs; then compare against the existing LocalCache root's Windows-side files and query optional NTFS File ID. An unavailable/mismatching File ID remains `PHYSICAL_IDENTITY_INCONCLUSIVE`. This route is a proposed host observation, **not yet executed or accepted**.
+
+Sole Hot and D4 scope unchanged; Windows identity `PENDING`; no `--prepare` or `--readback` authorization from this STOP. D4 native `NOT_RUN / 0 of 2`; Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, readiness `PRESERVED`.
