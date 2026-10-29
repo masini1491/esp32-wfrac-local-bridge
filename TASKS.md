@@ -4,7 +4,7 @@
 
 ## Sole Hot — Stage 3 / `GATEA-D2` (P2 aggregate HTTP attempt deadline)
 
-**Current:** `GATEA-D2` remains the only Hot. Latest child `GATEA-D4_PINNED_SDK_CUSTOM_TRANSPORT_COMPILE_LINK_ONLY_USER_AUTHORIZED_20261027` is **CLOSED** at `D4_NATIVE_C6_CUSTOM_TRANSPORT_COMPILE_LINK_SCOPED_ACCEPTED__CHILD_CLOSED`. **No new executable child or implementation campaign is admitted.**
+**Current:** `GATEA-D2` remains the only Hot. Latest child `GATEA-D4_PINNED_SDK_CUSTOM_TRANSPORT_COMPILE_LINK_ONLY_USER_AUTHORIZED_20261027` is **CLOSED** at `D4_NATIVE_C6_CUSTOM_TRANSPORT_COMPILE_LINK_SCOPED_ACCEPTED__CHILD_CLOSED`. **Current newly authorized bounded test-only child:** `D2_SDK_TRANSPORT_LIFECYCLE_TESTONLY_USER_AUTHORIZED__HOST_NOT_RUN` (one pinned SDK C transport dispatcher host test; no real network, HTTP/TLS, production implementation, or protected-volume mounts).
 
 **Project-wide boundary:** Gate A **`PENDING/UNPROVEN`**; Gate B **`HOLD`**; Stage 4 **`COLD`**; library readiness **`PRESERVED`**. No network, HTTP/HTTPS/TLS execution, hardware, ELF execution, source/SDK mutation, CI or Docker action is authorized by this queue cleanup.
 
@@ -30,9 +30,9 @@
 
 ### Next decision / preserved boundaries
 
-**Next candidate (READ_ONLY planning; not launched):** use D2/D3/D4 results to define the smallest SDK-behavior and ownership-observability proof for the existing D0-compatible Custom Transport direction. Decide exact API/HTTP+HTTPS paths, callback/event-post/hostname/TLS identity and close/quiescence witnesses, with fail-closed STOP criteria before any new test/implementation admission. [D2 ownership design](evidence/inbox/stage3-gatea-d2-p0-controllable-io-owner-design-20261018.md) · [D3 custom transport decision](evidence/inbox/gatea-d3-custom-transport-architecture-decision-20261027.md).
+**Current next test-only tranche (USER AUTHORIZED; HOST NOT_RUN):** use the [single pinned SDK transport lifecycle test-only admission](evidence/inbox/gatea-d2-sdk-transport-lifecycle-testonly-admission-20261029.md) to inspect real `transport.c` callback dispatch, close-error return, destroy order, and custom handle versus list ownership. Off-repo kit SHA256 `768894406d0694f49cb3a504b3576fb17295e27b691a48598af53eb851455410`; static/synthetic test-only checks PASS but actual user WSL/Docker run NOT_RUN. Then reconsider the broader SDK-behavior and ownership-observability proof for the existing D0-compatible Custom Transport direction. Decide exact API/HTTP+HTTPS paths, callback/event-post/hostname/TLS identity and close/quiescence witnesses, with fail-closed STOP criteria before any new test/implementation admission. [D2 ownership design](evidence/inbox/stage3-gatea-d2-p0-controllable-io-owner-design-20261018.md) · [D3 custom transport decision](evidence/inbox/gatea-d3-custom-transport-architecture-decision-20261027.md).
 
-**Not authorized:** D4 attempt02, D3 attempt04, Stage 2R harness rerun, new SDK/native/Docker campaign, production source change, real HTTP/TLS/network/hardware, CI, Gate B or Stage 4 promotion. Do not mount, delete, rewrite or reset protected D2 volume, D4 volume/container, preserved LocalCache fixture, ELF/map or historical receipts; no ACL/ownership/Git trust bypass. Any new execution needs a separate explicit user authorization and fresh repository/worktree/permission preflight.
+**Not authorized:** Any new SDK/native/Docker campaign outside this exact user-authorized one-shot D2 test-only container with no network or volume mounts; D4 attempt02, D3 attempt04, Stage 2R harness rerun, new SDK/native/Docker campaign, production source change, real HTTP/TLS/network/hardware, CI, Gate B or Stage 4 promotion. Do not mount, delete, rewrite or reset protected D2 volume, D4 volume/container, preserved LocalCache fixture, ELF/map or historical receipts; no ACL/ownership/Git trust bypass. Any new execution needs a separate explicit user authorization and fresh repository/worktree/permission preflight.
 
 **Cold registry:** [BACKLOG.md](BACKLOG.md) retains Stage 4 and other dormant candidates; their presence is not launch authority.
 
