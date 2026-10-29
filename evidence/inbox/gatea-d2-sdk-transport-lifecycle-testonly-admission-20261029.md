@@ -33,3 +33,18 @@ Before any user-host run, a static audit found missing test-only public prototyp
 Replacement kit `d2_lifecycle_sdk_source_testonly_v2_20261029.zip`, **8,790 bytes**, SHA-256 **`a0289998412a56a6913a02b4e501f01a6abc062f1580d84f47d5850655ec3b6e`**, ten ZIP members, exact manifest hash check and ZIP CRC PASS. New declarations match upstream test API signatures; other test cases and command/authorization boundaries unchanged. Bash syntax and standalone C test harness compilation PASS in ChatGPT isolated container. The real pinned SDK `transport.c` is **not available in this ChatGPT container**: no claim that the replacement has compiled/linked against the genuine vendor file or passed its tests. It is meant for a bounded human WSL exact-image run, with explicit STOP on any compilation or guard failure. Preserve this correction and do not silently retry/create a second container if a failure occurs.
 
 Current state remains `D2_SDK_TRANSPORT_LIFECYCLE_TESTONLY_USER_AUTHORIZED__HOST_NOT_RUN`; Gate A PENDING/UNPROVEN; no extra Stage, SDK build or network permission.
+
+
+## 2026-10-29 user WSL V2 test-only preflight result — PASS, no container created
+
+User-provided terminal in `/mnt/c/Users/user/Downloads/d2_lifecycle_probe_20261029`:
+
+- External ZIP `d2_lifecycle_sdk_source_testonly_v2_20261029.zip` SHA-256 `a0289998412a56a6913a02b4e501f01a6abc062f1580d84f47d5850655ec3b6e` matched pinned replacement.
+- Explicit `sha256sum -c manifest.sha256` returned OK on 9 manifest-tracked entries (`README.txt`, `guest_run.sh`, `host.sh`, five `stubs/` headers and `test_transport.c`). The same 9 OK entries were printed again during the helper's internal verification. No manifest hash failure reported.
+- `bash -n host.sh` and `bash -n guest_run.sh` emitted no syntax error; separate syntax-check exit codes were not captured.
+- `bash host.sh preflight` printed `D2_LIFECYCLE_HOST_PREFLIGHT_PASS__NO_CREATE` and terminal `D2_PREFLIGHT_EXIT=0`. A local `[sudo] password for user:` prompt appeared; no credential was exposed in the transcript.
+- ChatGPT inspected the exact previously pinned 8,790-byte V2 ZIP bytes again (SHA-256 matched) and reviewed `host.sh`: preflight checks pinned archive manifest, UID=1000, exact WSL working path, Docker default context, Server 29.1.3/root `/var/lib/docker`, image ID/platform `sha256:0d8c9773d48a327233f9c1d7c654ff0bcf133ae24503ea2e97a57cfe02b8cb67` / `linux/amd64`, and absence of named target container. These conditions passed **at the user-terminal preflight instant only**; this is not a broad daemon audit.
+
+**Scoped disposition:** `D2_SDK_TRANSPORT_LIFECYCLE_V2_HOST_PREFLIGHT_ACCEPTED__CREATE_NOT_RUN`. This is a successful **read-only admission checkpoint**, NOT evidence of SDK-backed dispatch/close/destroy test execution. The next phase is the already-approved **single** Docker `container create` of exact `wfrac-gatea-d2-lifecycle-testonly-20261029-01` using a sole readonly bind `/probe` and no network or named volumes; confirm with a separate `inspect` before considering `start`. If create/inspect fails, preserve any created container and STOP without retry/reset/permission bypass. The prior user authorization remains only for the originally scoped test-only chain; no repeat beyond the single allowed attempt.
+
+**Unchanged:** Real guest SDK `transport.c` compile/run `NOT_RUN`; current sole Hot `GATEA-D2`; D3 3/3 preserved, D4 1/2 preserved, protected volumes untouched insofar as the reported preflight script operates, no real HTTP/TLS/network/hardware, Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, readiness `PRESERVED`.
