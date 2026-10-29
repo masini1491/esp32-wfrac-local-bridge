@@ -4,7 +4,7 @@
 
 ## Sole Hot — Stage 3 / `GATEA-D2` (P2 aggregate HTTP attempt deadline)
 
-**Current:** `GATEA-D2` remains the only Hot. Latest child `GATEA-D4_PINNED_SDK_CUSTOM_TRANSPORT_COMPILE_LINK_ONLY_USER_AUTHORIZED_20261027` is **CLOSED** at `D4_NATIVE_C6_CUSTOM_TRANSPORT_COMPILE_LINK_SCOPED_ACCEPTED__CHILD_CLOSED`. **Current newly authorized bounded test-only child:** `D2_SDK_TRANSPORT_LIFECYCLE_TESTONLY_USER_AUTHORIZED__HOST_NOT_RUN` (one pinned SDK C transport dispatcher host test; no real network, HTTP/TLS, production implementation, or protected-volume mounts).
+**Current:** `GATEA-D2` remains the only Hot. Latest child `GATEA-D4_PINNED_SDK_CUSTOM_TRANSPORT_COMPILE_LINK_ONLY_USER_AUTHORIZED_20261027` is **CLOSED** at `D4_NATIVE_C6_CUSTOM_TRANSPORT_COMPILE_LINK_SCOPED_ACCEPTED__CHILD_CLOSED`. **Current newly authorized bounded test-only child:** `D2_SDK_TRANSPORT_LIFECYCLE_V2_HOST_PREFLIGHT_ACCEPTED__CREATE_NOT_RUN` (one pinned SDK C transport dispatcher host test; no real network, HTTP/TLS, production implementation, or protected-volume mounts).
 
 **Project-wide boundary:** Gate A **`PENDING/UNPROVEN`**; Gate B **`HOLD`**; Stage 4 **`COLD`**; library readiness **`PRESERVED`**. No network, HTTP/HTTPS/TLS execution, hardware, ELF execution, source/SDK mutation, CI or Docker action is authorized by this queue cleanup.
 
