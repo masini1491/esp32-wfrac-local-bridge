@@ -69,3 +69,31 @@ ChatGPT reverified its own existing V3 ZIP SHA-256 `0bd3c3b7f4be98ed4390ee374dc8
 **Scoped status:** `D2_SDK_LIFECYCLE_V3_CONTAINER_INSPECT_ACCEPTED__START_NOT_RUN`. The already user-authorized V3 single test-only `start` remains unconsumed. Next action is a **separate single invocation** of `bash host.sh start` and `echo "D2_V3_START_EXIT=$?"`. This helper performs the exact Inspect guard again and calls `docker container start --attach` once; its pinned guest test requires SDK blob checks, compilation of unmodified pinned `transport.c`, effective rw/non-noexec tmpfs and executable-mode gates before the four dispatcher assertions. On any unexpected line or nonzero exit STOP; never retry, restart, modify, remove or recreate this container. After an attempted start, `bash host.sh postcheck` is allowed for independent **read-only** exit/logs inspection, not an additional test.
 
 **Parent status unchanged:** Sole Hot `GATEA-D2`, native SDK lifecycle `NOT_RUN (0/4)` as of this entry; V2 one-start historical exit126 preserved; historical D2/D4 volumes not mounted. Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage 4 `COLD`, library readiness `PRESERVED`. No real HTTP/HTTPS/TLS/network/hardware authorization.
+
+
+## 2026-10-29 V3 first and only authorized user-host SDK-source-backed execution — 4/4 PASS; child CLOSED
+
+**Evidence source and limits:** The user pasted terminal output of `bash host.sh start`, independently echoed `D2_V3_START_EXIT=0`, then `bash host.sh postcheck` and independently echoed `D2_V3_POSTCHECK_EXIT=0`, all in the designated V3 WSL test-kit directory. ChatGPT does not control the user's Docker daemon and relies on these user-supplied execution/postcheck outputs together with the previously pinned kit/script and repository evidence. Only **one** V3 `start` was reported; it is consumed. No extra test/re-run is needed or authorized.
+
+**Host start and guest lines:**
+- The 9 manifest entries printed `OK`; `D2_LIFECYCLE_INSPECT_PASS__ONE_RO_BIND_NO_VOLUMES_NO_NETWORK`; `D2_LIFECYCLE_STARTING_ONE_TEST_ONLY`.
+- `D2_PINNED_SDK_SOURCES_BLOB_MATCH=4` established four exact, pinned upstream source blobs before executing the native test. The unchanged `esp-idf/components/tcp_transport/transport.c` was compiled together with test-only mocks and driver, rather than testing a reimplemented dispatcher.
+- New V3 guards printed `D2_V3_TMP_ACTUAL_MOUNT_EXEC_ALLOWED=PASS` and `D2_V3_COMPILED_BINARY_EXEC_MODE=PASS`. These are real *user-guest* checks this time, not the earlier 23 synthetic cases. They establish that the executable launch boundary which blocked V2 passed in V3, **without proving V2's exact historical kernel mount flags**.
+- Test driver printed:
+  `D2_CASE_PASS=dispatch_callback_separate_close_destroy`
+  `D2_CASE_PASS=close_error_propagated_but_destroy_independent`
+  `D2_CASE_PASS=missing_close_callback_returns_zero_negative_guard`
+  `D2_CASE_PASS=unregistered_custom_handle_not_owned_by_transport_list`
+  `D2_TEST_ONLY_VENDOR_DISPATCH_CASES_PASS=4`
+  `D2_TEST_ONLY_NO_NETWORK_NO_HTTP_NO_TLS_NO_PRODUCTION`
+  `D2_SDK_SOURCE_BACKED_HOST_DISPATCH_SCOPED_PASS`
+  `D2_LIFECYCLE_START_ATTACH_EXIT_0__NO_RETRY`.
+- `D2_V3_START_EXIT=0`.
+
+**Independent postcheck:** `bash host.sh postcheck` repeated 9/9 manifest `OK`, container inspect PASS, then printed `D2_LIFECYCLE_CONTAINER_EXIT=0`, `D2_LIFECYCLE_OOM=false`, the same four source/guest guards and case PASS lines, followed by `D2_LIFECYCLE_POSTCHECK_READONLY__NOT_RUNTIME_GATE_A_ACCEPTANCE` and `D2_V3_POSTCHECK_EXIT=0`. This is independent read-only confirmation of the retained, terminated container's exit and logs; no restart.
+
+**Case-level bounded interpretation:** From the SHA-verified V3 ZIP `d2_lifecycle_sdk_source_testonly_v3_20261029.zip` SHA-256 `0bd3c3b7f4be98ed4390ee374dc87c5c6c84a2f3de93803fcca4fd9bda4f0877`, ChatGPT re-read `test_transport.c`. The four asserted cases (1) verify dispatch of read/write/poll with timeouts, explicit close separate from destroy; (2) verify close error propagation and independently controlled destruction with a fake pending-callback guard; (3) demonstrate missing `_close` callback returns zero and must not be trusted as physical close; (4) verify that destruction of a list-owned handle does not destroy a distinct, unregistered custom handle. **Fake pending-callback flags are not real async callback quiescence proof.** No HTTP client handle, real socket, TLS, DNS, HTTP parser or network is exercised.
+
+**Scope-qualified acceptance:** `D2_V3_PINNED_SDK_TRANSPORT_DISPATCH_SCOPED_ACCEPTED__CHILD_CLOSED`. Exact SDK transport dispatch/close/destroy/list-ownership host-test assertions **4/4 PASS**, V3 one-time `start` **CONSUMED 1/1**, container exited code 0, OOM false and independently postchecked. This acceptance is for the **SDK transport dispatcher layer only**. V2 remains independent historical execution-blocked `exit 126`; original D2 archived volume, D4 container/volume, prior D3 3/3 and D4 1/2 evidence are preserved, not reinterpreted or rerun. Do not restart or delete the V3 test container or mutate production, SDK or historical artifacts.
+
+**Still UNPROVEN; next work is read-only decision until fresh authorization:** The `esp_http_client_config_t.transport` integration, actual `esp_http_client_close/cleanup` return handling, callback/event-post lifetime, TLS trust/hostname/SNI, DNS and controllable I/O aggregate monotonic deadline, L2 atomic fail-close, and L3 physical socket/TLS quiescence/quarantine require their own evidence. **Parent Sole Hot `GATEA-D2`; Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, library readiness `PRESERVED`.** No automatically admitted next executable child, no additional Docker or network authorizations.
