@@ -24,3 +24,12 @@ The kit has two operator-controlled stages before any guest run: `preflight` (SH
 - D2 L1/L2/L3 and real SDK HTTP/HTTPS/TLS runtime semantics remain `PENDING/UNPROVEN`; Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, library readiness `PRESERVED`. Prior D4 1/2 and D3 3/3 unchanged.
 
 **Future proof required beyond this narrow test:** SDK HTTP client custom-transport ownership, teardown/failure path, callback/event-post quiescence, HTTPS SNI/certification and monotonic controllable I/O must receive separate independent evidence/approval. The SDK dispatcher test cannot close full D2 or Gate A.
+
+
+## 2026-10-29 pre-handoff static stub declaration correction — v2 supersedes v1
+
+Before any user-host run, a static audit found missing test-only public prototypes in the mock `esp_transport.h`; these could produce undeclared-function build errors when the **unmodified** pinned SDK `transport.c` is compiled. No host run or Docker start had been reported. The original kit `d2_lifecycle_sdk_source_testonly_20261029.zip` SHA `768894406d0694f49cb3a504b3576fb17295e27b691a48598af53eb851455410` is **SUPERSEDED / DO NOT RUN**. This is a test stub compatibility correction, not production SDK/transport change.
+
+Replacement kit `d2_lifecycle_sdk_source_testonly_v2_20261029.zip`, **8,790 bytes**, SHA-256 **`a0289998412a56a6913a02b4e501f01a6abc062f1580d84f47d5850655ec3b6e`**, ten ZIP members, exact manifest hash check and ZIP CRC PASS. New declarations match upstream test API signatures; other test cases and command/authorization boundaries unchanged. Bash syntax and standalone C test harness compilation PASS in ChatGPT isolated container. The real pinned SDK `transport.c` is **not available in this ChatGPT container**: no claim that the replacement has compiled/linked against the genuine vendor file or passed its tests. It is meant for a bounded human WSL exact-image run, with explicit STOP on any compilation or guard failure. Preserve this correction and do not silently retry/create a second container if a failure occurs.
+
+Current state remains `D2_SDK_TRANSPORT_LIFECYCLE_TESTONLY_USER_AUTHORIZED__HOST_NOT_RUN`; Gate A PENDING/UNPROVEN; no extra Stage, SDK build or network permission.
