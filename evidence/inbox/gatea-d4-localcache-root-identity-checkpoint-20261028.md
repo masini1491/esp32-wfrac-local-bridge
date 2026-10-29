@@ -18,3 +18,18 @@
 4. **Do not run `--prepare` or `--readback` yet.** A fresh user go-ahead after preflight closure and a narrowly accepted script identity is needed before any user-local overlay write. No old `--prepare` rerun, alias/root creation, original evidence edit or extra Stage.
 
 **Current unchanged state:** D4 native C6 compile/link `NOT_RUN`, `0/2`; no D4-only Docker volume has been created as established evidence; original D2 volume remains protected and must not be mounted for D4; D3 CLOSED `3/3`; Stage2R CLOSED limited; Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, library readiness `PRESERVED`.
+
+## 2026-10-29 user-terminal WSL preflight result — 17/17 originals PASS; physical identity still pending
+
+The user provided a terminal transcript executed as WSL non-root user `user@SHINY-323` in `/mnt/c/Users/user/Downloads`:
+
+- Candidate helper SHA-256: `cf3b63e9c45641beed4378b312ffe1c93ef1f1ebd4f09b336d3d5bbddb293809` — **MATCH**.
+- V2 review ZIP SHA-256: `d85e863c0ea97961682b5c381b54f35420a2eb57f13b6ffc4d35a72c6143bd70` — **MATCH**.
+- `python3 -I -B d4-v2-localcache-transfer-20261028.py --preflight` printed: `D4_V2_ROOT_DEVICE=70`, `D4_V2_ROOT_INODE=16325548649541449`, `D4_V2_ORIGINAL_FILES_HASH_PASS=17`, `D4_V2_ZIP_MEMBERS_HASH_PASS=7`, and `D4_V2_LOCALCACHE_PREFLIGHT_PASS__NO_WRITE`.
+- Source inspection of the exact byte-hashed helper establishes that this success path first validates root object identity, original marker content/nonce, the 17 pinned original source hashes and sealed seven-member ZIP/manifest, and refuses existing `d4-v2/`; `--preflight` does not call the writer. This is **user-reported live WSL command output plus ChatGPT source review**, not ChatGPT direct Windows filesystem access. The shell exit code was not printed independently, although command returned to the prompt with a full PASS marker.
+- **Disposition**: `D4_WSL_LOCALCACHE_PREFLIGHT_ACCEPTED__WINDOWS_PHYSICAL_IDENTITY_PENDING`. WSL byte-integrity and absent-destination *at the supplied preflight time* are supported, and the old literal-path STOP no longer blocks this WSL root's read-only check. The underlying Windows/WSL physical-object identity has NOT yet been independently compared; **no `--prepare` or `--readback` execution has been reported**.
+- ChatGPT separately produced a *Windows PowerShell 7 read-only* candidate `d4-localcache-windows-readonly-20261029.ps1`, 5,798 bytes, SHA-256 `2ea0974528d02b5ec4f044aab66feae3ee40149852fa6c23fae316f3cf88b6cb`, with the 17 fixed original hashes, marker check, target absence check and optional `fsutil file queryfileid` metadata. The script has **not been run in Windows**, and cannot be declared PowerShell runtime-validated in ChatGPT's Linux environment. Its only intended action is read-only identity reconciliation; it does not authorize target writes.
+
+**Next**: user may SHA-verify and inspect the Windows read-only candidate, run it from the same Windows principal in PowerShell 7 and return its bounded output. If Windows byte hashes fail or physical ID is unavailable/inconsistent, stop and classify `INCONCLUSIVE` rather than infer identity. Once all pre-write checks are accepted, obtain explicit fresh approval for the already bounded one-time WSL `--prepare` overlay write. No Docker volume/container creation or native SDK build approval follows.
+
+**Invariant unchanged:** sole Hot `GATEA-D2`, same D4 child; D4 native `NOT_RUN / 0 of 2`, D3 closed `3/3`, Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, library readiness `PRESERVED`.
