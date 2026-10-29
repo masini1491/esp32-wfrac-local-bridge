@@ -70,3 +70,14 @@ The user ran `bash host.sh inspect` in `/mnt/c/Users/user/Downloads/d2_lifecycle
 **Specific guest execution boundary:** `guest_run.sh` requires pinned `IDF_PATH` Git HEAD `7101770dc6db2667b3c477cc31365dd1acd6db4e` and exact four SDK Git blob identities; then compiles the **unmodified pinned** `components/tcp_transport/transport.c` with mock headers and `test_transport.c` into private container tmpfs using `cc` and runs only test-only dispatcher cases. It neither starts a socket server nor makes actual HTTP/TLS/network/device requests. Any missing `cc`, SDK blob mismatch, compile error, timeout or test failure must remain observed failure, not be retried or backfilled as PASS. The test-only container has 180-second timeout; retained D2/D4 volumes are not mounted.
 
 **Unchanged higher gates:** `GATEA-D2` sole Hot; SDK-backed test actual outcome **NOT_RUN** as of this evidence commit; Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, readiness `PRESERVED`, D3 model 3/3 and D4 native 1/2 allocations unchanged. No production source, SDK, Docker volume, network or hardware mutation.
+
+
+## 2026-10-29 user-terminal single start outcome: STOP at executable launch
+
+The user reported one authorized `bash host.sh start`: archive 9/9 OK, container inspect PASS, guest pinned SDK blob checks 4/4 MATCH, followed by `/probe/guest_run.sh: line 29: /tmp/d2-life-test/probe: Permission denied`, terminal `D2_START_EXIT=126`. No four-case SDK dispatcher test result or guest-scoped PASS marker was reported. The one-time start is consumed.
+
+An independent user `bash host.sh postcheck` returned container exit 126, OOM false, the same SDK blob and permission-denied log lines, its read-only postcheck marker and `D2_POSTCHECK_EXIT=0`. This is readback PASS, not test PASS.
+
+The pinned `guest_run.sh` compiles the SDK transport source and test driver into `/tmp/d2-life-test/probe`, then invokes that binary at line 29. Reaching line 29 with `set -e` supports compile-command exit 0; the test program itself did not execute. The existing container's `/tmp` was configured as tmpfs without an explicit `exec` option. A `noexec` mount is a plausible explanation, but actual mount flags and file permissions were not independently inspected, so the cause is not yet proven.
+
+**Disposition:** `D2_SDK_LIFECYCLE_V2_ONE_START_CONSUMED_EXIT126__EXECUTION_BLOCKED`. User-terminal SDK lifecycle test cases **NOT_RUN (0/4)**. Preserve the exited container and existing evidence. No restart, re-create, permission change, additional test attempt or production source change is authorized. Sole Hot GATEA-D2; Gate A PENDING/UNPROVEN, Gate B HOLD, Stage 4 COLD, readiness PRESERVED. D3 and D4 closed historical results unchanged.
