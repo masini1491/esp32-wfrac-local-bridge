@@ -21,3 +21,12 @@ If any guard or readback fails, STOP immediately: do not repeat `volume create`,
 The previous V2 overlay handoff/readback is accepted at user-terminal tier in [D4 LocalCache evidence](gatea-d4-localcache-root-identity-checkpoint-20261028.md): `--preflight`, `--prepare`, separate-process `--readback` all exit 0; 17 originals and seven overlay files hash-match. Original V2 root and D2 volume stay preserved.
 
 **As of this admission:** NO current human-terminal volume creation response received; D4 output volume is `NOT_CREATED / UNVERIFIED` at this task's evidence tier, Docker volume execution `PENDING`, C6 native compile/link `NOT_RUN 0/2`. Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, library readiness `PRESERVED`. Even successful volume creation/readback will require a **separate explicit user approval** before any Docker container create/start or ESP-IDF native compile/link.
+
+
+## 2026-10-29 D4-only volume creation result (user terminal)
+
+Status: `D4_VOLUME_CREATED_USER_READBACK_ACCEPTED__CONTAINER_BUILD_HELD`.
+
+User terminal verified helper SHA-256 `9b4951c49a6377eb4e1cbaef249da9a0ddc0011265eb1290745faeaca0b22e25`. One permitted human-run volume creation returned exit 0. The transcript reported absent-name-and-path preflight PASS, Docker server 29.1.3, root `/var/lib/docker`, volume storage ext4, newly created `wfrac-gatea-d4-c6-20261028-01` with driver local and mountpoint `/var/lib/docker/volumes/wfrac-gatea-d4-c6-20261028-01/_data`, ext4 backing filesystem, distinct D2/D4 directory identities, unchanged D2 volume metadata, and final marker `D4_VOLUME_CREATED_AND_INSPECTED__NO_CONTAINER_OR_BUILD`.
+
+This closes only the volume creation/post-create check, at user-provided terminal evidence tier. D2 volume content was not independently rehashed; metadata PASS does not prove its bytes unchanged. Do not rerun the creation script or delete/recreate volumes. Container creation, mounts, SDK compile/link, CI and hardware remain NOT AUTHORIZED. D4 native 0/2, Gate A PENDING/UNPROVEN, Gate B HOLD, Stage 4 COLD and library readiness PRESERVED. The previous pending-creation statement is historical.
