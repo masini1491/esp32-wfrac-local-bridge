@@ -28,3 +28,18 @@ Current Hot child: `GATEA-D2-HTTPCLIENT-INTEGRATION-BUILD_LINK_TESTONLY_20261029
 **Authorization and STOP:** This single permission recovery attempt is consumed. No automatic repeat, alternate shell/launcher, elevation, ACL/safe.directory/ownership mutation, sandbox setup rerun, WSL workaround, SDK build or test; permission failure cannot transfer scope to a different actor. The next action, if separately requested, should be **bounded read-only diagnosis of the actual blocked Windows process-creation boundary**, including specific Windows principal/token, security policy/deny telemetry and process-creation context using the available evidence/access mechanism; where not available, maintain BLOCKED and ask for a targeted distinct user authorization. Nothing about this report promotes a new executable child.
 
 **Higher state unchanged:** sole Hot `GATEA-D2`, this child Stage A BLOCKED/NOT_RUN, B/C NOT_STARTED, D design not executed as part of this recovery, Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, library readiness `PRESERVED`. Historic D2/D3/D4/V2/V3 retained.
+
+
+## 2026-10-30 09:09 (Asia/Taipei) — post-reboot approved single preflight failed before PowerShell creation
+
+**User-provided Codex report; no host raw tool output independently retrieved in this session:** After reboot, the operator used the formal permission procedure for **one** preflight attempt. The executor responded:
+```
+Failed to create unified exec process: 存取被拒。 (os error 5)
+```
+The user expressly reports that **PowerShell was not created**. This attempt did not enter the earlier `wsl.exe` child-create boundary, WSL, Ubuntu/bash, pinned ESP-IDF or SDK/toolchain preflight; no source/harness/configure/build/link, installs, file changes, network, Docker or hardware. Single attempt consumed and Codex stopped; no automatic retry.
+
+**Evidence distinction across the three reports:** The initial denied launcher had generic `CreateProcess os error 5`. The later, separately approved attempt successfully created PowerShell but Windows denied creating `C:\Windows\System32\wsl.exe` (PowerShell exit 1, original tool ref `4ca4f1`). After reboot this attempt failed **earlier**, at `unified exec` before PowerShell. The shared `access denied` wording does NOT establish a single policy, principal, resource or common root cause; neither is this evidence of an ESP-IDF / Linux / WSL source failure. Exact blocked Windows object, effective token, policy/telemetry and authorization mapping remain `UNVERIFIED`. Desktop runtime sandbox setup and prior host-shell ability must not be promoted to current Codex launcher capability.
+
+**Scoped state unchanged:** `STAGE_A_LAUNCHER_PERMISSION_BLOCKED__PREFLIGHT_NOT_RUN`. No A SDK feasibility PASS/FAIL; B/C NOT_STARTED; D design-only scope unchanged. Do not retry the same launch, change executables, workdir, accounts, sandbox/ACL/Git trust, perform new setup, elevate by alternate means, modify production, rebuild SDK, delete containers/volumes or open another execution route without separate user authorization. Recommended next evidence would be the **read-only** operation-level Windows process creation deny decision and actual effective security context of this failure; this recommendation is not itself a new execution grant.
+
+Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, library readiness `PRESERVED`; V3 dispatcher 4/4 accepted/closed, D3/D4/historical evidence unchanged.
