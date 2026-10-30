@@ -43,3 +43,14 @@ The user expressly reports that **PowerShell was not created**. This attempt did
 **Scoped state unchanged:** `STAGE_A_LAUNCHER_PERMISSION_BLOCKED__PREFLIGHT_NOT_RUN`. No A SDK feasibility PASS/FAIL; B/C NOT_STARTED; D design-only scope unchanged. Do not retry the same launch, change executables, workdir, accounts, sandbox/ACL/Git trust, perform new setup, elevate by alternate means, modify production, rebuild SDK, delete containers/volumes or open another execution route without separate user authorization. Recommended next evidence would be the **read-only** operation-level Windows process creation deny decision and actual effective security context of this failure; this recommendation is not itself a new execution grant.
 
 Gate A `PENDING/UNPROVEN`, Gate B `HOLD`, Stage4 `COLD`, library readiness `PRESERVED`; V3 dispatcher 4/4 accepted/closed, D3/D4/historical evidence unchanged.
+
+
+## 2026-10-30 09:16 (Asia/Taipei) — follow-up user-reported PowerShell launched, wsl.exe still denied
+
+**Provenance:** User relayed one further Codex attempt at 09:16, not independently captured directly from its original tool output in this ChatGPT session. The terminal excerpt reports: `An error occurred trying to start process 'C:\Windows\System32\wsl.exe' with working directory 'C:\Users\user\Documents\esp32-wfrac-local-bridge'. 存取被拒。`. The user reports **PowerShell launched** and `wsl.exe` process creation failed, PowerShell exit **1**. After the error, Codex STOPped with no automatic retry or settings modification.
+
+**Inference boundary:** Unlike the previous 09:09 report where the unified executor could not launch even PowerShell (`os error 5`), this failure occurred **at Windows child-process creation for wsl.exe**. This makes the hypothesis that *only* an incomplete reboot startup explains the series unsupported, but does **not** prove a shared root cause, Windows security control identity, denial object or effective token. Do not promote the launcher's intermittent ability to start PowerShell into WSL permission recovery, and do not treat the failure as a Linux/SDK/toolchain diagnostic result.
+
+**Current STOP retained:** `STAGE_A_LAUNCHER_PERMISSION_BLOCKED__PREFLIGHT_NOT_RUN`. SDK preflight NOT_RUN, B/C harness/build/link NOT_STARTED, no Gate A evidence gained. Maintain no automatic retry / no alternate launcher, privilege changes, new sandbox setup, ACL/Git trust adjustments or SDK execution without a separately justified authorization. To advance diagnosis, correlate **existing read-only** process-creation/permission-denial records for the exact failed invocation (security principal/token, denied resource, sandbox approval mapping), without repeating the SDK attempt. Existing historical D2/D3/D4/V2/V3 evidence and protected resources unaffected by the reported attempt.
+
+**Unchanged:** sole Hot GATEA-D2, Gate A PENDING/UNPROVEN, Gate B HOLD, Stage4 COLD, library readiness PRESERVED.
