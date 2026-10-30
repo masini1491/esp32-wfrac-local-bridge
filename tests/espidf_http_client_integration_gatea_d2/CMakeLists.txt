@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.22)
+set(COMPONENTS main)
+set(SDKCONFIG "${CMAKE_BINARY_DIR}/sdkconfig")
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+project(gatea_httpclient)
