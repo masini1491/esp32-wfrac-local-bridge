@@ -1,0 +1,22 @@
+# GATEA-D2 Stage D namespace Gate A — corrective02 reported PASS; raw receipts pending (2026-10-30)
+
+**Disposition: NAMESPACE_A_REPORTED_PASS__RAW_RECEIPT_REVIEW_PENDING.** This is acceptance of a detailed Codex **report**, not independently audited raw tool records, effective zero-egress enforcement or authorization to resume Guard B/negative controls C. ChatGPT independently checked canonical GitHub revision and Linux flag/namespace semantics, but has **not** received raw records 8e745c and 4b0940 and did not perform a new namespace probe.
+
+## Provenance
+- Project: masini1491/esp32-wfrac-local-bridge; Codex reports safe clean main fast-forward c9b3ac432395b2286313d26c1e81d2c5df695acc to e36902446f8fdb8e82edc043af5cf923f4996d30; final revision independently verified as remote main. Playbook: 29d6cb3edd92ea9c899a2ec10c7ee4fa4bb7a70d.
+- One authorized A-only corrective02 attempt; reported 0.0512 s including cleanup against 10-second ceiling, no target ELF, filter, B/C, network/DNS, compile, workspace/source modification or new file.
+- Outside supervisor PID 13778 -> unshare wrapper 13779 -> namespace init 13780 -> metadata reader host PID 13781; reader start-time 1864878 ticks; outside NSpid=[13781,2], inside PID=2. Codex reports the live reader PID/start time/ancestry and namespace IDs were observed from the supervisor outside its namespaces.
+
+## Codex-reported receipts (NOT independently rehashed or fetched)
+- Outside user namespace 4026531837 -> reader 4026532226; mount 4026532218 -> 4026532228; PID 4026532221 -> 4026532229; network 4026531833 -> 4026532230. Outside live proc namespace reads and child readings reported consistent, and all four differ from supervisor.
+- namespace UID/GID 0 maps to original WSL UID/GID 1000. Reader descriptors: 0 release-control pipe, 1 stdout pipe, 2 stderr pipe; no socket or unknown FD. No shared mounts; sysfs read-only; net only lo with zero counters; IPv4 routes empty and IPv6 only loopback.
+- Child directly read /sys/class/net/lo/flags=0x8. IFF_LOOPBACK bit 0x8 is set and IFF_UP bit 0x1 absent. Linux authoritative definitions confirm correct interpretation: https://github.com/torvalds/linux/blob/master/include/uapi/linux/if.h . Outside namespace identity comparison is documented: https://man7.org/linux/man-pages/man7/namespaces.7.html .
+- Namespace init captured reader raw waitpid status 0 and normal exit 0; wrapper returned 0. Parent reportedly checked that wrapper/init/reader proc entries disappeared and external namespace/sysfs unchanged; 10-second timeout did not fire. Source SHA-256: 6f84b27554a1db345e9b4042ad263abc99616da8c9efa6deaf4a7f1916a0f420. Stdout 6217 bytes / SHA-256 fb4c9630a962c60a5d74d7aa2b0cfc75d09ee95912492326f4468af0d788e5fc. Stderr 0 bytes / SHA-256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855. Original detailed argv, reader source, host/child live read receipts at tool record 8e745c; cleanup record 4b0940.
+- This successfully addresses **at reported-evidence tier** attempt01 omissions: external trusted supervisor live-child cross-correlation and direct loopback DOWN flags. Namespace inode equality with previous attempt may result from allocator reuse; does not imply this was the same process or furnish raw proof.
+- Parent NoNewPrivs=0, Seccomp=0, namespaced capabilities still present and restricted filesystem guard still absent. These do not refute a pre-guard namespace capability probe but leave effective enforcement UNPROVEN.
+
+## Exact pending evidence boundary and STOP
+- Raw tool records 8e745c and 4b0940 were not attached, and their printed source/output bytes were not independently recomputed by ChatGPT. Reference strings and reported SHA-256s do not replace receipts. No independent artifact-level Gate A PASS is asserted.
+- **Do not rerun the namespace attempt.** Read-only handoff may export existing sanitized tool output: exact metadata reader source, unmodified 6217-byte stdout and empty stderr, outside supervisor live proc correlation, child loopback flags, original argv, raw nested wait status and outer cleanup checks. Hash each and compare to above. If unavailable, retain reported-evidence tier.
+- Corrective02 attempt is consumed. Earlier active guard child remains paused: B filter implementation and C synthetic controls NOT_RUN and not readmitted. Any further task needs independent ChatGPT review and separate user authorization.
+- Sole Hot parent GATEA-D2; overall Gate A PENDING/UNPROVEN, Gate B HOLD, Stage 4 COLD, library readiness PRESERVED and L1/L2/L3 UNPROVEN.
