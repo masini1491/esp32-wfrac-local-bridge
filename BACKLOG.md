@@ -5,8 +5,8 @@ Cold coordination only. This surface has **no execution authority**: a Cold item
 ## Committed sequence — current position
 
 - **Stage 1 (PR #6)** and **Stage 2 (PR #7)** were already accepted within their historical software/CI evidence scopes; do not keep their execution contracts in the active or Cold queue. Exact former descriptions and Git pins are preserved in [BACKLOG.md@6b66a469](https://github.com/masini1491/esp32-wfrac-local-bridge/blob/6b66a469f2683800939e8ab98e460dbdf9cac63a/BACKLOG.md).
-- **Stage 3 / `GATEA-D2`** remains the **sole Hot**. Its open L1/L2/L3 proof conditions, completed D3/D4 child scopes and STOPs are owned by [TASKS.md](TASKS.md); do not duplicate its volatile status here.
-- **Stage 4** stays **COLD** pending formal Stage 3 closure, fresh evidence/source review, and separate promotion/authorization. Earlier sequencing authorization does not launch it.
+- **Stage 3 / `GATEA-D2`** is **temporarily parked / blocked** on the original Codex WSL launcher and independent raw-receipt prerequisites while user-authorized `PORTABLE-HDR-001` is the sole Hot. No Gate A progress, test-acceptance or original A3 authorization has been upgraded/revoked; the A3 start counter remains **0/1**. Preserve the full existing Stage 3 contract and D3/D4/history at [pre-pause TASKS.md](https://github.com/masini1491/esp32-wfrac-local-bridge/blob/da8e508f9a475fd5a13c5b638f363c06556e3785/TASKS.md); before restarting, reconcile current governance and require fresh scope-appropriate execution admission.
+- **Stage 4** remains **COLD**, still dependent on formal Stage 3 closure, fresh evidence/source review and separate promotion/authorization; `PORTABLE-HDR-001` does not satisfy that dependency. Earlier sequencing authorization does not launch it.
 
 ## COMMITTED — Stage 4 (COLD; not admitted to execution)
 
