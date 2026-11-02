@@ -149,10 +149,82 @@ class SelectorTests(unittest.TestCase):
                     scope.host_regressions(altered, required=True)
 
     def test_protected_host_commands(self):
-        before = "    runs-on: ubuntu-latest\n      - name: Check Python syntax\n        run: existing\n"
-        self.assertEqual(scope.protected_workflow(before, scope.WORKFLOWS[1]), scope.protected_workflow("# routing\n" + before, scope.WORKFLOWS[1]))
+        before = host_workflow_fixture()
+        self.assertEqual(scope.protected_workflow(before, scope.WORKFLOWS[1]),
+                         scope.protected_workflow("# routing\n" + before, scope.WORKFLOWS[1]))
         self.assertNotEqual(scope.protected_workflow(before, scope.WORKFLOWS[1]),
-                            scope.protected_workflow(before.replace("existing", "different"), scope.WORKFLOWS[1]))
+                            scope.protected_workflow(before.replace("run: python tools/validate_contracts.py",
+                                                                    "run: echo skipped"), scope.WORKFLOWS[1]))
+
+
+def host_workflow_fixture():
+    return """jobs:
+  validate-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run offline CI scope tests
+        run: python -B -m unittest discover -s tests/ci_scope -p 'test_*.py'
+      - name: Run offline Local CI tests
+        run: python -B -m unittest discover -s tests/local_ci -p 'test_*.py'
+      - name: Check Python syntax
+        run: python -m py_compile tools/validate_contracts.py
+      - name: Validate contract
+        run: python tools/validate_contracts.py
+      - name: Run host tests
+        run: python -m unittest tests.host.test_validate_contracts
+"""
+
+
+class PortableHeaderWorkflowTests(unittest.TestCase):
+    def setUp(self):
+        self.before = host_workflow_fixture()
+        self.step = scope.PORTABLE_HEADER_STEP
+        self.anchor = scope.HOST_TEST_STEP_MARKER
+        self.candidate = self.before.replace(self.anchor, self.step + self.anchor)
+
+    def test_exact_portable_header_step_is_the_only_accepted_host_change(self):
+        scope.require_protected_workflow_match(self.before, self.candidate, scope.WORKFLOWS[1])
+
+    def test_header_step_command_tamper_is_rejected(self):
+        altered = self.candidate.replace(
+            "python -B tests/host_cpp/check_portable_headers.py", "python other-check.py")
+        with self.assertRaises(scope.ScopeError):
+            scope.require_protected_workflow_match(self.before, altered, scope.WORKFLOWS[1])
+
+    def test_header_step_omission_is_rejected(self):
+        with self.assertRaises(scope.ScopeError):
+            scope.require_protected_workflow_match(self.before, self.before, scope.WORKFLOWS[1])
+
+    def test_header_step_duplication_is_rejected(self):
+        altered = self.before.replace(self.anchor, self.step + self.step + self.anchor)
+        with self.assertRaises(scope.ScopeError):
+            scope.require_protected_workflow_match(self.before, altered, scope.WORKFLOWS[1])
+
+    def test_moved_header_step_is_rejected(self):
+        altered = self.candidate.replace(self.step, "", 1)
+        syntax_marker = "      - name: Check Python syntax\n"
+        altered = altered.replace(syntax_marker, self.step + syntax_marker)
+        with self.assertRaises(scope.ScopeError):
+            scope.require_protected_workflow_match(self.before, altered, scope.WORKFLOWS[1])
+
+    def test_original_host_regression_change_is_rejected(self):
+        altered = self.candidate.replace(
+            "python -B -m unittest discover -s tests/ci_scope -p 'test_*.py'",
+            "echo skipped")
+        with self.assertRaises(scope.ScopeError):
+            scope.require_protected_workflow_match(self.before, altered, scope.WORKFLOWS[1])
+
+    def test_unrelated_host_step_is_rejected(self):
+        unrelated = "      - name: Unexpected step\n        run: echo unexpected\n"
+        altered = self.candidate.replace(self.anchor, unrelated + self.anchor)
+        with self.assertRaises(scope.ScopeError):
+            scope.require_protected_workflow_match(self.before, altered, scope.WORKFLOWS[1])
+
+    def test_sdk_guard_change_is_rejected(self):
+        sdk = Path(scope.WORKFLOWS[0]).read_text(encoding="utf-8")
+        altered = sdk.replace("needs: scope", "needs: other", 1)
+        with self.assertRaises(scope.ScopeError):
+            scope.require_protected_workflow_match(sdk, altered, scope.WORKFLOWS[0])
 
 
 class EventTests(unittest.TestCase):

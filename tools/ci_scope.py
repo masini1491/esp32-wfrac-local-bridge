@@ -26,6 +26,11 @@ HOST_REGRESSIONS = {
     "Run offline CI scope tests": "python -B -m unittest discover -s tests/ci_scope -p 'test_*.py'",
     "Run offline Local CI tests": "python -B -m unittest discover -s tests/local_ci -p 'test_*.py'",
 }
+PORTABLE_HEADER_STEP = (
+    "      - name: Check portable public headers\n"
+    "        run: python -B tests/host_cpp/check_portable_headers.py\n\n"
+)
+HOST_TEST_STEP_MARKER = "      - name: Run host tests\n"
 
 
 class ScopeError(ValueError):
@@ -104,12 +109,40 @@ def host_regressions(text, required=False):
 def protected_workflow(text, path, require_sdk_guards=False):
     if path == WORKFLOWS[0]:
         return tuple(job_block(text, job, require_sdk_guards) for job in SUITES.values())
-    marker = "      - name: Check Python syntax\n"
     text = text.replace("\r\n", "\n")
     host_regressions(text)
-    if text.count(marker) != 1 or "    runs-on: ubuntu-latest\n" not in text:
+    match = re.search(r"^  validate-contracts:\n(.*?)(?=^  [\w-]+:\n|\Z)",
+                      text, re.M | re.S)
+    if not match:
         raise ScopeError("protected Host suite missing")
-    return text[text.index(marker):].rstrip()
+    job = match[1]
+    marker = "      - name: Check Python syntax\n"
+    if (job.count(marker) != 1 or job.count("    runs-on: ubuntu-latest\n") != 1 or
+            job.count(HOST_TEST_STEP_MARKER) != 1):
+        raise ScopeError("protected Host suite structure changed")
+
+    step_name = "      - name: Check portable public headers\n"
+    step_command = "        run: python -B tests/host_cpp/check_portable_headers.py\n"
+    if step_name in job or step_command in job:
+        if (job.count(PORTABLE_HEADER_STEP) != 1 or job.count(step_name) != 1 or
+                job.count(step_command) != 1):
+            raise ScopeError("unreviewed portable-header Host step")
+        step_start = job.index(PORTABLE_HEADER_STEP)
+        host_test_start = job.index(HOST_TEST_STEP_MARKER)
+        if step_start + len(PORTABLE_HEADER_STEP) != host_test_start:
+            raise ScopeError("portable-header Host step moved from its approved position")
+        job = job.replace(PORTABLE_HEADER_STEP, "", 1)
+    elif require_sdk_guards:
+        raise ScopeError("mandatory portable-header Host step missing")
+
+    return job.rstrip()
+
+
+def require_protected_workflow_match(before, candidate, path):
+    baseline = protected_workflow(before, path)
+    current = protected_workflow(candidate, path, require_sdk_guards=True)
+    if baseline != current:
+        raise ScopeError("workflow build/test semantics changed; explicit full approval required")
 
 
 def fetch_json(route):
@@ -200,9 +233,7 @@ def plan(event_name, event, repo, get=fetch_json):
             if data.get("encoding") != "base64":
                 raise ScopeError("base workflow content unavailable")
             before = base64.b64decode(data["content"], validate=False).decode("utf-8")
-            if protected_workflow(before, path) != protected_workflow(
-                    Path(path).read_text(), path, require_sdk_guards=True):
-                raise ScopeError("workflow build/test semantics changed; explicit full approval required")
+            require_protected_workflow_match(before, Path(path).read_text(), path)
     stable(get(root))
     return dict.fromkeys(SUITES, True) if full else classify(paths)
 

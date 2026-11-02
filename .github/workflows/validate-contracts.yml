@@ -33,6 +33,9 @@ jobs:
       - name: Validate contract
         run: python tools/validate_contracts.py
 
+      - name: Check portable public headers
+        run: python -B tests/host_cpp/check_portable_headers.py
+
       - name: Run host tests
         run: python -m unittest tests.host.test_validate_contracts
 
