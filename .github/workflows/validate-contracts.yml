@@ -36,6 +36,9 @@ jobs:
       - name: Check portable public headers
         run: python -B tests/host_cpp/check_portable_headers.py
 
+      - name: Build and link portable components
+        run: python -B tests/host_cpp/check_portable_build_link.py
+
       - name: Run host tests
         run: python -m unittest tests.host.test_validate_contracts
 
