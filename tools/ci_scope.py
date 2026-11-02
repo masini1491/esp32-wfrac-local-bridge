@@ -30,6 +30,10 @@ PORTABLE_HEADER_STEP = (
     "      - name: Check portable public headers\n"
     "        run: python -B tests/host_cpp/check_portable_headers.py\n\n"
 )
+PORTABLE_BUILD_LINK_STEP = (
+    "      - name: Build and link portable components\n"
+    "        run: python -B tests/host_cpp/check_portable_build_link.py\n\n"
+)
 HOST_TEST_STEP_MARKER = "      - name: Run host tests\n"
 
 
@@ -121,26 +125,49 @@ def protected_workflow(text, path, require_sdk_guards=False):
             job.count(HOST_TEST_STEP_MARKER) != 1):
         raise ScopeError("protected Host suite structure changed")
 
-    step_name = "      - name: Check portable public headers\n"
-    step_command = "        run: python -B tests/host_cpp/check_portable_headers.py\n"
-    if step_name in job or step_command in job:
-        if (job.count(PORTABLE_HEADER_STEP) != 1 or job.count(step_name) != 1 or
-                job.count(step_command) != 1):
-            raise ScopeError("unreviewed portable-header Host step")
-        step_start = job.index(PORTABLE_HEADER_STEP)
-        host_test_start = job.index(HOST_TEST_STEP_MARKER)
-        if step_start + len(PORTABLE_HEADER_STEP) != host_test_start:
+    step_specs = (
+        (PORTABLE_HEADER_STEP, "      - name: Check portable public headers\n",
+         "        run: python -B tests/host_cpp/check_portable_headers.py\n", "portable-header"),
+        (PORTABLE_BUILD_LINK_STEP, "      - name: Build and link portable components\n",
+         "        run: python -B tests/host_cpp/check_portable_build_link.py\n", "portable-build/link"),
+    )
+    present = []
+    for block, name_marker, command_marker, label in step_specs:
+        found = name_marker in job or command_marker in job
+        if found and (job.count(block) != 1 or job.count(name_marker) != 1 or
+                      job.count(command_marker) != 1):
+            raise ScopeError("unreviewed " + label + " Host step")
+        present.append(found)
+
+    header_present, build_present = present
+    if build_present and not header_present:
+        raise ScopeError("portable build/link step requires the approved header step")
+
+    host_test_start = job.index(HOST_TEST_STEP_MARKER)
+    if header_present:
+        header_start = job.index(PORTABLE_HEADER_STEP)
+        if build_present:
+            build_start = job.index(PORTABLE_BUILD_LINK_STEP)
+            if (header_start + len(PORTABLE_HEADER_STEP) != build_start or
+                    build_start + len(PORTABLE_BUILD_LINK_STEP) != host_test_start):
+                raise ScopeError("portable Host steps moved from their approved positions")
+        elif header_start + len(PORTABLE_HEADER_STEP) != host_test_start:
             raise ScopeError("portable-header Host step moved from its approved position")
-        job = job.replace(PORTABLE_HEADER_STEP, "", 1)
-    elif require_sdk_guards:
-        raise ScopeError("mandatory portable-header Host step missing")
+
+    for block, is_present in zip((PORTABLE_HEADER_STEP, PORTABLE_BUILD_LINK_STEP), present):
+        if is_present:
+            job = job.replace(block, "", 1)
 
     return job.rstrip()
 
 
-def require_protected_workflow_match(before, candidate, path):
+def require_protected_workflow_match(before, candidate, path, required_host_steps=("header",)):
     baseline = protected_workflow(before, path)
     current = protected_workflow(candidate, path, require_sdk_guards=True)
+    if path == WORKFLOWS[1]:
+        if ("header" in required_host_steps and PORTABLE_HEADER_STEP not in candidate.replace("\r\n", "\n") or
+                "build" in required_host_steps and PORTABLE_BUILD_LINK_STEP not in candidate.replace("\r\n", "\n")):
+            raise ScopeError("mandatory portable Host step missing")
     if baseline != current:
         raise ScopeError("workflow build/test semantics changed; explicit full approval required")
 
@@ -233,7 +260,8 @@ def plan(event_name, event, repo, get=fetch_json):
             if data.get("encoding") != "base64":
                 raise ScopeError("base workflow content unavailable")
             before = base64.b64decode(data["content"], validate=False).decode("utf-8")
-            require_protected_workflow_match(before, Path(path).read_text(), path)
+            required_steps = ("header", "build") if path == WORKFLOWS[1] else ()
+            require_protected_workflow_match(before, Path(path).read_text(), path, required_steps)
     stable(get(root))
     return dict.fromkeys(SUITES, True) if full else classify(paths)
 

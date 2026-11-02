@@ -227,6 +227,67 @@ class PortableHeaderWorkflowTests(unittest.TestCase):
             scope.require_protected_workflow_match(sdk, altered, scope.WORKFLOWS[0])
 
 
+class PortableBuildLinkWorkflowTests(unittest.TestCase):
+    def setUp(self):
+        self.header = scope.PORTABLE_HEADER_STEP
+        self.step = scope.PORTABLE_BUILD_LINK_STEP
+        self.anchor = scope.HOST_TEST_STEP_MARKER
+        self.before = host_workflow_fixture().replace(self.anchor, self.header + self.anchor)
+        self.candidate = self.before.replace(self.anchor, self.step + self.anchor)
+
+    def assert_candidate_matches(self, candidate):
+        scope.require_protected_workflow_match(
+            self.before, candidate, scope.WORKFLOWS[1], required_host_steps=("header", "build"))
+
+    def test_exact_portable_build_link_step_is_the_only_accepted_host_change(self):
+        self.assert_candidate_matches(self.candidate)
+
+    def test_build_link_command_tamper_is_rejected(self):
+        altered = self.candidate.replace(
+            "python -B tests/host_cpp/check_portable_build_link.py", "python other-build.py")
+        with self.assertRaises(scope.ScopeError):
+            self.assert_candidate_matches(altered)
+
+    def test_build_link_step_omission_is_rejected(self):
+        with self.assertRaises(scope.ScopeError):
+            self.assert_candidate_matches(self.before)
+
+    def test_build_link_step_duplication_is_rejected(self):
+        altered = self.before.replace(self.anchor, self.step + self.step + self.anchor)
+        with self.assertRaises(scope.ScopeError):
+            self.assert_candidate_matches(altered)
+
+    def test_build_link_step_moved_from_approved_position_is_rejected(self):
+        altered = self.candidate.replace(self.step, "", 1)
+        syntax_marker = "      - name: Check Python syntax\n"
+        altered = altered.replace(syntax_marker, self.step + syntax_marker)
+        with self.assertRaises(scope.ScopeError):
+            self.assert_candidate_matches(altered)
+
+    def test_header_step_removal_is_rejected(self):
+        altered = self.candidate.replace(self.header, "", 1)
+        with self.assertRaises(scope.ScopeError):
+            self.assert_candidate_matches(altered)
+
+    def test_original_host_regression_change_is_rejected(self):
+        altered = self.candidate.replace(
+            "python -B -m unittest discover -s tests/ci_scope -p 'test_*.py'", "echo skipped")
+        with self.assertRaises(scope.ScopeError):
+            self.assert_candidate_matches(altered)
+
+    def test_unrelated_host_step_is_rejected(self):
+        unrelated = "      - name: Unexpected step\n        run: echo unexpected\n"
+        altered = self.candidate.replace(self.anchor, unrelated + self.anchor)
+        with self.assertRaises(scope.ScopeError):
+            self.assert_candidate_matches(altered)
+
+    def test_sdk_guard_change_is_rejected(self):
+        sdk = Path(scope.WORKFLOWS[0]).read_text(encoding="utf-8")
+        altered = sdk.replace("needs: scope", "needs: other", 1)
+        with self.assertRaises(scope.ScopeError):
+            scope.require_protected_workflow_match(sdk, altered, scope.WORKFLOWS[0])
+
+
 class EventTests(unittest.TestCase):
     def fixtures(self, paths, labels=()):
         pr = dict(number=12, head={"sha": HEAD}, base={"sha": BASE}, changed_files=len(paths),
