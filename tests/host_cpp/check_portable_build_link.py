@@ -287,6 +287,127 @@ def validate_manifests(repo_root: Path, started: float, env: dict[str, str]) -> 
     return source_paths
 
 
+def validate_external_consumer(repo_root: Path, build_root: Path, archives: list[Path],
+                               compiler: str, env: dict[str, str], started: float) -> None:
+    results = {"SOURCE_COPY": "NOT_RUN", "COMPILE": "NOT_RUN", "STATIC_LINK": "NOT_RUN",
+               "MEMBER_MAP": "NOT_RUN", "NEGATIVE_CONTROL": "NOT_RUN"}
+    current_stage: str | None = None
+    try:
+        fixture_rel = "tests/host_cpp/test_portable_external_consumer.cpp"
+        fixture = resolve_inside(repo_root, fixture_rel, directory=False)
+        consumer_root = build_root / "external-consumer"
+        consumer_root.mkdir()
+        consumer_source = consumer_root / "consumer.cpp"
+        current_stage = "SOURCE_COPY"
+        original_bytes = fixture.read_bytes()
+        original_digest = hashlib.sha256(original_bytes).hexdigest()
+        consumer_source.write_bytes(original_bytes)
+        copied_bytes = consumer_source.read_bytes()
+        if (len(copied_bytes) != len(original_bytes) or
+                hashlib.sha256(copied_bytes).hexdigest() != original_digest):
+            raise BuildFailure("external consumer fixture copy identity mismatch")
+        print(f"EXTERNAL_CONSUMER_SOURCE path={fixture_rel} bytes={len(original_bytes)} sha256={original_digest}", flush=True)
+        results[current_stage] = "PASS"
+        current_stage = None
+
+        include_args: list[str] = []
+        for name in COMPONENTS:
+            include_root = resolve_inside(repo_root, "components/" + name + "/include", directory=True)
+            include_args.extend(["-I", str(include_root)])
+
+        consumer_object = consumer_root / "consumer.o"
+        current_stage = "COMPILE"
+        compile_command = [compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
+                           *include_args, "-c", str(consumer_source), "-o", str(consumer_object)]
+        run_checked(compile_command, cwd=consumer_root, env=env,
+                    timeout=COMMAND_TIMEOUT_SECONDS, started=started,
+                    phase="external consumer C++17 compile")
+        if not consumer_object.is_file() or consumer_object.stat().st_size == 0:
+            raise BuildFailure("consumer compiler succeeded without a nonempty object")
+        print(f"EXTERNAL_CONSUMER_COMPILE=PASS object_bytes={consumer_object.stat().st_size}", flush=True)
+        results[current_stage] = "PASS"
+        current_stage = None
+
+        consumer_executable = consumer_root / "consumer.elf"
+        consumer_map = consumer_root / "consumer.map"
+        current_stage = "STATIC_LINK"
+        link_command = [compiler, str(consumer_object), "-Wl,--start-group",
+                        *(str(path) for path in archives), "-Wl,--end-group",
+                        "-Wl,-Map=" + str(consumer_map), "-o", str(consumer_executable)]
+        run_checked(link_command, cwd=consumer_root, env=env,
+                    timeout=LINK_TIMEOUT_SECONDS, started=started,
+                    phase="external consumer normal static-library link")
+        if (not consumer_executable.is_file() or consumer_executable.stat().st_size == 0 or
+                not consumer_map.is_file()):
+            raise BuildFailure("consumer link succeeded without a nonempty executable and link map")
+        print(f"EXTERNAL_CONSUMER_STATIC_LINK=PASS executable_bytes={consumer_executable.stat().st_size}", flush=True)
+        print("EXTERNAL_CONSUMER_EXECUTABLE_NOT_EXECUTED=true", flush=True)
+        results[current_stage] = "PASS"
+        current_stage = None
+
+        current_stage = "MEMBER_MAP"
+        try:
+            map_text = consumer_map.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            raise BuildFailure(f"cannot read external consumer link map: {exc}") from None
+        expected_members = (
+            ("wfrac_protocol", "wfrac_protocol__src__crc16_cpp.o"),
+            ("wfrac_device_model", "wfrac_device_model__src__protocol_mapping_cpp.o"),
+            ("wfrac_api", "wfrac_api__src__api_response_cpp.o"),
+            ("wfrac_transport", "wfrac_transport__src__scheme_policy_cpp.o"),
+            ("wfrac_client", "wfrac_client__src__request_executor_cpp.o"),
+            ("wfrac_persistence", "wfrac_persistence__src__records_cpp.o"),
+        )
+        archive_names = {path.name for path in archives}
+        if archive_names != {"lib" + name + ".a" for name in COMPONENTS}:
+            raise BuildFailure("external consumer archive set differs from the six portable components")
+        for component, object_name in expected_members:
+            member = f"lib{component}.a({object_name})"
+            if member not in map_text:
+                raise BuildFailure("consumer link map lacks required archive member: " + member)
+            print("EXTERNAL_CONSUMER_MEMBER=" + member, flush=True)
+        print("EXTERNAL_CONSUMER_MEMBER_MAP=PASS members=6/6", flush=True)
+        results[current_stage] = "PASS"
+        current_stage = None
+
+        current_stage = "NEGATIVE_CONTROL"
+        negative_archives = [path for path in archives if path.name != "libwfrac_persistence.a"]
+        if len(negative_archives) != len(COMPONENTS) - 1:
+            raise BuildFailure("negative consumer link did not omit exactly the persistence library")
+        negative_executable = consumer_root / "consumer-without-persistence.elf"
+        negative_map = consumer_root / "consumer-without-persistence.map"
+        negative_command = [compiler, str(consumer_object), "-Wl,--start-group",
+                            *(str(path) for path in negative_archives), "-Wl,--end-group",
+                            "-Wl,-Map=" + str(negative_map), "-o", str(negative_executable)]
+        negative = run_capture(negative_command, cwd=consumer_root, env=env,
+                               timeout=LINK_TIMEOUT_SECONDS, started=started)
+        expected_symbol = (
+            "wfrac_persistence::encode_scheme(wfrac_transport::SchemeKnowledge, "
+            "wfrac_persistence::RecordBuffer*)")
+        unresolved = re.findall(r"undefined reference to [`']([^`']+)[`']", negative.stderr)
+        if negative.returncode == 0:
+            raise BuildFailure("negative consumer link unexpectedly succeeded without libwfrac_persistence.a")
+        if unresolved != [expected_symbol]:
+            raise BuildFailure("negative consumer link did not fail solely on the expected persistence symbol")
+        print("EXTERNAL_CONSUMER_NEGATIVE_EXPECTED_SYMBOL=" + expected_symbol, flush=True)
+        print("EXTERNAL_CONSUMER_NEGATIVE_CONTROL=PASS missing_library=wfrac_persistence", flush=True)
+        results[current_stage] = "PASS"
+        current_stage = None
+
+        for name, result in results.items():
+            print(f"EXTERNAL_CONSUMER_{name}={result}", flush=True)
+        print("EXTERNAL_CONSUMER_RESULT=PASS", flush=True)
+    except Exception as exc:
+        if current_stage is not None and results[current_stage] == "NOT_RUN":
+            results[current_stage] = "FAIL"
+        for name, result in results.items():
+            print(f"EXTERNAL_CONSUMER_{name}={result}", flush=True)
+        print("EXTERNAL_CONSUMER_RESULT=FAIL", flush=True)
+        if isinstance(exc, BuildFailure):
+            raise
+        raise BuildFailure("external consumer validation failed: " + str(exc)) from None
+
+
 def safe_child_environment(build_root: Path) -> dict[str, str]:
     # Compiler, archiver and linker receive no inherited credentials or CI tokens.
     path = os.environ.get("PATH")
@@ -302,6 +423,7 @@ def safe_child_environment(build_root: Path) -> dict[str, str]:
 
 def main() -> int:
     started = time.monotonic()
+    external_consumer_started = False
     try:
         if not sys.platform.startswith("linux"):
             raise BuildFailure("this native portable build/link check requires Linux Host CI")
@@ -420,6 +542,9 @@ def main() -> int:
                     raise BuildFailure("linker map does not prove object inclusion: " + member)
                 print("LINK_OBJECT_INCLUDED=" + member, flush=True)
 
+            external_consumer_started = True
+            validate_external_consumer(repo_root, build_root, archives, compiler, env, started)
+
             print("SOURCE_COUNT=20", flush=True)
             print("OBJECT_COUNT=20", flush=True)
             print("ARCHIVE_COUNT=6", flush=True)
@@ -431,10 +556,14 @@ def main() -> int:
     except BuildFailure as exc:
         print("PORTABLE_BUILD_LINK_RESULT=FAIL", file=sys.stderr, flush=True)
         print("REASON=" + str(exc), file=sys.stderr, flush=True)
+        if not external_consumer_started:
+            print("EXTERNAL_CONSUMER_RESULT=NOT_RUN", flush=True)
         return 1
     except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
         print("PORTABLE_BUILD_LINK_RESULT=FAIL", file=sys.stderr, flush=True)
         print("REASON=unexpected validation error: " + str(exc), file=sys.stderr, flush=True)
+        if not external_consumer_started:
+            print("EXTERNAL_CONSUMER_RESULT=NOT_RUN", flush=True)
         return 1
 
 
